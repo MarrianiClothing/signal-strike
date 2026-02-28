@@ -46,11 +46,11 @@ export function Sidebar({ profile }: { profile: Profile | null }) {
       </nav>
       <div style={{ padding: "12px 8px", borderTop: "1px solid #27272a" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", marginBottom: 4 }}>
-          <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, color: "#C9A84C" }}>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, color: "#C9A84C", fontFamily: "var(--font-montserrat, sans-serif)", letterSpacing: "0.18em" }}>
             {profile?.full_name?.charAt(0).toUpperCase() ?? "?"}
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#fafafa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.full_name ?? "User"}</p>
+            <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#fafafa", fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.08em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.full_name ?? "User"}</p>
             <p style={{ fontSize: "0.7rem", color: "#52525b", textTransform: "capitalize" }}>{profile?.role ?? "sales_rep"}</p>
           </div>
         </div>

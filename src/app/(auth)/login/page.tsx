@@ -44,7 +44,8 @@ export default function LoginPage() {
           {/* Brand name */}
           <h1 style={{
             fontSize: "2rem", fontWeight: 800, color: "#ffffff",
-            letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6,
+            letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6,
+            fontFamily: "var(--font-cinzel, serif)",
           }}>
             Signal Strike
           </h1>
@@ -78,7 +79,7 @@ export default function LoginPage() {
 
           {/* Heading */}
           <div style={{ marginBottom: 36 }}>
-            <h2 style={{ fontSize: "1.9rem", fontWeight: 700, color: "#fafafa", marginBottom: 8 }}>
+            <h2 style={{ fontSize: "1.9rem", fontWeight: 700, color: "#fafafa", marginBottom: 8, fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
               Welcome Back
             </h2>
             <p style={{ color: "#71717a", fontSize: "0.88rem" }}>Sign in to your account</p>

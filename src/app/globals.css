@@ -18,3 +18,30 @@ input, textarea, select {
 a {
   color: inherit;
 }
+
+/* ── HillTop Ave Font System ─────────────────────────────── */
+:root {
+  --font-cinzel: 'Cinzel', serif;
+  --font-montserrat: 'Montserrat', sans-serif;
+}
+
+body {
+  font-family: var(--font-montserrat), system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* Cinzel for headings and brand elements */
+h1, h2, h3 {
+  font-family: var(--font-cinzel), serif;
+  letter-spacing: 0.04em;
+}
+
+/* Montserrat for labels and caps text */
+.label-caps {
+  font-family: var(--font-montserrat), sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
