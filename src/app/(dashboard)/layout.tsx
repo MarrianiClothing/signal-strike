@@ -80,6 +80,68 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p style={{ color: "#71717a", fontSize: "0.62rem", marginTop: 4, textAlign: "center", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "var(--font-montserrat, sans-serif)" }}>Revenue CRM</p>
         </div>
 
+        {/* Avatar */}
+        <div ref={dropdownRef} style={{ padding: "0 10px 16px", position: "relative" }}>
+          <button
+            onClick={() => setDropdownOpen(prev => !prev)}
+            style={{
+              width: "100%", display: "flex", alignItems: "center", gap: 10,
+              padding: "8px 12px", borderRadius: 8, background: "transparent",
+              border: "none", cursor: "pointer",
+            }}
+          >
+            <div style={{
+              width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+              background: dropdownOpen ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)",
+              border: `1px solid ${dropdownOpen ? "#ffffff" : "rgba(255,255,255,0.2)"}`,
+              color: "#ffffff", fontSize: "0.75rem", fontWeight: 700,
+              fontFamily: "var(--font-montserrat, sans-serif)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "all 0.15s",
+            }}>
+              {initials}
+            </div>
+            <div style={{ textAlign: "left", minWidth: 0 }}>
+              <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#fafafa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fullName || "User"}</p>
+              <p style={{ fontSize: "0.65rem", color: "#52525b", letterSpacing: "0.08em", textTransform: "uppercase" }}>HillTop Ave</p>
+            </div>
+            <span style={{ marginLeft: "auto", color: "#52525b", fontSize: "0.7rem" }}>▾</span>
+          </button>
+
+          {dropdownOpen && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 4px)", left: 10, right: 10,
+              background: "#18181b", border: "1px solid #27272a", borderRadius: 10,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)", overflow: "hidden", zIndex: 100,
+            }}>
+              <div style={{ padding: "6px" }}>
+                <a href="/settings" onClick={() => setDropdownOpen(false)} style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
+                  borderRadius: 7, color: "#a1a1aa", textDecoration: "none",
+                  fontSize: "0.85rem", fontWeight: 500,
+                }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#27272a")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span>⚙</span> Settings
+                </a>
+                <div style={{ height: 1, background: "#27272a", margin: "4px 0" }} />
+                <button onClick={handleSignOut} style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 10,
+                  padding: "9px 12px", borderRadius: 7, background: "transparent",
+                  border: "none", color: "#f87171", fontSize: "0.85rem",
+                  fontWeight: 500, cursor: "pointer", textAlign: "left",
+                }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(248,113,113,0.08)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span>↩</span> Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Nav */}
         <nav style={{ flex: 1, padding: "0 10px" }}>
           {NAV.map(item => {
@@ -105,23 +167,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* Sign out */}
-        <div style={{ padding: "0 10px" }}>
-          <button onClick={handleSignOut} style={{
-            width: "100%", display: "flex", alignItems: "center", gap: 10,
-            padding: "9px 12px", borderRadius: 8, background: "none",
-            border: "none", color: "#52525b", fontSize: "0.88rem",
-            cursor: "pointer", textAlign: "left",
-          }}>
-            <span></span> Sign Out
-          </button>
-        </div>
+
       </aside>
 
       {/* ── Main ── */}
       <main style={{ flex: 1, overflowY: "auto", position: "relative" }}>
-        {/* ── Floating Avatar ── */}
-        <div ref={dropdownRef} style={{ position: "absolute", top: 28, right: 28, zIndex: 50 }}>
+        <div style={{ display: "none" }}>
             <button
               onClick={() => setDropdownOpen(prev => !prev)}
               style={{
