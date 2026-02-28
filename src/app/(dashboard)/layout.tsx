@@ -4,10 +4,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: "" },
-  { href: "/pipeline", label: "Pipeline", icon: "deal" },
-  { href: "/deals", label: "Deals", icon: "" },
-  { href: "/settings", label: "Settings", icon: "" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/pipeline", label: "Pipeline" },
+  { href: "/deals", label: "Deals" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -74,10 +74,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             alt="Signal Strike Logo"
             style={{ width: "90px", display: "block", margin: "0 auto 12px auto", opacity: 0.9 }}
           />
-          <h1 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#ffffff", letterSpacing: "-0.02em", textAlign: "center" }}>
+          <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#ffffff", letterSpacing: "0.12em", textAlign: "center", fontFamily: "var(--font-cinzel, serif)", textTransform: "uppercase" }}>
             Signal Strike
           </h1>
-          <p style={{ color: "#ffffff", fontSize: "0.72rem", marginTop: 4, textAlign: "center" }}>Revenue CRM</p>
+          <p style={{ color: "#71717a", fontSize: "0.62rem", marginTop: 4, textAlign: "center", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "var(--font-montserrat, sans-serif)" }}>Revenue CRM</p>
         </div>
 
         {/* Nav */}
@@ -87,13 +87,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             return (
               <a key={item.href} href={item.href} style={{
                 display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 12px", borderRadius: 8, marginBottom: 2,
-                background: active ? "#C9A84C22" : "transparent",
-                color: active ? "#C9A84C" : "#a1a1aa",
-                textDecoration: "none", fontSize: "0.88rem", fontWeight: active ? 600 : 400,
-                transition: "background 0.15s",
+                padding: "9px 14px", borderRadius: 8, marginBottom: 2,
+                background: active ? "rgba(201,168,76,0.1)" : "transparent",
+                color: active ? "#C9A84C" : "#71717a",
+                textDecoration: "none",
+                fontSize: "0.78rem",
+                fontWeight: active ? 600 : 400,
+                fontFamily: "var(--font-montserrat, sans-serif)",
+                letterSpacing: active ? "0.08em" : "0.05em",
+                textTransform: "uppercase",
+                transition: "all 0.15s",
+                borderLeft: active ? "2px solid #C9A84C" : "2px solid transparent",
               }}>
-                <span style={{ fontSize: "1rem" }}>{item.icon}</span>
                 {item.label}
               </a>
             );
