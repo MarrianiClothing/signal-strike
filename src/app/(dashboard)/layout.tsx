@@ -126,9 +126,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={() => setDropdownOpen(prev => !prev)}
               style={{
                 width: 40, height: 40, borderRadius: "50%",
-                background: dropdownOpen ? "rgba(201,168,76,0.2)" : "rgba(201,168,76,0.1)",
-                border: `2px solid ${dropdownOpen ? "#C9A84C" : "rgba(201,168,76,0.35)"}`,
-                color: "#C9A84C",
+                background: dropdownOpen ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)",
+                border: `2px solid ${dropdownOpen ? "#ffffff" : "rgba(255,255,255,0.3)"}`,
+                color: "#ffffff",
                 fontSize: "0.8rem", fontWeight: 700,
                 fontFamily: "var(--font-montserrat, sans-serif)",
                 letterSpacing: "0.05em",
