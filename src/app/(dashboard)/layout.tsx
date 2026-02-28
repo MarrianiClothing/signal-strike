@@ -174,11 +174,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             href="https://hilltopave.com"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: "#fafafa", color: "#fafafa", color: "#fafafa",
+            style={{ color: "#fafafa",
               display: "block", textAlign: "center",
               textDecoration: "none",
               fontSize: "0.6rem",
-              color: "#3f3f46",
               fontFamily: "var(--font-cinzel, serif)",
               letterSpacing: "0.12em",
               textTransform: "uppercase",
