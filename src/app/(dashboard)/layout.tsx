@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div style={{ display: "flex", minHeight: "100vh", background: "#0a0a0b" }}>
       {/* ── Sidebar ── */}
       <aside style={{
-        width: 220, background: "#111113", borderRight: "1px solid #18181b",
+        width: 220, background: "#000000", borderRight: "1px solid #18181b",
         display: "flex", flexDirection: "column", padding: "24px 0", flexShrink: 0,
         position: "sticky", top: 0, height: "100vh",
       }}>
