@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cinzel, Montserrat } from "next/font/google";
+import "./globals.css";
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -14,17 +15,22 @@ const montserrat = Montserrat({
   variable: "--font-montserrat",
   display: "swap",
 });
-import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Signal Strike",
   description: "Revenue CRM",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className={`${cinzel.variable} ${montserrat.variable}`}>
+      <body style={{ fontFamily: "var(--font-montserrat, system-ui, sans-serif)", background: "#09090b", color: "#fafafa", margin: 0 }}>
+        {children}
+      </body>
     </html>
   );
 }
