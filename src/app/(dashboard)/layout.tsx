@@ -120,17 +120,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* ── Main ── */}
       <main style={{ flex: 1, overflowY: "auto", position: "relative" }}>
-        {/* ── Top Header Bar ── */}
-        <div style={{
-          position: "sticky", top: 0, zIndex: 50,
-          display: "flex", alignItems: "center", justifyContent: "flex-end",
-          padding: "14px 28px",
-          background: "rgba(10,10,11,0.85)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid #18181b",
-        }}>
-          {/* Avatar Button with Dropdown */}
-          <div ref={dropdownRef} style={{ position: "relative" }}>
+        {/* ── Floating Avatar ── */}
+        <div ref={dropdownRef} style={{ position: "absolute", top: 28, right: 28, zIndex: 50 }}>
             <button
               onClick={() => setDropdownOpen(prev => !prev)}
               style={{
@@ -216,7 +207,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
               </div>
             )}
-          </div>
         </div>
 
         {children}
