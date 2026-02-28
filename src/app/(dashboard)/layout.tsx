@@ -184,8 +184,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               textTransform: "uppercase",
               transition: "color 0.15s",
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = "#fafafa")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#a1a1aa")}
+            onMouseEnter={e => { e.currentTarget.style.color = "#ffffff"; e.currentTarget.style.textShadow = "0 0 8px rgba(255,255,255,0.6)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#fafafa"; e.currentTarget.style.textShadow = "none"; }}
           >
             Powered By HillTop Ave
           </a>
