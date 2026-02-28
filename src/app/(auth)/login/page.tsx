@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
 
   async function handleLogin(e: React.FormEvent) {
@@ -141,6 +142,23 @@ export default function LoginPage() {
             {error && (
               <p style={{ color: "#f87171", fontSize: "0.82rem", marginTop: -8 }}>{error}</p>
             )}
+
+            {/* Remember Me */}
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
+              <div
+                onClick={() => setRememberMe(p => !p)}
+                style={{
+                  width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                  background: rememberMe ? "#C9A84C" : "transparent",
+                  border: `2px solid ${rememberMe ? "#C9A84C" : "#3f3f46"}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.15s", cursor: "pointer",
+                }}
+              >
+                {rememberMe && <span style={{ color: "#000", fontSize: "0.7rem", fontWeight: 900, lineHeight: 1 }}>✓</span>}
+              </div>
+              <span style={{ color: "#a1a1aa", fontSize: "0.83rem" }}>Remember me</span>
+            </label>
 
             {/* Submit */}
             <button
