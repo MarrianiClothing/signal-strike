@@ -61,6 +61,7 @@ export default function DealDetailPage() {
       company:             edit.company,
       contact_name:        edit.contact_name,
       contact_email:       edit.contact_email,
+      contact_phone:       edit.contact_phone || null,
       value:               parseFloat(edit.value),
       stage:               edit.stage,
       probability:         parseInt(edit.probability),
@@ -131,6 +132,10 @@ export default function DealDetailPage() {
               <div>
                 <label style={labelStyle}>Contact Email</label>
                 <input style={inputStyle} value={edit.contact_email ?? ""} onChange={e => setEdit((p:any)=>({...p,contact_email:e.target.value}))} />
+              </div>
+              <div>
+                <label style={labelStyle}>Contact Phone</label>
+                <input style={inputStyle} type="tel" placeholder="(555) 000-0000" value={edit.contact_phone ?? ""} onChange={e => setEdit((p:any)=>({...p,contact_phone:e.target.value}))} />
               </div>
               <div>
                 <label style={labelStyle}>Stage</label>
