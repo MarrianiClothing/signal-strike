@@ -144,6 +144,8 @@ export default function DashboardPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {goals.map((g: any) => {
                   const pct = Math.min(100, Math.round((wonRevenue / g.target_revenue) * 100));
+                  const barColor = pct >= 100 ? "#C9A84C" : pct >= 50 ? "#4ade80" : "#f87171";
+                  const earnedColor = pct >= 100 ? "#C9A84C" : pct >= 50 ? "#4ade80" : "#f87171";
                   const label = g.period_type === "monthly"
                     ? new Date(g.period_start + "T00:00:00").toLocaleString("en-US", { month: "long", year: "numeric" })
                     : g.period_type === "quarterly"
@@ -158,10 +160,10 @@ export default function DashboardPage() {
                         <span style={{ color: "#fafafa", fontSize: "0.78rem", fontWeight: 600 }}>{fmt(g.target_revenue)}</span>
                       </div>
                       <div style={{ background: "#1c1c1f", borderRadius: 6, height: 7, overflow: "hidden", marginBottom: 5 }}>
-                        <div style={{ width: `${pct}%`, height: "100%", background: "#C9A84C", borderRadius: 6, transition: "width 0.5s" }} />
+                        <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 6, transition: "width 0.5s" }} />
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: "#C9A84C", fontSize: "0.75rem", fontWeight: 600 }}>{fmt(wonRevenue)} earned</span>
+                        <span style={{ color: earnedColor, fontSize: "0.75rem", fontWeight: 600 }}>{fmt(wonRevenue)} earned</span>
                         <span style={{ color: "#71717a", fontSize: "0.75rem" }}>{pct}%</span>
                       </div>
                     </div>
