@@ -168,6 +168,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
 
+        {/* Powered By */}
+        <div style={{ padding: "12px 10px", borderTop: "1px solid #18181b" }}>
+          <a
+            href="https://hilltopave.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "block", textAlign: "center",
+              textDecoration: "none",
+              fontSize: "0.6rem",
+              color: "#3f3f46",
+              fontFamily: "var(--font-cinzel, serif)",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              transition: "color 0.15s",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = "#71717a")}
+            onMouseLeave={e => (e.currentTarget.style.color = "#3f3f46")}
+          >
+            Powered By HillTop Ave
+          </a>
+        </div>
       </aside>
 
       {/* ── Main ── */}
