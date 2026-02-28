@@ -92,7 +92,7 @@ export default function DashboardPage() {
         ].map(stat => (
           <div key={stat.label} style={card}>
             <p style={{ color: "#fafafa", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>{stat.label}</p>
-            <p style={{ fontSize: "1.75rem", fontWeight: 800, color: stat.color, fontFamily: "monospace" }}>{stat.value}</p>
+            <p style={{ fontSize: "1.75rem", fontWeight: 800, color: stat.color, fontFamily: "var(--font-cinzel, serif)" }}>{stat.value}</p>
             <p style={{ color: "#52525b", fontSize: "0.75rem", marginTop: 4 }}>{stat.sub}</p>
           </div>
         ))}
