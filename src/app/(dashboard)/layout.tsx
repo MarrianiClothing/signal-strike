@@ -88,8 +88,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <a key={item.href} href={item.href} style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "9px 14px", borderRadius: 8, marginBottom: 2,
-                background: active ? "rgba(201,168,76,0.1)" : "transparent",
-                color: active ? "#C9A84C" : "#71717a",
+                background: active ? "rgba(255,255,255,0.06)" : "transparent",
+                color: active ? "#ffffff" : "#71717a",
                 textDecoration: "none",
                 fontSize: "0.78rem",
                 fontWeight: active ? 600 : 400,
@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 letterSpacing: active ? "0.08em" : "0.05em",
                 textTransform: "uppercase",
                 transition: "all 0.15s",
-                borderLeft: active ? "2px solid #C9A84C" : "2px solid transparent",
+                borderLeft: active ? "2px solid #ffffff" : "2px solid transparent",
               }}>
                 {item.label}
               </a>
