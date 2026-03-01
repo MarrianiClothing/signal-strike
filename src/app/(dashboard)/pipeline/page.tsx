@@ -29,6 +29,7 @@ export default function PipelinePage() {
   const [newDeal, setNewDeal] = useState({ title: "", company: "", contact_name: "", contact_email: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -90,10 +91,23 @@ export default function PipelinePage() {
           <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fafafa" }}>Pipeline</h1>
           <p style={{ color: "#71717a", fontSize: "0.82rem", marginTop: 3 }}>{deals.length} deals</p>
         </div>
-        <button onClick={() => setShowAdd(true)} style={{
-          background: "#C9A84C", color: "#000", border: "none", borderRadius: 8,
-          padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-        }}>+ Add Deal</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <input
+            type="text"
+            placeholder="Search pipeline..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              background: "#111113", border: "1px solid #27272a", borderRadius: 8,
+              color: "#fafafa", padding: "8px 14px", fontSize: "0.875rem",
+              outline: "none", width: 220,
+            }}
+          />
+          <button onClick={() => setShowAdd(true)} style={{
+            background: "#C9A84C", color: "#000", border: "none", borderRadius: 8,
+            padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+          }}>+ Add Deal</button>
+        </div>
       </div>
 
       {/* Add Deal Modal */}
