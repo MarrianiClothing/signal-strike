@@ -156,7 +156,7 @@ export default function PipelinePage() {
       {/* Kanban Board */}
       <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 16 }}>
         {STAGES.map(stage => {
-          const stageDeals = deals.filter(d => d.stage === stage.id);
+          const stageDeals = deals.filter(d => d.stage === stage.id && (!search || d.title?.toLowerCase().includes(search.toLowerCase()) || d.company?.toLowerCase().includes(search.toLowerCase()) || d.contact_name?.toLowerCase().includes(search.toLowerCase())));
           const stageValue = stageDeals.reduce((s, d) => s + (d.value || 0), 0);
           return (
             <div key={stage.id}
