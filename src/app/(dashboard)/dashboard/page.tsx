@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [activities, setActivities] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openDealsGoal, setOpenDealsGoal] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -51,6 +52,10 @@ export default function DashboardPage() {
       ]);
 
       setDeals(dealsRes.data || []);
+
+      // Fetch open deals goal from profile
+      const { data: profileData } = await supabase.from("profiles").select("open_deals_goal").eq("id", user.id).maybeSingle();
+      if (profileData?.open_deals_goal) setOpenDealsGoal(profileData.open_deals_goal);
       setActivities(activitiesRes.data || []);
       setGoals(goalRes.data || []);
       setLoading(false);
@@ -87,7 +92,12 @@ export default function DashboardPage() {
         {[
           { label: "Pipeline Value", value: fmt(totalPipeline), sub: `${openDeals} open deals`, color: "#34d399" },
           { label: "Won Revenue", value: fmt(wonRevenue), sub: `${deals.filter(d => d.stage === "closed_won").length} deals closed`, color: "#C9A84C" },
-          { label: "Open Deals", value: openDeals.toString(), sub: "active opportunities", color: "#a78bfa" },
+          { label: "Open Deals", value: openDeals.toString(), sub: "active opportunities", color: (() => {
+            if (!openDealsGoal) return "#a78bfa";
+            if (openDeals >= openDealsGoal) return "#C9A84C";
+            if (openDeals >= openDealsGoal * 0.5) return "#34d399";
+            return "#f87171";
+          })() },
           { label: "Win Rate", value: deals.length ? Math.round((deals.filter(d => d.stage === "closed_won").length / deals.length) * 100) + "%" : "0%", sub: `${deals.length} total deals`, color: "#34d399" },
         ].map(stat => (
           <div key={stat.label} style={card}>

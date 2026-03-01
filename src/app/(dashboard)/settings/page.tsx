@@ -16,6 +16,7 @@ export default function SettingsPage() {
     notify_new_deal: true,
     notify_stage_change: true,
     notify_goal_reached: true,
+    open_deals_goal: "",
   });
   const [pwForm, setPwForm] = useState({ current: "", newPw: "", confirm: "" });
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -59,6 +60,7 @@ export default function SettingsPage() {
         notify_new_deal: data?.notify_new_deal ?? true,
         notify_stage_change: data?.notify_stage_change ?? true,
         notify_goal_reached: data?.notify_goal_reached ?? true,
+        open_deals_goal: data?.open_deals_goal ?? "",
       });
 
       // Check Gmail connection
@@ -83,6 +85,7 @@ export default function SettingsPage() {
       notify_new_deal: profile.notify_new_deal,
       notify_stage_change: profile.notify_stage_change,
       notify_goal_reached: profile.notify_goal_reached,
+      open_deals_goal: profile.open_deals_goal ? Number(profile.open_deals_goal) : null,
       updated_at: new Date().toISOString(),
     });
     setMsg(error ? { ok: false, text: error.message } : { ok: true, text: "Profile saved!" });
@@ -216,6 +219,9 @@ export default function SettingsPage() {
           <div>
             <label style={labelStyle}>Commission Rate (%)</label>
             <input style={inputStyle} type="number" min="0" max="100" value={profile.commission_rate} onChange={e => setProfile(p => ({ ...p, commission_rate: e.target.value }))} />
+            <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginTop: 16, marginBottom: 6 }}>Open Deals Goal</label>
+            <input style={inputStyle} type="number" min="0" placeholder="e.g. 12" value={profile.open_deals_goal} onChange={e => setProfile(p => ({ ...p, open_deals_goal: e.target.value }))} />
+            <p style={{ color: "#52525b", fontSize: "0.72rem", marginTop: 4 }}>Sets color on the Open Deals card: red &lt;50%, green ≥50%, gold ≥100%</p>
           </div>
         </div>
 
