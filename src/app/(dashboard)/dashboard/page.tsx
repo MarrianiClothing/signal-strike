@@ -19,7 +19,7 @@ function timeAgo(iso: string) {
 }
 
 const STAGE_COLORS: Record<string, string> = {
-  prospecting: "#71717a", qualification: "#60a5fa", proposal: "#a78bfa",
+  prospecting: "#71717a", qualification: "#34d399", proposal: "#a78bfa",
   negotiation: "#fbbf24", closed_won: "#C9A84C", closed_lost: "#f87171",
 };
 const STAGE_LABELS: Record<string, string> = {
@@ -85,7 +85,7 @@ export default function DashboardPage() {
       {/* Stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
         {[
-          { label: "Pipeline Value", value: fmt(totalPipeline), sub: `${openDeals} open deals`, color: "#60a5fa" },
+          { label: "Pipeline Value", value: fmt(totalPipeline), sub: `${openDeals} open deals`, color: "#34d399" },
           { label: "Won Revenue", value: fmt(wonRevenue), sub: `${deals.filter(d => d.stage === "closed_won").length} deals closed`, color: "#C9A84C" },
           { label: "Open Deals", value: openDeals.toString(), sub: "active opportunities", color: "#a78bfa" },
           { label: "Win Rate", value: deals.length ? Math.round((deals.filter(d => d.stage === "closed_won").length / deals.length) * 100) + "%" : "0%", sub: `${deals.length} total deals`, color: "#34d399" },
