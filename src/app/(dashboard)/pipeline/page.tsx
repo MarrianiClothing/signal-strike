@@ -26,10 +26,11 @@ export default function PipelinePage() {
   const [loading, setLoading] = useState(true);
   const [dragging, setDragging] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [newDeal, setNewDeal] = useState({ title: "", company: "", contact_name: "", contact_email: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "" });
+  const [newDeal, setNewDeal] = useState({ title: "", company: "", contact_name: "", contact_email: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
+  const [commissionTiers, setCommissionTiers] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -37,6 +38,8 @@ export default function PipelinePage() {
     setUserId(user.id);
     const { data } = await supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
     setDeals(data || []);
+    const { data: tiersData } = await supabase.from("commission_tiers").select("*").eq("user_id", user.id).order("rate", { ascending: false });
+    setCommissionTiers(tiersData || []);
     setLoading(false);
   }, [supabase]);
 
@@ -65,11 +68,12 @@ export default function PipelinePage() {
       probability: parseInt(newDeal.probability) || 20,
       expected_close_date: newDeal.expected_close_date || null,
       notes: newDeal.notes || null,
+      commission_tier_id: newDeal.commission_tier_id || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
     if (!error) {
-      setNewDeal({ title: "", company: "", contact_name: "", contact_email: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "" });
+      setNewDeal({ title: "", company: "", contact_name: "", contact_email: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
       setShowAdd(false);
       await load();
     } else setMsg(error.message);
@@ -137,6 +141,17 @@ export default function PipelinePage() {
                   {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
               </div>
+              {commissionTiers.length > 0 && (
+                <div>
+                  <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>Commission Tier</label>
+                  <select style={inputStyle} value={newDeal.commission_tier_id} onChange={e => setNewDeal(p => ({ ...p, commission_tier_id: e.target.value }))}>
+                    <option value="">— Select tier —</option>
+                    {commissionTiers.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>Notes</label>
                 <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} value={newDeal.notes} onChange={e => setNewDeal(p => ({ ...p, notes: e.target.value }))} />

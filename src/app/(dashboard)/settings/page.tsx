@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import RevenueGoalSection from "./components/RevenueGoalSection";
+import CommissionTiersSection from "./components/CommissionTiersSection";
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -138,6 +139,7 @@ export default function SettingsPage() {
       <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fafafa", marginBottom: 28 }}>Settings</h1>
 
       {/* Revenue Goal */}
+      <CommissionTiersSection userId={profile.id} />
       <RevenueGoalSection userId={profile.id} />
 
       {/* Email Sync */}
