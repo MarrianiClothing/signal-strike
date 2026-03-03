@@ -105,6 +105,14 @@ export default function DealsPage() {
                     </div>
                   ) : <span style={{ color:"#3f3f46" }}>—</span>}
                 </td>
+                <td style={{ padding:"13px 16px" }}>
+                  {deal.commission_tiers ? (
+                    <div>
+                      <span style={{ color:"#34d399", fontWeight:700 }}>{fmt((deal.value||0)*(deal.commission_tiers.rate/100))}</span>
+                      <span style={{ color:"#52525b", fontSize:"0.72rem", marginLeft:6 }}>{deal.commission_tiers.name}</span>
+                    </div>
+                  ) : <span style={{ color:"#3f3f46" }}>—</span>}
+                </td>
                 <td style={{ padding:"13px 16px" }}><span style={{ color:"#3f3f46" }}>—</span></td>
                 <td style={{ padding: "13px 16px" }}>
                   <span style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: 5, background: (STAGE_COLORS[deal.stage] || "#71717a") + "22", color: STAGE_COLORS[deal.stage] || "#71717a", fontWeight: 600 }}>
