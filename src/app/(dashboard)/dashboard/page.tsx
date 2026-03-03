@@ -8,16 +8,6 @@ function fmt(n: number) {
   return "$" + n.toFixed(0);
 }
 
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
 const STAGE_COLORS: Record<string, string> = {
   prospecting: "#71717a", qualification: "#34d399", proposal: "#a78bfa",
   negotiation: "#fbbf24", closed_won: "#C9A84C", closed_lost: "#f87171",
@@ -31,7 +21,6 @@ export default function DashboardPage() {
   const supabase = createClient();
   const [userName, setUserName] = useState("");
   const [deals, setDeals] = useState<any[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDealsGoal, setOpenDealsGoal] = useState<number | null>(null);
@@ -43,10 +32,8 @@ export default function DashboardPage() {
 
       setUserName(user.user_metadata?.full_name?.split(" ")[0] || "");
 
-      const [dealsRes, activitiesRes, goalRes] = await Promise.all([
-        supabase.from("deals").select("*").eq("user_id", user.id),
-        supabase.from("activities").select("*, deals(title)").eq("user_id", user.id)
-          .order("occurred_at", { ascending: false }).limit(8),
+      const [dealsRes, goalRes] = await Promise.all([
+        supabase.from("deals").select("*, commission_tiers(id,name,rate)").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("goals").select("*").eq("user_id", user.id)
           .order("period_start", { ascending: false }),
       ]);
@@ -56,7 +43,6 @@ export default function DashboardPage() {
       // Fetch open deals goal from profile
       const { data: profileData } = await supabase.from("profiles").select("open_deals_goal").eq("id", user.id).maybeSingle();
       if (profileData?.open_deals_goal) setOpenDealsGoal(profileData.open_deals_goal);
-      setActivities(activitiesRes.data || []);
       setGoals(goalRes.data || []);
       setLoading(false);
     }
@@ -109,38 +95,52 @@ export default function DashboardPage() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20 }}>
-        {/* Recent Activity */}
+        {/* Commission Tracker */}
         <div style={card}>
-          <h2 style={{ color: "#fafafa", fontWeight: 700, marginBottom: 20, fontSize: "0.95rem" }}>Recent Activity</h2>
-          {activities.length === 0 ? (
-            <p style={{ color: "#52525b", fontSize: "0.85rem" }}>No activity yet. Start logging calls, emails, and meetings.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {activities.map((a: any) => (
-                <div key={a.id} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#1c1c1f", border: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 7, boxSizing: "border-box" }}>
-                    <img
-                      src={
-                        a.type === "email" ? "/icons/email.svg"
-                        : a.type === "call" ? "/icons/call.svg"
-                        : a.type === "meeting" ? "/icons/meeting.svg"
-                        : a.type === "stage_change" ? "/icons/stage.svg"
-                        : a.type === "deal_created" ? "/icons/created.svg"
-                        : "/icons/note.svg"
-                      }
-                      style={{ width: "100%", height: "100%", opacity: 0.85 }}
-                      alt={a.type}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ color: "#fafafa", fontSize: "0.85rem", fontWeight: 500 }}>{a.title}</p>
-                    {a.deals?.title && <p style={{ color: "#71717a", fontSize: "0.75rem", marginTop: 2 }}>{a.deals.title}</p>}
-                  </div>
-                  <span style={{ color: "#52525b", fontSize: "0.72rem", whiteSpace: "nowrap" }}>{timeAgo(a.occurred_at)}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: 0 }}>Commission Tracker</h2>
+            <span style={{ color: "#52525b", fontSize: "0.75rem" }}>
+              {deals.filter((d:any) => d.commission_tiers).length} deals tracked
+            </span>
+          </div>
+          {(() => {
+            const tieredDeals = deals.filter((d:any) => d.commission_tiers);
+            const totalCommission = tieredDeals.reduce((sum:number, d:any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
+            if (tieredDeals.length === 0) return (
+              <p style={{ color: "#52525b", fontSize: "0.85rem" }}>No deals with commission tiers yet. Assign a tier when creating or editing a deal.</p>
+            );
+            return (
+              <>
+                {/* Total commission summary bar */}
+                <div style={{ background: "#18181b", borderRadius: 10, padding: "12px 16px", marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Commission</span>
+                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "1.25rem", fontFamily: "monospace" }}>{fmt(totalCommission)}</span>
                 </div>
-              ))}
-            </div>
-          )}
+                {/* Deal rows */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {tieredDeals.map((d:any) => {
+                    const commission = (d.value || 0) * (d.commission_tiers.rate / 100);
+                    const stageColor = STAGE_COLORS[d.stage] || "#71717a";
+                    return (
+                      <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: "#18181b", borderRadius: 8, borderLeft: `3px solid ${stageColor}` }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ color: "#fafafa", fontWeight: 600, fontSize: "0.88rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title}</p>
+                          <p style={{ color: "#71717a", fontSize: "0.75rem", marginTop: 2 }}>{d.company || "—"}</p>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <p style={{ color: "#34d399", fontWeight: 700, fontSize: "0.95rem", fontFamily: "monospace" }}>{fmt(commission)}</p>
+                          <p style={{ color: "#52525b", fontSize: "0.7rem", marginTop: 1 }}>{d.commission_tiers.name} · {d.commission_tiers.rate}%</p>
+                        </div>
+                        <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: 5, background: stageColor + "22", color: stageColor, fontWeight: 600, flexShrink: 0 }}>
+                          {STAGE_LABELS[d.stage] || d.stage}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {/* Goal & Pipeline breakdown */}
