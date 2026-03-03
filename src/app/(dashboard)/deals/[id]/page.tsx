@@ -47,7 +47,7 @@ export default function DealDetailPage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user!.id);
-      const { data } = await supabase.from("deals").select("*, commission_tiers(id,name,rate)").eq("id", id).single();
+      const { data } = await supabase.from("deals").select("*").eq("id", id).single();
       const { data: tiersData } = await supabase.from("commission_tiers").select("*").eq("user_id", user!.id).order("rate",{ascending:false});
       setTiers(tiersData || []);
       setDeal(data);

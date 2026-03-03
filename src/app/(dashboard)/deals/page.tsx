@@ -29,7 +29,7 @@ export default function DealsPage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("deals").select("*, commission_tiers(id,name,rate)").eq("user_id", user.id).order("created_at", { ascending: false });
+      const { data } = await supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
       setDeals(data || []);
       setLoading(false);
     }
@@ -89,14 +89,7 @@ export default function DealsPage() {
                 <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.company || "—"}</td>
                 <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.contact_name || "—"}</td>
                 <td style={{ padding: "13px 16px", color: "#C9A84C", fontWeight: 700 }}>{fmt(deal.value)}</td>
-                <td style={{ padding:"13px 16px" }}>
-                  {deal.commission_tiers ? (
-                    <div>
-                      <span style={{ color:"#34d399", fontWeight:700 }}>{fmt((deal.value||0)*(deal.commission_tiers.rate/100))}</span>
-                      <span style={{ color:"#52525b", fontSize:"0.72rem", marginLeft:6 }}>{deal.commission_tiers.name}</span>
-                    </div>
-                  ) : <span style={{ color:"#3f3f46" }}>—</span>}
-                </td>
+                <td style={{ padding:"13px 16px" }}><span style={{ color:"#3f3f46" }}>—</span></td>
                 <td style={{ padding: "13px 16px" }}>
                   <span style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: 5, background: (STAGE_COLORS[deal.stage] || "#71717a") + "22", color: STAGE_COLORS[deal.stage] || "#71717a", fontWeight: 600 }}>
                     {STAGE_LABELS[deal.stage] || deal.stage}
