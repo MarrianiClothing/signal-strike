@@ -13,7 +13,6 @@ export default function SettingsPage() {
     id: "",
     full_name: "",
     email: "",
-    commission_rate: "10",
     notify_new_deal: true,
     notify_stage_change: true,
     notify_goal_reached: true,
@@ -57,7 +56,6 @@ export default function SettingsPage() {
         id: user.id,
         full_name: data?.full_name ?? user.user_metadata?.full_name ?? "",
         email: user.email ?? "",
-        commission_rate: data?.commission_rate ?? "10",
         notify_new_deal: data?.notify_new_deal ?? true,
         notify_stage_change: data?.notify_stage_change ?? true,
         notify_goal_reached: data?.notify_goal_reached ?? true,
@@ -82,7 +80,6 @@ export default function SettingsPage() {
     const { error } = await supabase.from("profiles").upsert({
       id: profile.id,
       full_name: profile.full_name,
-      commission_rate: profile.commission_rate,
       notify_new_deal: profile.notify_new_deal,
       notify_stage_change: profile.notify_stage_change,
       notify_goal_reached: profile.notify_goal_reached,
@@ -219,8 +216,6 @@ export default function SettingsPage() {
             <input style={{ ...inputStyle, opacity: 0.6 }} value={profile.email} disabled />
           </div>
           <div>
-            <label style={labelStyle}>Commission Rate (%)</label>
-            <input style={inputStyle} type="number" min="0" max="100" value={profile.commission_rate} onChange={e => setProfile(p => ({ ...p, commission_rate: e.target.value }))} />
             <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginTop: 16, marginBottom: 6 }}>Open Deals Goal</label>
             <input style={inputStyle} type="number" min="0" placeholder="e.g. 12" value={profile.open_deals_goal} onChange={e => setProfile(p => ({ ...p, open_deals_goal: e.target.value }))} />
             <p style={{ color: "#52525b", fontSize: "0.72rem", marginTop: 4 }}>Sets color on the Open Deals card: red &lt;50%, green ≥50%, gold ≥100%</p>
