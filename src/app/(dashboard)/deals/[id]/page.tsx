@@ -42,12 +42,15 @@ export default function DealDetailPage() {
   const [msg,     setMsg]     = useState<{ok:boolean;text:string}|null>(null);
   const [edit,    setEdit]    = useState<any>(null);
   const [tiers,   setTiers]   = useState<any[]>([]);
+  const [tiers,   setTiers]   = useState<any[]>([]);
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user!.id);
-      const { data } = await supabase.from("deals").select("*").eq("id", id).single();
+      const { data } = await supabase.from("deals").select("*, commission_tiers(id,name,rate)").eq("id", id).single();
+      const { data: tiersData } = await supabase.from("commission_tiers").select("*").eq("user_id", user!.id).order("rate",{ascending:false});
+      setTiers(tiersData || []);
       const { data: tiersData } = await supabase.from("commission_tiers").select("*").eq("user_id", user!.id).order("rate",{ascending:false});
       setTiers(tiersData || []);
       setDeal(data);
@@ -107,6 +110,20 @@ export default function DealDetailPage() {
         </div>
         <div style={{ textAlign: "right" }}>
           <p style={{ fontSize: "2rem", fontWeight: 800, color: "#C9A84C", fontFamily: "monospace" }}>{fmt(deal.value)}</p>
+          {/* Commission Card */}
+          {(() => {
+            const tier = deal.commission_tiers || tiers.find((t:any) => t.id === deal.commission_tier_id);
+            if (!tier) return null;
+            const commission = (deal.value || 0) * (tier.rate / 100);
+            return (
+              <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:"16px 20px", marginTop:12 }}>
+                <p style={{ color:"#71717a", fontSize:"0.7rem", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>Commission</p>
+                <p style={{ fontSize:"1.5rem", fontWeight:800, color:"#34d399", fontFamily:"monospace", marginBottom:4 }}>{fmt(commission)}</p>
+                <p style={{ color:"#52525b", fontSize:"0.75rem" }}>{tier.name} · {tier.rate}% of {fmt(deal.value)}</p>
+              </div>
+            );
+          })()}
+
           {/* Commission Card */}
           {(() => {
             const tier = deal.commission_tiers || tiers.find((t:any) => t.id === deal.commission_tier_id);
