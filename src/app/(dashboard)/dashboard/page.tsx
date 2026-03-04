@@ -1,4 +1,4 @@
-"use client"; // v2
+"use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -34,16 +34,14 @@ export default function DashboardPage() {
 
       const [dealsRes, goalRes] = await Promise.all([
         supabase.from("deals").select("*, commission_tiers(id,name,rate)").eq("user_id", user.id).order("created_at", { ascending: false }),
-        supabase.from("goals").select("*").eq("user_id", user.id)
-          .order("period_start", { ascending: false }),
+        supabase.from("goals").select("*").eq("user_id", user.id).order("period_start", { ascending: false }),
       ]);
 
       setDeals(dealsRes.data || []);
+      setGoals(goalRes.data || []);
 
-      // Fetch open deals goal from profile
       const { data: profileData } = await supabase.from("profiles").select("open_deals_goal").eq("id", user.id).maybeSingle();
       if (profileData?.open_deals_goal) setOpenDealsGoal(profileData.open_deals_goal);
-      setGoals(goalRes.data || []);
       setLoading(false);
     }
     load();
@@ -60,6 +58,9 @@ export default function DashboardPage() {
   };
 
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading...</div>;
+
+  const tieredDeals = deals.filter((d: any) => d.commission_tiers);
+  const totalCommission = tieredDeals.reduce((sum: number, d: any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
 
   return (
     <div style={{ padding: 32, maxWidth: 1200 }}>
@@ -99,51 +100,45 @@ export default function DashboardPage() {
         <div style={card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: 0 }}>Commission Tracker</h2>
-            <span style={{ color: "#52525b", fontSize: "0.75rem" }}>
-              {deals.filter((d:any) => d.commission_tiers).length} deals tracked
-            </span>
+            <span style={{ color: "#52525b", fontSize: "0.75rem" }}>{tieredDeals.length} deals tracked</span>
           </div>
-          {(() => {
-            const tieredDeals = deals.filter((d:any) => d.commission_tiers);
-            const totalCommission = tieredDeals.reduce((sum:number, d:any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
-            if (tieredDeals.length === 0) return (
-              <p style={{ color: "#52525b", fontSize: "0.85rem" }}>No deals with commission tiers yet. Assign a tier when creating or editing a deal.</p>
-            );
-            return (
-              <>
-                {/* Total commission summary bar */}
-                <div style={{ background: "#18181b", borderRadius: 10, padding: "12px 16px", marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Commission</span>
-                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "1.25rem", fontFamily: "monospace" }}>{fmt(totalCommission)}</span>
-                </div>
-                {/* Deal rows */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {tieredDeals.map((d:any) => {
-                    const commission = (d.value || 0) * (d.commission_tiers.rate / 100);
-                    const stageColor = STAGE_COLORS[d.stage] || "#71717a";
-                    return (
-                      <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: "#18181b", borderRadius: 8, borderLeft: `3px solid ${stageColor}` }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ color: "#fafafa", fontWeight: 600, fontSize: "0.88rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title}</p>
-                          <p style={{ color: "#71717a", fontSize: "0.75rem", marginTop: 2 }}>{d.company || "—"}</p>
-                        </div>
-                        <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <p style={{ color: "#34d399", fontWeight: 700, fontSize: "0.95rem", fontFamily: "monospace" }}>{fmt(commission)}</p>
-                          <p style={{ color: "#52525b", fontSize: "0.7rem", marginTop: 1 }}>{d.commission_tiers.name} · {d.commission_tiers.rate}%</p>
-                        </div>
-                        <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: 5, background: stageColor + "22", color: stageColor, fontWeight: 600, flexShrink: 0 }}>
-                          {STAGE_LABELS[d.stage] || d.stage}
-                        </span>
+
+          {tieredDeals.length === 0 ? (
+            <p style={{ color: "#52525b", fontSize: "0.85rem" }}>No deals with commission tiers yet. Assign a tier when creating or editing a deal.</p>
+          ) : (
+            <>
+              {/* Total summary bar */}
+              <div style={{ background: "#18181b", borderRadius: 10, padding: "12px 16px", marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Commission</span>
+                <span style={{ color: "#34d399", fontWeight: 800, fontSize: "1.25rem", fontFamily: "monospace" }}>{fmt(totalCommission)}</span>
+              </div>
+              {/* Deal rows */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {tieredDeals.map((d: any) => {
+                  const commission = (d.value || 0) * (d.commission_tiers.rate / 100);
+                  const stageColor = STAGE_COLORS[d.stage] || "#71717a";
+                  return (
+                    <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: "#18181b", borderRadius: 8, borderLeft: `3px solid ${stageColor}` }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ color: "#fafafa", fontWeight: 600, fontSize: "0.88rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title}</p>
+                        <p style={{ color: "#71717a", fontSize: "0.75rem", marginTop: 2 }}>{d.company || "—"}</p>
                       </div>
-                    );
-                  })}
-                </div>
-              </>
-            );
-          })()}
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <p style={{ color: "#34d399", fontWeight: 700, fontSize: "0.95rem", fontFamily: "monospace" }}>{fmt(commission)}</p>
+                        <p style={{ color: "#52525b", fontSize: "0.7rem", marginTop: 1 }}>{d.commission_tiers.name} · {d.commission_tiers.rate}%</p>
+                      </div>
+                      <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: 5, background: stageColor + "22", color: stageColor, fontWeight: 600, flexShrink: 0 }}>
+                        {STAGE_LABELS[d.stage] || d.stage}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Goal & Pipeline breakdown */}
+        {/* Right column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Revenue Goals */}
           <div style={card}>
@@ -155,7 +150,6 @@ export default function DashboardPage() {
                 {goals.map((g: any) => {
                   const pct = Math.min(100, Math.round((wonRevenue / g.target_revenue) * 100));
                   const barColor = pct >= 100 ? "#C9A84C" : pct >= 50 ? "#4ade80" : "#f87171";
-                  const earnedColor = pct >= 100 ? "#C9A84C" : pct >= 50 ? "#4ade80" : "#f87171";
                   const label = g.period_type === "monthly"
                     ? new Date(g.period_start + "T00:00:00").toLocaleString("en-US", { month: "long", year: "numeric" })
                     : g.period_type === "quarterly"
@@ -173,7 +167,7 @@ export default function DashboardPage() {
                         <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 6, transition: "width 0.5s" }} />
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: earnedColor, fontSize: "0.75rem", fontWeight: 600 }}>{fmt(wonRevenue)} earned</span>
+                        <span style={{ color: barColor, fontSize: "0.75rem", fontWeight: 600 }}>{fmt(wonRevenue)} earned</span>
                         <span style={{ color: "#71717a", fontSize: "0.75rem" }}>{pct}%</span>
                       </div>
                     </div>
@@ -183,7 +177,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Pipeline by stage */}
+          {/* Pipeline by Stage */}
           <div style={card}>
             <h2 style={{ color: "#fafafa", fontWeight: 700, marginBottom: 16, fontSize: "0.95rem" }}>Pipeline by Stage</h2>
             {Object.entries(STAGE_LABELS).map(([stage, label]) => {
