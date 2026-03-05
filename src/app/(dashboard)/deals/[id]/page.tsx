@@ -42,9 +42,6 @@ export default function DealDetailPage() {
   const [msg,     setMsg]     = useState<{ok:boolean;text:string}|null>(null);
   const [edit,    setEdit]    = useState<any>(null);
   const [tiers,   setTiers]   = useState<any[]>([]);
-  const [tiers,   setTiers]   = useState<any[]>([]);
-  const [tiers,   setTiers]   = useState<any[]>([]);
-  const [tiers,   setTiers]   = useState<any[]>([]);
 
   useEffect(() => {
     async function load() {
