@@ -32,7 +32,7 @@ const labelStyle = {
 
 export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router  = useRouter();
+  const router   = useRouter();
   const supabase = createClient();
 
   const [deal,    setDeal]    = useState<any>(null);
@@ -47,10 +47,16 @@ export default function DealDetailPage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user!.id);
-      const { data } = await supabase.from("deals").select("*, commission_tiers(id,name,rate)").eq("id", id).single();
-      const { data: tiersData } = await supabase.from("commission_tiers").select("*").eq("user_id", user!.id).order("rate",{ascending:false});
-      setTiers(tiersData || []);
-      const { data: tiersData } = await supabase.from("commission_tiers").select("*").eq("user_id", user!.id).order("rate",{ascending:false});
+      const { data } = await supabase
+        .from("deals")
+        .select("*, commission_tiers(id,name,rate)")
+        .eq("id", id)
+        .single();
+      const { data: tiersData } = await supabase
+        .from("commission_tiers")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("rate", { ascending: false });
       setTiers(tiersData || []);
       setDeal(data);
       setEdit(data);
@@ -90,6 +96,8 @@ export default function DealDetailPage() {
   if (!deal)   return <div style={{ padding: 32, color: "#f87171" }}>Deal not found.</div>;
 
   const stageColor = STAGE_COLORS[edit?.stage] ?? "#71717a";
+  const activeTier = deal.commission_tiers || tiers.find((t:any) => t.id === edit?.commission_tier_id);
+  const commission = activeTier ? (deal.value || 0) * (activeTier.rate / 100) : null;
 
   return (
     <div style={{ padding: 32, maxWidth: 1100 }}>
@@ -109,63 +117,14 @@ export default function DealDetailPage() {
         </div>
         <div style={{ textAlign: "right" }}>
           <p style={{ fontSize: "2rem", fontWeight: 800, color: "#C9A84C", fontFamily: "monospace" }}>{fmt(deal.value)}</p>
-          {/* Commission Card */}
-          {(() => {
-            const tier = deal.commission_tiers || tiers.find((t:any) => t.id === deal.commission_tier_id);
-            if (!tier) return null;
-            const commission = (deal.value || 0) * (tier.rate / 100);
-            return (
-              <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:"16px 20px", marginTop:12 }}>
-                <p style={{ color:"#71717a", fontSize:"0.7rem", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>Commission</p>
-                <p style={{ fontSize:"1.5rem", fontWeight:800, color:"#34d399", fontFamily:"monospace", marginBottom:4 }}>{fmt(commission)}</p>
-                <p style={{ color:"#52525b", fontSize:"0.75rem" }}>{tier.name} · {tier.rate}% of {fmt(deal.value)}</p>
-              </div>
-            );
-          })()}
-
-          {/* Commission Card */}
-          {(() => {
-            const tier = deal.commission_tiers || tiers.find((t:any) => t.id === deal.commission_tier_id);
-            if (!tier) return null;
-            const commission = (deal.value || 0) * (tier.rate / 100);
-            return (
-              <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:"16px 20px", marginTop:12 }}>
-                <p style={{ color:"#71717a", fontSize:"0.7rem", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>Commission</p>
-                <p style={{ fontSize:"1.5rem", fontWeight:800, color:"#34d399", fontFamily:"monospace", marginBottom:4 }}>{fmt(commission)}</p>
-                <p style={{ color:"#52525b", fontSize:"0.75rem" }}>{tier.name} · {tier.rate}% of {fmt(deal.value)}</p>
-              </div>
-            );
-          })()}
-
-          {/* Commission Card */}
-          {(() => {
-            const tier = deal.commission_tiers || tiers.find((t:any) => t.id === deal.commission_tier_id);
-            if (!tier) return null;
-            const commission = (deal.value || 0) * (tier.rate / 100);
-            return (
-              <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:"16px 20px", marginTop:12 }}>
-                <p style={{ color:"#71717a", fontSize:"0.7rem", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>Commission</p>
-                <p style={{ fontSize:"1.5rem", fontWeight:800, color:"#34d399", fontFamily:"monospace", marginBottom:4 }}>{fmt(commission)}</p>
-                <p style={{ color:"#52525b", fontSize:"0.75rem" }}>{tier.name} · {tier.rate}% of {fmt(deal.value)}</p>
-              </div>
-            );
-          })()}
-
-          {/* Commission Card */}
-          {(() => {
-            const tier = deal.commission_tiers || tiers.find((t:any) => t.id === deal.commission_tier_id);
-            if (!tier) return null;
-            const commission = (deal.value || 0) * (tier.rate / 100);
-            return (
-              <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:"16px 20px", marginTop:12 }}>
-                <p style={{ color:"#71717a", fontSize:"0.7rem", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>Commission</p>
-                <p style={{ fontSize:"1.5rem", fontWeight:800, color:"#34d399", fontFamily:"monospace", marginBottom:4 }}>{fmt(commission)}</p>
-                <p style={{ color:"#52525b", fontSize:"0.75rem" }}>{tier.name} · {tier.rate}% of {fmt(deal.value)}</p>
-              </div>
-            );
-          })()}
-
-          <p style={{ fontSize: "0.75rem", color: "#52525b" }}>{deal.probability}% probability</p>
+          {commission !== null && (
+            <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:"16px 20px", marginTop:12 }}>
+              <p style={{ color:"#71717a", fontSize:"0.7rem", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>Commission</p>
+              <p style={{ fontSize:"1.5rem", fontWeight:800, color:"#34d399", fontFamily:"monospace", marginBottom:4 }}>{fmt(commission)}</p>
+              <p style={{ color:"#52525b", fontSize:"0.75rem" }}>{activeTier.name} · {activeTier.rate}% of {fmt(deal.value)}</p>
+            </div>
+          )}
+          <p style={{ fontSize: "0.75rem", color: "#52525b", marginTop: 8 }}>{deal.probability}% probability</p>
         </div>
       </div>
 
@@ -216,6 +175,13 @@ export default function DealDetailPage() {
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={labelStyle}>Notes</label>
                 <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 80 }} value={edit.notes ?? ""} onChange={e => setEdit((p:any)=>({...p,notes:e.target.value}))} />
+              </div>
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={labelStyle}>Commission Tier</label>
+                <select style={inputStyle} value={edit.commission_tier_id ?? ""} onChange={e => setEdit((p:any)=>({...p,commission_tier_id:e.target.value}))}>
+                  <option value="">-- None --</option>
+                  {tiers.map((t:any) => <option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>)}
+                </select>
               </div>
             </div>
 
