@@ -49,7 +49,7 @@ export default function DealDetailPage() {
       setUserId(user!.id);
       const { data } = await supabase
         .from("deals")
-        .select("*, commission_tiers(id,name,rate)")
+        .select("*")
         .eq("id", id)
         .single();
       const { data: tiersData } = await supabase

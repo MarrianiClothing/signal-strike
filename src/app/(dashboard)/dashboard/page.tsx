@@ -32,12 +32,19 @@ export default function DashboardPage() {
 
       setUserName(user.user_metadata?.full_name?.split(" ")[0] || "");
 
-      const [dealsRes, goalRes] = await Promise.all([
-        supabase.from("deals").select("*, commission_tiers(id,name,rate)").eq("user_id", user.id).order("created_at", { ascending: false }),
+      const [dealsRes, goalRes, tiersRes] = await Promise.all([
+        supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("goals").select("*").eq("user_id", user.id).order("period_start", { ascending: false }),
+        supabase.from("commission_tiers").select("*").eq("user_id", user.id),
       ]);
 
-      setDeals(dealsRes.data || []);
+      const tiersMap: Record<string,any> = {};
+      for (const t of (tiersRes.data || [])) tiersMap[t.id] = t;
+      const dealsWithTiers = (dealsRes.data || []).map((d:any) => ({
+        ...d,
+        commission_tiers: d.commission_tier_id ? tiersMap[d.commission_tier_id] || null : null
+      }));
+      setDeals(dealsWithTiers);
       setGoals(goalRes.data || []);
 
       const { data: profileData } = await supabase.from("profiles").select("open_deals_goal").eq("id", user.id).maybeSingle();
