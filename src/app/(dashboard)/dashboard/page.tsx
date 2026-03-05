@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 function fmt(n: number) {
@@ -19,6 +20,7 @@ const STAGE_LABELS: Record<string, string> = {
 
 export default function DashboardPage() {
   const supabase = createClient();
+  const router = useRouter();
   const [userName, setUserName] = useState("");
   const [deals, setDeals] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
@@ -125,7 +127,7 @@ export default function DashboardPage() {
                   const commission = (d.value || 0) * (d.commission_tiers.rate / 100);
                   const stageColor = STAGE_COLORS[d.stage] || "#71717a";
                   return (
-                    <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: "#18181b", borderRadius: 8, borderLeft: `3px solid ${stageColor}` }}>
+                    <div key={d.id} onClick={() => router.push("/deals/" + d.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: "#18181b", borderRadius: 8, borderLeft: `3px solid ${stageColor}`, cursor: "pointer" }} onMouseEnter={e => (e.currentTarget.style.background = "#222225")} onMouseLeave={e => (e.currentTarget.style.background = "#18181b")}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ color: "#fafafa", fontWeight: 600, fontSize: "0.88rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title}</p>
                         <p style={{ color: "#71717a", fontSize: "0.75rem", marginTop: 2 }}>{d.company || "—"}</p>
