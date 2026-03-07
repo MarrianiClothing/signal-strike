@@ -162,11 +162,17 @@ export async function GET(req: NextRequest) {
     if (preview) {
       const { data: allProfiles } = await supabase
         .from("profiles")
-        .select("id, full_name, email, daily_signal_time, daily_signal_enabled")
+        .select("id, full_name")
         .limit(1);
       const profile = allProfiles?.[0];
-      if (!profile?.email) {
-        return NextResponse.json({ ok: false, error: "No user profile with email found." });
+      if (!profile?.id) {
+        return NextResponse.json({ ok: false, error: "No user profile found." });
+      }
+      // Get email from auth.users via admin API
+      const { data: { user: authUser } } = await supabase.auth.admin.getUserById(profile.id);
+      const email = authUser?.email;
+      if (!email) {
+        return NextResponse.json({ ok: false, error: "No email found for user." });
       }
       // fetch their deals and tiers
       const { data: deals } = await supabase
@@ -177,11 +183,11 @@ export async function GET(req: NextRequest) {
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
       await resend.emails.send({
         from:    "Signal Strike <onboarding@resend.dev>",
-        to:      profile.email,
+        to:      email,
         subject: `Daily Signal · ${new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`,
         html,
       });
-      return NextResponse.json({ ok: true, sent_to: profile.email });
+      return NextResponse.json({ ok: true, sent_to: email });
     }
 
     const { data: profiles } = await query;
@@ -191,7 +197,10 @@ export async function GET(req: NextRequest) {
 
     let sent = 0;
     for (const profile of profiles) {
-      if (!profile.email) continue;
+      // Get email from auth.users
+      const { data: { user: authUser } } = await supabase.auth.admin.getUserById(profile.id);
+      const userEmail = authUser?.email;
+      if (!userEmail) continue;
       const { data: deals } = await supabase
         .from("deals").select("*").eq("user_id", profile.id);
       const { data: tiers } = await supabase
@@ -200,7 +209,7 @@ export async function GET(req: NextRequest) {
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
       await resend.emails.send({
         from:    "Signal Strike <onboarding@resend.dev>",
-        to:      profile.email,
+        to:      userEmail,
         subject: `Daily Signal · ${new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`,
         html,
       });
