@@ -67,8 +67,9 @@ export default function DealDetailPage() {
 
   async function handleSave() {
     setSaving(true); setMsg(null);
-    const prevTask = deal?.next_task ?? null;
-    const nextTask = edit.next_task || null;
+    const prevTask = (deal?.next_task ?? "").trim();
+    const nextTask = (edit.next_task ?? "").trim();
+    const taskChanged = nextTask !== prevTask;
     const { error } = await supabase.from("deals").update({
       title:               edit.title,
       company:             edit.company,
@@ -81,24 +82,25 @@ export default function DealDetailPage() {
       expected_close_date: edit.expected_close_date || null,
       notes:               edit.notes || null,
       commission_tier_id:  edit.commission_tier_id || null,
-      next_task:           nextTask,
+      next_task:           nextTask || null,
       updated_at:          new Date().toISOString(),
     }).eq("id", id);
     if (!error) {
-      setDeal({ ...edit });
+      setDeal({ ...edit, next_task: nextTask || null });
       setMsg({ ok: true, text: "Deal saved!" });
-      // Log next_task change to activity log if it changed
-      if (nextTask !== prevTask) {
+      if (taskChanged) {
         const activityTitle = nextTask
-          ? `Next task set: ${nextTask}`
+          ? `Next task: ${nextTask}`
           : "Next task cleared";
-        await supabase.from("activities").insert({
+        const { error: logError } = await supabase.from("activities").insert({
           user_id:     userId,
           deal_id:     id,
           type:        "note",
           title:       activityTitle,
+          body:        null,
           occurred_at: new Date().toISOString(),
         });
+        if (logError) console.error("Activity log error:", logError);
       }
     } else {
       setMsg({ ok: false, text: error.message });
