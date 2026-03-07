@@ -137,7 +137,7 @@ export default function SettingsPage() {
       <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fafafa", marginBottom: 28 }}>Settings</h1>
 
       {/* Revenue Goal */}
-      <DailySignalSection userId={userId} />
+      {profile.id && <DailySignalSection userId={profile.id} />}
       <CommissionTiersSection userId={profile.id} />
       <RevenueGoalSection userId={profile.id} />
 
