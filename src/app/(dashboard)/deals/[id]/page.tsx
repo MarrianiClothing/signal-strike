@@ -67,6 +67,8 @@ export default function DealDetailPage() {
 
   async function handleSave() {
     setSaving(true); setMsg(null);
+    const prevTask = deal?.next_task ?? null;
+    const nextTask = edit.next_task || null;
     const { error } = await supabase.from("deals").update({
       title:               edit.title,
       company:             edit.company,
@@ -79,11 +81,28 @@ export default function DealDetailPage() {
       expected_close_date: edit.expected_close_date || null,
       notes:               edit.notes || null,
       commission_tier_id:  edit.commission_tier_id || null,
-      next_task:           edit.next_task || null,
+      next_task:           nextTask,
       updated_at:          new Date().toISOString(),
     }).eq("id", id);
-    if (!error) { setDeal({ ...edit }); setMsg({ ok: true, text: "Deal saved!" }); }
-    else setMsg({ ok: false, text: error.message });
+    if (!error) {
+      setDeal({ ...edit });
+      setMsg({ ok: true, text: "Deal saved!" });
+      // Log next_task change to activity log if it changed
+      if (nextTask !== prevTask) {
+        const activityTitle = nextTask
+          ? `Next task set: ${nextTask}`
+          : "Next task cleared";
+        await supabase.from("activities").insert({
+          user_id:     userId,
+          deal_id:     id,
+          type:        "note",
+          title:       activityTitle,
+          occurred_at: new Date().toISOString(),
+        });
+      }
+    } else {
+      setMsg({ ok: false, text: error.message });
+    }
     setSaving(false);
   }
 
