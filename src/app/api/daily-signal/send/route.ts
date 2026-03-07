@@ -176,7 +176,7 @@ export async function GET(req: NextRequest) {
 
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
       await resend.emails.send({
-        from:    "Signal Strike <daily@signal-strike.com>",
+        from:    "Signal Strike <onboarding@resend.dev>",
         to:      profile.email,
         subject: `Daily Signal · ${new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`,
         html,
@@ -199,7 +199,7 @@ export async function GET(req: NextRequest) {
 
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
       await resend.emails.send({
-        from:    "Signal Strike <daily@signal-strike.com>",
+        from:    "Signal Strike <onboarding@resend.dev>",
         to:      profile.email,
         subject: `Daily Signal · ${new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`,
         html,
