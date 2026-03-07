@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/daily-signal/send",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}
