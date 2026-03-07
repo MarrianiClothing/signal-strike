@@ -79,6 +79,7 @@ export default function DealDetailPage() {
       expected_close_date: edit.expected_close_date || null,
       notes:               edit.notes || null,
       commission_tier_id:  edit.commission_tier_id || null,
+      next_task:           edit.next_task || null,
       updated_at:          new Date().toISOString(),
     }).eq("id", id);
     if (!error) { setDeal({ ...edit }); setMsg({ ok: true, text: "Deal saved!" }); }
@@ -182,6 +183,28 @@ export default function DealDetailPage() {
                   <option value="">-- None --</option>
                   {tiers.map((t:any) => <option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>)}
                 </select>
+              </div>
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={{ ...labelStyle, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>Next Task</span>
+                  <span style={{ color: "#3f3f46", fontSize: "0.7rem", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>Optional</span>
+                </label>
+                <div style={{ position: "relative" }}>
+                  <textarea
+                    style={{ ...inputStyle, resize: "vertical", minHeight: 72, paddingRight: edit.next_task ? 32 : 12 }}
+                    placeholder="e.g. Follow up with contact by Friday, send proposal draft..."
+                    value={edit.next_task ?? ""}
+                    onChange={e => setEdit((p:any) => ({ ...p, next_task: e.target.value }))}
+                  />
+                  {edit.next_task && (
+                    <button
+                      onClick={() => setEdit((p:any) => ({ ...p, next_task: "" }))}
+                      style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none",
+                        color: "#52525b", cursor: "pointer", fontSize: "1rem", lineHeight: 1, padding: 2 }}>
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
