@@ -1,9 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/lib/supabase/client";
 
 function getSecondsUntilNext(sendTimeStr: string): number {
-  // sendTimeStr is "HH:MM:SS" from postgres time column
   const [hh, mm] = sendTimeStr.split(":").map(Number);
   const now = new Date();
   const next = new Date();
@@ -24,7 +23,7 @@ function formatCountdown(secs: number): { h: string; m: string; s: string } {
 }
 
 export default function DailySignalCountdown({ userId }: { userId: string }) {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [seconds, setSeconds] = useState<number | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [sendTime, setSendTime] = useState<string | null>(null);
@@ -60,76 +59,40 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
   if (!enabled || seconds === null) return null;
 
   const { h, m, s } = formatCountdown(seconds);
-  const isImminent = seconds < 300; // last 5 min — pulse gold
+  const isImminent = seconds < 300;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        gap: "3px",
-      }}
-    >
-      <span
-        style={{
-          fontSize: "10px",
-          fontWeight: 700,
-          color: "#52525b",
-          textTransform: "uppercase",
-          letterSpacing: "0.1em",
-        }}
-      >
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px" }}>
+      <span style={{
+        fontSize: "10px", fontWeight: 700, color: "#52525b",
+        textTransform: "uppercase", letterSpacing: "0.1em",
+      }}>
         Next Daily Signal
       </span>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "2px",
-          background: "#111113",
-          border: "1px solid #27272a",
-          borderRadius: "8px",
-          padding: "6px 12px",
-        }}
-      >
+      <div style={{
+        display: "flex", alignItems: "center", gap: "2px",
+        background: "#111113", border: "1px solid #27272a",
+        borderRadius: "8px", padding: "6px 12px",
+      }}>
         {[h, m, s].map((unit, i) => (
           <span key={i} style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: "20px",
-                fontWeight: 800,
-                color: isImminent ? "#C9A84C" : "#ffffff",
-                minWidth: "26px",
-                textAlign: "center",
-                transition: "color 0.3s",
-              }}
-            >
+            <span style={{
+              fontFamily: "monospace", fontSize: "20px", fontWeight: 800,
+              color: isImminent ? "#C9A84C" : "#ffffff",
+              minWidth: "26px", textAlign: "center", transition: "color 0.3s",
+            }}>
               {unit}
             </span>
             {i < 2 && (
-              <span
-                style={{
-                  color: "#52525b",
-                  fontSize: "18px",
-                  fontWeight: 700,
-                  marginBottom: "2px",
-                  animation: isImminent ? "pulse 1s infinite" : undefined,
-                }}
-              >
+              <span style={{
+                color: "#52525b", fontSize: "18px", fontWeight: 700, marginBottom: "2px",
+              }}>
                 :
               </span>
             )}
           </span>
         ))}
       </div>
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
     </div>
   );
 }
