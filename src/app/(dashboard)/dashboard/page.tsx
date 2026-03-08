@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import DailySignalCountdown from "@/components/DailySignalCountdown";
+import DailyQuote from "@/components/DailyQuote";
 
 function fmt(n: number) {
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
@@ -88,6 +89,8 @@ export default function DashboardPage() {
         </div>
         {userId && <DailySignalCountdown userId={userId} />}
       </div>
+
+      <DailyQuote />
 
       {/* Stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
