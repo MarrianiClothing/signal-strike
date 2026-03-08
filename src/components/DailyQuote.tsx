@@ -115,7 +115,7 @@ export default function DailyQuote() {
           WebkitLineClamp: 3,
           WebkitBoxOrient: "vertical" as const,
         }}>
-          {quote.text}
+          "{quote.text}"
         </p>
         <p style={{
           margin: 0,
