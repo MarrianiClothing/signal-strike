@@ -106,15 +106,14 @@ export default function DailyQuote() {
       <div style={{ minWidth: 0 }}>
         <p style={{
           margin: "0 0 5px 0",
-          fontSize: "0.82rem",
+          fontSize: quote.text.length < 60 ? "1.05rem"
+                 : quote.text.length < 100 ? "0.92rem"
+                 : quote.text.length < 150 ? "0.82rem"
+                 : "0.72rem",
           color: "#e4e4e7",
           lineHeight: 1.5,
           fontStyle: "italic",
           fontWeight: 700,
-          overflow: "hidden",
-          display: "-webkit-box",
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: "vertical" as const,
         }}>
           {quote.text}
         </p>
