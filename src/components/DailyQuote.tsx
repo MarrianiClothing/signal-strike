@@ -27,13 +27,12 @@ const QUOTES = [
   { text: "Revenue solves all known startup problems.", author: "Naval Ravikant" },
   { text: "Chase the vision, not the money. The money will end up following you.", author: "Tony Hsieh" },
   { text: "You miss 100% of the shots you don't take.", author: "Wayne Gretzky" },
-  { text: "A goal without a plan is just a wish.", author: "Antoine de Saint-Exupéry" },
+  { text: "A goal without a plan is just a wish.", author: "Antoine de Saint-Exupery" },
   { text: "The more you sweat in practice, the less you bleed in battle.", author: "Richard Marcinko" },
   { text: "In sales, a referral is the key to the door of resistance.", author: "Bo Bennett" },
   { text: "Don't find customers for your products. Find products for your customers.", author: "Seth Godin" },
   { text: "Motivation is what gets you started. Habit is what keeps you going.", author: "Jim Ryun" },
   { text: "If you are not taking care of your customer, your competitor will.", author: "Bob Hooey" },
-  { text: "The secret to successful hiring is this: look for the people who want to change the world.", author: "Marc Benioff" },
   { text: "Timing, perseverance, and ten years of trying will eventually make you look like an overnight success.", author: "Biz Stone" },
   { text: "The cave you fear to enter holds the treasure you seek.", author: "Joseph Campbell" },
   { text: "It's not what you sell, it's how you sell.", author: "Jeffrey Gitomer" },
@@ -81,41 +80,46 @@ export default function DailyQuote() {
 
   return (
     <div style={{
+      flex: 1,
+      margin: "0 24px",
       background: "linear-gradient(135deg, #111113 0%, #18150a 100%)",
       border: "1px solid #2a2510",
       borderLeft: "3px solid #C9A84C",
       borderRadius: "10px",
-      padding: "14px 20px",
-      marginBottom: "24px",
+      padding: "12px 16px",
       display: "flex",
       alignItems: "flex-start",
-      gap: "14px",
+      gap: "10px",
+      minWidth: 0,
     }}>
-      {/* Quote mark */}
       <span style={{
-        fontSize: "32px",
+        fontSize: "28px",
         lineHeight: 1,
         color: "#C9A84C",
         fontFamily: "Georgia, serif",
         opacity: 0.7,
-        marginTop: "-4px",
+        marginTop: "-2px",
         flexShrink: 0,
       }}>
         &ldquo;
       </span>
-      <div>
+      <div style={{ minWidth: 0 }}>
         <p style={{
-          margin: "0 0 6px 0",
-          fontSize: "0.9rem",
+          margin: "0 0 5px 0",
+          fontSize: "0.82rem",
           color: "#e4e4e7",
-          lineHeight: 1.55,
+          lineHeight: 1.5,
           fontStyle: "italic",
+          overflow: "hidden",
+          display: "-webkit-box",
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: "vertical" as const,
         }}>
           {quote.text}
         </p>
         <p style={{
           margin: 0,
-          fontSize: "0.75rem",
+          fontSize: "0.72rem",
           color: "#C9A84C",
           fontWeight: 600,
           letterSpacing: "0.04em",

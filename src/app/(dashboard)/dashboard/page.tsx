@@ -79,7 +79,7 @@ export default function DashboardPage() {
     <div style={{ padding: 32, maxWidth: 1200 }}>
       {/* Header */}
       <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
+        <div style={{ flexShrink: 0 }}>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa" }}>
             {userName ? `Welcome back, ${userName} ` : "Dashboard"}
           </h1>
@@ -87,10 +87,10 @@ export default function DashboardPage() {
             {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
         </div>
+        <DailyQuote />
         {userId && <DailySignalCountdown userId={userId} />}
       </div>
 
-      <DailyQuote />
 
       {/* Stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
