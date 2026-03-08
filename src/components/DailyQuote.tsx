@@ -110,13 +110,27 @@ export default function DailyQuote() {
           color: "#e4e4e7",
           lineHeight: 1.5,
           fontStyle: "italic",
+          fontFamily: "'Cinzel', serif",
           overflow: "hidden",
           display: "-webkit-box",
           WebkitLineClamp: 3,
           WebkitBoxOrient: "vertical" as const,
         }}>
-          "{quote.text}"
+          {quote.text}
         </p>
+        <span style={{
+          fontSize: "28px",
+          lineHeight: 1,
+          color: "#C9A84C",
+          fontFamily: "Georgia, serif",
+          opacity: 0.7,
+          flexShrink: 0,
+          display: "block",
+          textAlign: "right",
+          marginTop: "-4px",
+        }}>
+          &rdquo;
+        </span>
         <p style={{
           margin: 0,
           fontSize: "0.72rem",
