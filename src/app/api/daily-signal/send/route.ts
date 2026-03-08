@@ -32,99 +32,179 @@ function buildEmailHtml(userName: string, deals: any[], tiers: any[]) {
 
   const activeDeals = deals.filter(d => d.stage !== "closed_lost");
   const totalValue  = activeDeals.reduce((s, d) => s + (d.value || 0), 0);
+  const totalCommission = activeDeals.reduce((s, d) => {
+    const tier = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
+    return s + (tier ? (d.value || 0) * (tier.rate / 100) : 0);
+  }, 0);
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  const dealRows = activeDeals.map(d => {
+  const dealRows = activeDeals.map((d, i) => {
     const tier       = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
     const commission = tier ? (d.value || 0) * (tier.rate / 100) : null;
     const stageColor = STAGE_COLORS[d.stage] || "#71717a";
     const stageLabel = STAGE_LABELS[d.stage] || d.stage;
+    const closeDate  = d.expected_close_date
+      ? new Date(d.expected_close_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : null;
 
     return `
-      <div style="background:#18181b;border:1px solid #27272a;border-radius:10px;padding:18px 20px;margin-bottom:12px;border-left:4px solid ${stageColor};">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-          <div>
-            <p style="color:#fafafa;font-size:1rem;font-weight:700;margin:0 0 2px 0;">${d.title}</p>
-            <p style="color:#71717a;font-size:0.82rem;margin:0;">${d.company || "—"}</p>
-          </div>
-          <div style="text-align:right;">
-            <p style="color:#C9A84C;font-size:1.1rem;font-weight:800;font-family:monospace;margin:0;">${fmt(d.value || 0)}</p>
-            <span style="font-size:0.72rem;padding:2px 8px;border-radius:4px;background:${stageColor}22;color:${stageColor};font-weight:600;">${stageLabel}</span>
-          </div>
-        </div>
-        ${commission !== null ? `
-        <div style="background:#111113;border-radius:6px;padding:8px 12px;margin-bottom:10px;display:inline-block;">
-          <span style="color:#71717a;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;">Commission · </span>
-          <span style="color:#34d399;font-weight:700;font-family:monospace;">${fmt(commission)}</span>
-          <span style="color:#52525b;font-size:0.7rem;"> (${tier.name} ${tier.rate}%)</span>
-        </div>` : ""}
-        ${d.contact_name ? `<p style="color:#a1a1aa;font-size:0.8rem;margin:6px 0 0 0;">👤 ${d.contact_name}${d.contact_email ? ` · ${d.contact_email}` : ""}</p>` : ""}
-        ${d.expected_close_date ? `<p style="color:#a1a1aa;font-size:0.8rem;margin:4px 0 0 0;">📅 Close: ${new Date(d.expected_close_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>` : ""}
+      <!-- Deal Card -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;border-radius:12px;overflow:hidden;border:1px solid #27272a;">
+        <!-- Stage color bar + title row -->
+        <tr>
+          <td width="4" style="background:${stageColor};border-radius:12px 0 0 0;"></td>
+          <td style="background:#1a1a1d;padding:16px 18px 12px 16px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td>
+                  <p style="margin:0 0 3px 0;font-size:17px;font-weight:700;color:#ffffff;line-height:1.3;">${d.title}</p>
+                  <p style="margin:0;font-size:13px;color:#71717a;">${d.company || "&nbsp;"}</p>
+                </td>
+                <td align="right" valign="top" style="padding-left:12px;white-space:nowrap;">
+                  <p style="margin:0 0 5px 0;font-size:20px;font-weight:800;color:#C9A84C;font-family:Georgia,serif;">${fmt(d.value || 0)}</p>
+                  <span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${stageColor}30;color:${stageColor};letter-spacing:0.04em;">${stageLabel.toUpperCase()}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr><td colspan="2" style="height:1px;background:#27272a;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+        <!-- Details row -->
+        <tr>
+          <td width="4" style="background:${stageColor}40;"></td>
+          <td style="background:#141416;padding:12px 18px 12px 16px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <!-- Left: contact + close date -->
+                <td valign="top" style="padding-right:12px;">
+                  ${d.contact_name ? `
+                  <p style="margin:0 0 5px 0;font-size:13px;color:#a1a1aa;">
+                    <span style="color:#52525b;">&#128100;</span>&nbsp;
+                    <strong style="color:#d4d4d8;">${d.contact_name}</strong>
+                    ${d.contact_email ? `<br><span style="color:#52525b;font-size:12px;">${d.contact_email}</span>` : ""}
+                  </p>` : ""}
+                  ${closeDate ? `
+                  <p style="margin:0;font-size:12px;color:#71717a;">
+                    <span>&#128197;</span>&nbsp;Close: <strong style="color:#a1a1aa;">${closeDate}</strong>
+                  </p>` : ""}
+                </td>
+                <!-- Right: commission -->
+                ${commission !== null ? `
+                <td align="right" valign="top" style="white-space:nowrap;">
+                  <p style="margin:0 0 2px 0;font-size:11px;color:#52525b;text-transform:uppercase;letter-spacing:0.06em;">Commission</p>
+                  <p style="margin:0 0 2px 0;font-size:18px;font-weight:800;color:#34d399;font-family:Georgia,serif;">${fmt(commission)}</p>
+                  <p style="margin:0;font-size:11px;color:#52525b;">${tier.name} &middot; ${tier.rate}%</p>
+                </td>` : "<td></td>"}
+              </tr>
+            </table>
+          </td>
+        </tr>
+
         ${d.next_task ? `
-        <div style="background:#1c1c1f;border:1px solid #C9A84C44;border-radius:6px;padding:9px 12px;margin-top:10px;">
-          <span style="color:#C9A84C;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">⚡ Next Task</span>
-          <p style="color:#fafafa;font-size:0.88rem;margin:4px 0 0 0;">${d.next_task}</p>
-        </div>` : `
-        <div style="margin-top:10px;">
-          <span style="color:#3f3f46;font-size:0.78rem;font-style:italic;">No next task assigned</span>
-        </div>`}
-        ${d.notes ? `<p style="color:#71717a;font-size:0.78rem;margin:8px 0 0 0;font-style:italic;">${d.notes}</p>` : ""}
-      </div>
+        <!-- Divider -->
+        <tr><td colspan="2" style="height:1px;background:#27272a;font-size:0;line-height:0;">&nbsp;</td></tr>
+        <!-- Next Task -->
+        <tr>
+          <td width="4" style="background:#C9A84C;border-radius:0 0 0 12px;"></td>
+          <td style="background:#17150e;padding:11px 18px 11px 16px;border-radius:0 0 12px 0;">
+            <p style="margin:0 0 4px 0;font-size:11px;font-weight:700;color:#C9A84C;text-transform:uppercase;letter-spacing:0.08em;">&#9889; Next Task</p>
+            <p style="margin:0;font-size:14px;color:#fafafa;line-height:1.5;">${d.next_task}</p>
+          </td>
+        </tr>` : `
+        <!-- No task -->
+        <tr>
+          <td width="4" style="background:#27272a;border-radius:0 0 0 12px;"></td>
+          <td style="background:#111113;padding:9px 18px 9px 16px;border-radius:0 0 12px 0;">
+            <p style="margin:0;font-size:12px;color:#3f3f46;font-style:italic;">No next task assigned</p>
+          </td>
+        </tr>`}
+      </table>
     `;
   }).join("");
 
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Daily Signal</title>
+</head>
+<body style="margin:0;padding:0;background:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;min-height:100vh;">
+<tr><td align="center" style="padding:32px 16px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
-    <!-- Header -->
-    <div style="text-align:center;margin-bottom:32px;">
-      <p style="color:#C9A84C;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.15em;margin:0 0 6px 0;">SIGNAL STRIKE</p>
-      <h1 style="color:#fafafa;font-size:1.8rem;font-weight:800;margin:0 0 4px 0;">Daily Signal</h1>
-      <p style="color:#52525b;font-size:0.85rem;margin:0;">${today}</p>
-    </div>
+  <!-- ── HEADER ── -->
+  <tr>
+    <td align="center" style="padding-bottom:28px;">
+      <p style="margin:0 0 4px 0;font-size:11px;font-weight:700;color:#C9A84C;text-transform:uppercase;letter-spacing:0.2em;">SIGNAL STRIKE</p>
+      <h1 style="margin:0 0 6px 0;font-size:32px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">Daily Signal</h1>
+      <p style="margin:0;font-size:14px;color:#52525b;">${today}</p>
+    </td>
+  </tr>
 
-    <!-- Summary bar -->
-    <div style="background:#111113;border:1px solid #27272a;border-radius:12px;padding:16px 20px;margin-bottom:28px;display:flex;justify-content:space-between;">
-      <div style="text-align:center;flex:1;">
-        <p style="color:#71717a;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 4px 0;">Active Deals</p>
-        <p style="color:#fafafa;font-size:1.4rem;font-weight:800;margin:0;">${activeDeals.length}</p>
-      </div>
-      <div style="width:1px;background:#27272a;"></div>
-      <div style="text-align:center;flex:1;">
-        <p style="color:#71717a;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 4px 0;">Pipeline Value</p>
-        <p style="color:#C9A84C;font-size:1.4rem;font-weight:800;font-family:monospace;margin:0;">${fmt(totalValue)}</p>
-      </div>
-      <div style="width:1px;background:#27272a;"></div>
-      <div style="text-align:center;flex:1;">
-        <p style="color:#71717a;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 4px 0;">Tasks Pending</p>
-        <p style="color:#fafafa;font-size:1.4rem;font-weight:800;margin:0;">${activeDeals.filter(d => d.next_task).length}</p>
-      </div>
-    </div>
+  <!-- ── SUMMARY STATS ── -->
+  <tr>
+    <td style="padding-bottom:28px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px;overflow:hidden;border:1px solid #27272a;">
+        <tr>
+          <td align="center" style="background:#111113;padding:20px 12px;border-right:1px solid #27272a;">
+            <p style="margin:0 0 6px 0;font-size:11px;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:0.1em;">Active Deals</p>
+            <p style="margin:0;font-size:28px;font-weight:800;color:#ffffff;">${activeDeals.length}</p>
+          </td>
+          <td align="center" style="background:#111113;padding:20px 12px;border-right:1px solid #27272a;">
+            <p style="margin:0 0 6px 0;font-size:11px;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:0.1em;">Pipeline Value</p>
+            <p style="margin:0;font-size:28px;font-weight:800;color:#C9A84C;font-family:Georgia,serif;">${fmt(totalValue)}</p>
+          </td>
+          <td align="center" style="background:#111113;padding:20px 12px;border-right:1px solid #27272a;">
+            <p style="margin:0 0 6px 0;font-size:11px;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:0.1em;">Total Commission</p>
+            <p style="margin:0;font-size:28px;font-weight:800;color:#34d399;font-family:Georgia,serif;">${fmt(totalCommission)}</p>
+          </td>
+          <td align="center" style="background:#111113;padding:20px 12px;">
+            <p style="margin:0 0 6px 0;font-size:11px;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:0.1em;">Tasks Pending</p>
+            <p style="margin:0;font-size:28px;font-weight:800;color:#ffffff;">${activeDeals.filter((d: any) => d.next_task).length}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
 
-    <!-- Deal cards -->
-    <h2 style="color:#fafafa;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 14px 0;">Your Deals</h2>
-    ${activeDeals.length === 0
-      ? `<p style="color:#52525b;font-size:0.9rem;">No active deals right now.</p>`
-      : dealRows
-    }
+  <!-- ── SECTION HEADER ── -->
+  <tr>
+    <td style="padding-bottom:12px;">
+      <p style="margin:0;font-size:11px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:0.12em;">Your Deals</p>
+    </td>
+  </tr>
 
-    <!-- Footer -->
-    <div style="text-align:center;margin-top:36px;padding-top:20px;border-top:1px solid #18181b;">
-      <p style="color:#3f3f46;font-size:0.75rem;margin:0;">Signal Strike · Revenue CRM · Powered by Hilltop Ave</p>
-      <p style="color:#3f3f46;font-size:0.72rem;margin:6px 0 0 0;">Manage your Daily Signal settings in Signal Strike → Settings</p>
-    </div>
+  <!-- ── DEAL CARDS ── -->
+  <tr>
+    <td>
+      ${activeDeals.length === 0
+        ? `<p style="color:#52525b;font-size:15px;padding:24px 0;">No active deals right now.</p>`
+        : dealRows
+      }
+    </td>
+  </tr>
 
-  </div>
+  <!-- ── FOOTER ── -->
+  <tr>
+    <td align="center" style="padding-top:32px;border-top:1px solid #18181b;margin-top:8px;">
+      <p style="margin:0 0 4px 0;font-size:12px;color:#3f3f46;">Signal Strike &middot; Revenue CRM &middot; Powered by Hilltop Ave</p>
+      <p style="margin:0;font-size:11px;color:#27272a;">Manage Daily Signal settings: Signal Strike &rarr; Settings</p>
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
 </body>
-</html>
-  `;
+</html>`;
 }
 
 export async function GET(req: NextRequest) {
