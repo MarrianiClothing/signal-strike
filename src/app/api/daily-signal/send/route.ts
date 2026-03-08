@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import PDFDocument from "pdfkit";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
@@ -28,162 +28,218 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 
-function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50, size: "LETTER" });
-    const buffers: Buffer[] = [];
-    doc.on("data", (chunk: Buffer) => buffers.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(buffers)));
-    doc.on("error", reject);
+async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buffer> {
+  const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
 
-    const tiersMap: Record<string, any> = {};
-    for (const t of tiers) tiersMap[t.id] = t;
-    const activeDeals = deals.filter(d => d.stage !== "closed_lost");
-    const totalValue  = activeDeals.reduce((s, d) => s + (d.value || 0), 0);
-    const totalComm   = activeDeals.reduce((s, d) => {
-      const tier = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
-      return s + (tier ? (d.value || 0) * (tier.rate / 100) : 0);
-    }, 0);
+  const tiersMap: Record<string, any> = {};
+  for (const t of tiers) tiersMap[t.id] = t;
+  const activeDeals = deals.filter(d => d.stage !== "closed_lost");
+  const totalValue  = activeDeals.reduce((s, d) => s + (d.value || 0), 0);
+  const totalComm   = activeDeals.reduce((s, d) => {
+    const tier = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
+    return s + (tier ? (d.value || 0) * (tier.rate / 100) : 0);
+  }, 0);
 
-    const GOLD   = "#C9A84C";
-    const GREEN  = "#34d399";
-    const WHITE  = "#FFFFFF";
-    const MUTED  = "#71717a";
-    const BG     = "#111113";
-    const BORDER = "#27272a";
+  const STAGE_LABELS: Record<string, string> = {
+    prospecting: "Prospecting", qualification: "Qualified",
+    proposal: "Proposal", negotiation: "Negotiation",
+    closed_won: "Won", closed_lost: "Lost",
+  };
+  // rgb values 0-1
+  const STAGE_RGB: Record<string, [number,number,number]> = {
+    prospecting:   [0.44, 0.44, 0.48],
+    qualification: [0.38, 0.64, 0.98],
+    proposal:      [0.65, 0.54, 0.98],
+    negotiation:   [0.98, 0.75, 0.14],
+    closed_won:    [0.79, 0.66, 0.30],
+    closed_lost:   [0.97, 0.53, 0.44],
+  };
 
-    const STAGE_LABELS: Record<string, string> = {
-      prospecting: "Prospecting", qualification: "Qualified",
-      proposal: "Proposal", negotiation: "Negotiation",
-      closed_won: "Won", closed_lost: "Lost",
-    };
-    const STAGE_COLORS: Record<string, string> = {
-      prospecting: "#71717a", qualification: "#60a5fa", proposal: "#a78bfa",
-      negotiation: "#fbbf24", closed_won: "#C9A84C", closed_lost: "#f87171",
-    };
+  const doc = await PDFDocument.create();
 
-    // ── Header ────────────────────────────────────────────────────────────────
-    doc.rect(0, 0, doc.page.width, 90).fill("#09090b");
-    doc.fillColor(GOLD).fontSize(9).font("Helvetica-Bold")
-       .text("SIGNAL STRIKE  ·  REVENUE CRM", 50, 24, { align: "center", characterSpacing: 2 });
-    doc.fillColor(WHITE).fontSize(26).font("Helvetica-Bold")
-       .text("Daily Signal", 50, 36, { align: "center" });
-    doc.fillColor(MUTED).fontSize(10).font("Helvetica")
-       .text(today, 50, 66, { align: "center" });
+  // Embed standard fonts
+  const fontBold   = await doc.embedFont(StandardFonts.HelveticaBold);
+  const fontReg    = await doc.embedFont(StandardFonts.Helvetica);
 
-    // ── Summary bar ───────────────────────────────────────────────────────────
-    const bY = 100, bH = 60, bW = (doc.page.width - 100) / 3;
-    const stats = [
-      { label: "Active Deals",      value: String(activeDeals.length),  color: WHITE },
-      { label: "Pipeline Value",    value: fmt(totalValue),              color: GOLD  },
-      { label: "Total Commission",  value: fmt(totalComm),               color: GREEN },
-    ];
-    stats.forEach((st, i) => {
-      const x = 50 + i * bW;
-      doc.rect(x, bY, bW, bH).fillAndStroke("#111113", BORDER);
-      doc.fillColor(MUTED).fontSize(8).font("Helvetica-Bold")
-         .text(st.label.toUpperCase(), x + 8, bY + 10, { width: bW - 16, align: "center", characterSpacing: 1 });
-      doc.fillColor(st.color).fontSize(20).font("Helvetica-Bold")
-         .text(st.value, x + 8, bY + 26, { width: bW - 16, align: "center" });
+  // Color helpers
+  const GOLD  = rgb(0.79, 0.66, 0.30);
+  const GREEN = rgb(0.20, 0.83, 0.60);
+  const WHITE = rgb(0.98, 0.98, 0.98);
+  const MUTED = rgb(0.44, 0.44, 0.48);
+  const DARK  = rgb(0.07, 0.07, 0.08);
+  const CARD  = rgb(0.10, 0.10, 0.11);
+  const BORDER = rgb(0.15, 0.15, 0.16);
+  const BG    = rgb(0.035, 0.035, 0.04);
+
+  const PW = 612; // Letter width
+  const PH = 792; // Letter height
+  const M  = 50;  // Margin
+
+  // ── helpers ────────────────────────────────────────────────────────────────
+  const clampText = (text: string, font: any, size: number, maxW: number): string => {
+    let t = text;
+    while (t.length > 0 && font.widthOfTextAtSize(t, size) > maxW) t = t.slice(0, -1);
+    return t.length < text.length ? t.slice(0, -1) + "…" : t;
+  };
+
+  let page = doc.addPage([PW, PH]);
+  let y = PH; // top of page, we draw downward (pdf-lib Y is from bottom)
+
+  const newPage = () => {
+    page = doc.addPage([PW, PH]);
+    y = PH;
+  };
+
+  const ensureSpace = (needed: number) => {
+    if (y - needed < 40) newPage();
+  };
+
+  // Draw filled rect (coords: top-left x,y, w, h — converted to pdf-lib bottom-left)
+  const fillRect = (x: number, ty: number, w: number, h: number, color: any) => {
+    page.drawRectangle({ x, y: PH - ty - h, width: w, height: h, color });
+  };
+
+  const strokeRect = (x: number, ty: number, w: number, h: number, color: any) => {
+    page.drawRectangle({ x, y: PH - ty - h, width: w, height: h, borderColor: color, borderWidth: 0.5, opacity: 0 });
+  };
+
+  const drawText = (text: string, x: number, ty: number, opts: any = {}) => {
+    page.drawText(text, {
+      x, y: PH - ty - (opts.size || 10),
+      font: opts.bold ? fontBold : fontReg,
+      size: opts.size || 10,
+      color: opts.color || WHITE,
+      ...opts,
     });
+  };
 
-    // ── Section label ─────────────────────────────────────────────────────────
-    doc.fillColor(MUTED).fontSize(8).font("Helvetica-Bold")
-       .text("YOUR DEALS", 50, 176, { characterSpacing: 2 });
-    doc.moveTo(50, 187).lineTo(doc.page.width - 50, 187).strokeColor(BORDER).lineWidth(0.5).stroke();
+  const hline = (ty: number, x1 = M, x2 = PW - M) => {
+    page.drawLine({ start: { x: x1, y: PH - ty }, end: { x: x2, y: PH - ty }, thickness: 0.5, color: BORDER });
+  };
 
-    // ── Deal cards ────────────────────────────────────────────────────────────
-    let y = 196;
+  // ── HEADER ─────────────────────────────────────────────────────────────────
+  fillRect(0, 0, PW, 82, DARK);
+  drawText("SIGNAL STRIKE  ·  REVENUE CRM", M, 16, { font: fontBold, size: 9, color: GOLD, bold: true });
+  drawText("Daily Signal", M, 30, { font: fontBold, size: 26, color: WHITE, bold: true });
+  drawText(today, M, 62, { font: fontReg, size: 11, color: MUTED });
+  y = 90;
 
-    activeDeals.forEach((d, i) => {
-      const tier       = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
-      const commission = tier ? (d.value || 0) * (tier.rate / 100) : null;
-      const stageColor = STAGE_COLORS[d.stage] || MUTED;
-      const stageLabel = STAGE_LABELS[d.stage] || d.stage;
-      const closeDate  = d.expected_close_date
-        ? new Date(d.expected_close_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-        : null;
-
-      const cardH = 80 + (d.next_task ? 36 : 0) + (d.notes ? 20 : 0);
-
-      // Page break if needed
-      if (y + cardH > doc.page.height - 60) {
-        doc.addPage();
-        y = 50;
-      }
-
-      const cW = doc.page.width - 100;
-
-      // Card background + border
-      doc.rect(50, y, cW, cardH).fillAndStroke("#1a1a1d", BORDER);
-
-      // Stage color bar (left edge)
-      doc.rect(50, y, 5, cardH).fill(stageColor);
-
-      // Deal title
-      doc.fillColor(WHITE).fontSize(13).font("Helvetica-Bold")
-         .text(d.title, 64, y + 12, { width: 280 });
-
-      // Company
-      doc.fillColor(MUTED).fontSize(9).font("Helvetica")
-         .text(d.company || "", 64, y + 28, { width: 280 });
-
-      // Value (right aligned)
-      doc.fillColor(GOLD).fontSize(16).font("Helvetica-Bold")
-         .text(fmt(d.value || 0), cW - 90, y + 10, { width: 132, align: "right" });
-
-      // Stage badge
-      doc.fillColor(stageColor).fontSize(8).font("Helvetica-Bold")
-         .text(stageLabel.toUpperCase(), cW - 90, y + 30, { width: 132, align: "right", characterSpacing: 0.8 });
-
-      // Divider
-      doc.moveTo(64, y + 46).lineTo(50 + cW - 8, y + 46).strokeColor(BORDER).lineWidth(0.5).stroke();
-
-      // Contact + Close date
-      let detailY = y + 52;
-      if (d.contact_name) {
-        doc.fillColor("#a1a1aa").fontSize(9).font("Helvetica")
-           .text(`${d.contact_name}${d.contact_email ? "  ·  " + d.contact_email : ""}`, 64, detailY, { width: 300 });
-        detailY += 13;
-      }
-      if (closeDate) {
-        doc.fillColor(MUTED).fontSize(9).font("Helvetica")
-           .text(`Close: ${closeDate}`, 64, detailY);
-        detailY += 13;
-      }
-
-      // Commission (right column)
-      if (commission !== null) {
-        doc.fillColor(MUTED).fontSize(8).font("Helvetica-Bold")
-           .text("COMMISSION", cW - 88, y + 52, { width: 130, align: "right", characterSpacing: 0.8 });
-        doc.fillColor(GREEN).fontSize(14).font("Helvetica-Bold")
-           .text(fmt(commission), cW - 88, y + 62, { width: 130, align: "right" });
-        doc.fillColor(MUTED).fontSize(8).font("Helvetica")
-           .text(`${tier.name}  ·  ${tier.rate}%`, cW - 88, y + 78, { width: 130, align: "right" });
-      }
-
-      // Next task
-      if (d.next_task) {
-        const taskY = y + cardH - 32;
-        doc.rect(55, taskY - 4, cW - 10, 30).fill("#17150e");
-        doc.fillColor(GOLD).fontSize(8).font("Helvetica-Bold")
-           .text("⚡ NEXT TASK", 64, taskY, { characterSpacing: 0.8 });
-        doc.fillColor(WHITE).fontSize(10).font("Helvetica")
-           .text(d.next_task, 64, taskY + 12, { width: cW - 80 });
-      }
-
-      y += cardH + 12;
-    });
-
-    // ── Footer ────────────────────────────────────────────────────────────────
-    if (y + 30 > doc.page.height - 50) { doc.addPage(); y = 50; }
-    doc.moveTo(50, y + 8).lineTo(doc.page.width - 50, y + 8).strokeColor(BORDER).lineWidth(0.5).stroke();
-    doc.fillColor(MUTED).fontSize(8).font("Helvetica")
-       .text("Signal Strike  ·  Revenue CRM  ·  Powered by Hilltop Ave", 50, y + 14, { align: "center" });
-
-    doc.end();
+  // ── SUMMARY STATS ──────────────────────────────────────────────────────────
+  const statW = (PW - M * 2) / 3;
+  const statData = [
+    { label: "ACTIVE DEALS",    value: String(activeDeals.length), color: WHITE },
+    { label: "PIPELINE VALUE",  value: fmt(totalValue),             color: GOLD  },
+    { label: "TOTAL COMMISSION",value: fmt(totalComm),              color: GREEN },
+  ];
+  const statH = 58;
+  statData.forEach((st, i) => {
+    const sx = M + i * statW;
+    fillRect(sx, y, statW, statH, CARD);
+    strokeRect(sx, y, statW, statH, BORDER);
+    // label
+    const lx = sx + statW / 2 - fontBold.widthOfTextAtSize(st.label, 7.5) / 2;
+    drawText(st.label, lx, y + 12, { font: fontBold, size: 7.5, color: MUTED, bold: true });
+    // value
+    const valSize = 20;
+    const vx = sx + statW / 2 - (st.color === WHITE ? fontBold : fontBold).widthOfTextAtSize(st.value, valSize) / 2;
+    drawText(st.value, vx, y + 26, { font: fontBold, size: valSize, color: st.color, bold: true });
   });
+  y += statH + 18;
+
+  // ── SECTION LABEL ──────────────────────────────────────────────────────────
+  drawText("YOUR DEALS", M, y, { font: fontBold, size: 8, color: MUTED, bold: true });
+  y += 12;
+  hline(y);
+  y += 10;
+
+  // ── DEAL CARDS ─────────────────────────────────────────────────────────────
+  for (const d of activeDeals) {
+    const tier       = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
+    const commission = tier ? (d.value || 0) * (tier.rate / 100) : null;
+    const stageRgb   = STAGE_RGB[d.stage] || [0.44, 0.44, 0.48];
+    const stageColor = rgb(stageRgb[0], stageRgb[1], stageRgb[2]);
+    const stageLabel = (STAGE_LABELS[d.stage] || d.stage).toUpperCase();
+    const closeDate  = d.expected_close_date
+      ? new Date(d.expected_close_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : null;
+
+    const cardH = 88 + (d.next_task ? 34 : 0);
+    ensureSpace(cardH + 14);
+
+    const cW = PW - M * 2;
+
+    // Card bg + border
+    fillRect(M, y, cW, cardH, CARD);
+    strokeRect(M, y, cW, cardH, BORDER);
+    // Stage bar
+    fillRect(M, y, 5, cardH, stageColor);
+
+    // Title
+    const titleText = clampText(d.title || "", fontBold, 13, 280);
+    drawText(titleText, M + 12, y + 12, { font: fontBold, size: 13, color: WHITE, bold: true });
+
+    // Company
+    const compText = clampText(d.company || "", fontReg, 9, 280);
+    drawText(compText, M + 12, y + 28, { font: fontReg, size: 9, color: MUTED });
+
+    // Value (right)
+    const valStr = fmt(d.value || 0);
+    const valW = fontBold.widthOfTextAtSize(valStr, 15);
+    drawText(valStr, M + cW - valW - 10, y + 12, { font: fontBold, size: 15, color: GOLD, bold: true });
+
+    // Stage badge
+    const badgeW = fontBold.widthOfTextAtSize(stageLabel, 8);
+    drawText(stageLabel, M + cW - badgeW - 10, y + 30, { font: fontBold, size: 8, color: stageColor, bold: true });
+
+    // Divider
+    hline(y + 46, M + 5, M + cW - 5);
+
+    // Details
+    let detY = y + 52;
+    if (d.contact_name) {
+      const ct = clampText(d.contact_name + (d.contact_email ? "  ·  " + d.contact_email : ""), fontReg, 9, cW - 160);
+      drawText(ct, M + 12, detY, { font: fontReg, size: 9, color: rgb(0.63, 0.63, 0.67) });
+      detY += 13;
+    }
+    if (closeDate) {
+      drawText("Close: " + closeDate, M + 12, detY, { font: fontReg, size: 9, color: MUTED });
+    }
+
+    // Commission (right)
+    if (commission !== null) {
+      const commStr = fmt(commission);
+      const commW = fontBold.widthOfTextAtSize(commStr, 14);
+      drawText("COMMISSION", M + cW - 120, y + 52, { font: fontBold, size: 7.5, color: MUTED, bold: true });
+      drawText(commStr, M + cW - commW - 10, y + 63, { font: fontBold, size: 14, color: GREEN, bold: true });
+      const tierLabel = tier.name + "  ·  " + tier.rate + "%";
+      const tierW = fontReg.widthOfTextAtSize(tierLabel, 8);
+      drawText(tierLabel, M + cW - tierW - 10, y + 80, { font: fontReg, size: 8, color: MUTED });
+    }
+
+    // Next task
+    if (d.next_task) {
+      const taskY = y + cardH - 32;
+      fillRect(M + 5, taskY - 4, cW - 10, 30, rgb(0.09, 0.08, 0.055));
+      drawText("⚡ NEXT TASK", M + 12, taskY, { font: fontBold, size: 8, color: GOLD, bold: true });
+      const taskText = clampText(d.next_task, fontReg, 10, cW - 30);
+      drawText(taskText, M + 12, taskY + 13, { font: fontReg, size: 10, color: WHITE });
+    }
+
+    y += cardH + 12;
+  }
+
+  // ── FOOTER ─────────────────────────────────────────────────────────────────
+  ensureSpace(30);
+  hline(y + 8);
+  const footerText = "Signal Strike  ·  Revenue CRM  ·  Powered by Hilltop Ave";
+  const footerW = fontReg.widthOfTextAtSize(footerText, 8);
+  drawText(footerText, PW / 2 - footerW / 2, y + 16, { font: fontReg, size: 8, color: MUTED });
+
+  const bytes = await doc.save();
+  return Buffer.from(bytes);
 }
+
+
 
 function buildEmailHtml(userName: string, deals: any[], tiers: any[]) {
   const tiersMap: Record<string, any> = {};
