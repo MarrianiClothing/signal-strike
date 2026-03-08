@@ -163,7 +163,7 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
       ? new Date(d.expected_close_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
       : null;
 
-    const cardH = 88 + (d.next_task ? 34 : 0);
+    const cardH = 104 + (d.next_task ? 38 : 0);
     ensureSpace(cardH + 14);
 
     const cW = PW - M * 2;
@@ -189,13 +189,13 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
 
     // Stage badge
     const badgeW = fontBold.widthOfTextAtSize(stageLabel, 8);
-    drawText(stageLabel, M + cW - badgeW - 10, y + 30, { font: fontBold, size: 8, color: stageColor, bold: true });
+    drawText(stageLabel, M + cW - badgeW - 10, y + 32, { font: fontBold, size: 8, color: stageColor, bold: true });
 
     // Divider
-    hline(y + 46, M + 5, M + cW - 5);
+    hline(y + 50, M + 5, M + cW - 5);
 
     // Details
-    let detY = y + 52;
+    let detY = y + 57;
     if (d.contact_name) {
       const ct = clampText(d.contact_name + (d.contact_email ? "  " + d.contact_email : ""), fontReg, 9, cW - 160);
       drawText(ct, M + 12, detY, { font: fontReg, size: 9, color: rgb(0.63, 0.63, 0.67) });
@@ -218,11 +218,11 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
 
     // Next task
     if (d.next_task) {
-      const taskY = y + cardH - 32;
-      fillRect(M + 5, taskY - 4, cW - 10, 30, rgb(0.09, 0.08, 0.055));
+      const taskY = y + cardH - 36;
+      fillRect(M + 5, taskY - 6, cW - 10, 34, rgb(0.09, 0.08, 0.055));
       drawText(">> NEXT TASK", M + 12, taskY, { font: fontBold, size: 8, color: GOLD, bold: true });
       const taskText = clampText(d.next_task, fontReg, 10, cW - 30);
-      drawText(taskText, M + 12, taskY + 13, { font: fontReg, size: 10, color: WHITE });
+      drawText(taskText, M + 12, taskY + 14, { font: fontReg, size: 10, color: WHITE });
     }
 
     y += cardH + 12;
