@@ -64,7 +64,7 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px" }}>
       <span style={{
-        fontSize: "10px", fontWeight: 700, color: "#52525b",
+        fontSize: "10px", fontWeight: 700, color: "#e4e4e7",
         textTransform: "uppercase", letterSpacing: "0.1em",
       }}>
         Next Daily Signal
