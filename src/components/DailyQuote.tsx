@@ -110,7 +110,7 @@ export default function DailyQuote() {
           color: "#e4e4e7",
           lineHeight: 1.5,
           fontStyle: "italic",
-          fontFamily: "'Cinzel', serif",
+          fontWeight: 700,
           overflow: "hidden",
           display: "-webkit-box",
           WebkitLineClamp: 3,
