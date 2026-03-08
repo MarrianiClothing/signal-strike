@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const supabase = createClient();
   const router = useRouter();
   const [userName, setUserName] = useState("");
+  const [userId, setUserId] = useState("");
   const [deals, setDeals] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +35,7 @@ export default function DashboardPage() {
       if (!user) return;
 
       setUserName(user.user_metadata?.full_name?.split(" ")[0] || "");
+      setUserId(user.id);
 
       const [dealsRes, goalRes, tiersRes] = await Promise.all([
         supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
