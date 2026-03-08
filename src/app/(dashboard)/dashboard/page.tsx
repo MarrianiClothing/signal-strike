@@ -77,13 +77,16 @@ export default function DashboardPage() {
   return (
     <div style={{ padding: 32, maxWidth: 1200 }}>
       {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa" }}>
-          {userName ? `Welcome back, ${userName} ` : "Dashboard"}
-        </h1>
-        <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4 }}>
-          {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-        </p>
+      <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa" }}>
+            {userName ? `Welcome back, ${userName} ` : "Dashboard"}
+          </h1>
+          <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4 }}>
+            {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          </p>
+        </div>
+        {userId && <DailySignalCountdown userId={userId} />}
       </div>
 
       {/* Stats row */}
