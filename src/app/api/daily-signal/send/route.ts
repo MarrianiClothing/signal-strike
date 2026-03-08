@@ -119,7 +119,7 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
 
   // ── HEADER ─────────────────────────────────────────────────────────────────
   fillRect(0, 0, PW, 82, DARK);
-  drawText("SIGNAL STRIKE  ·  REVENUE CRM", M, 16, { font: fontBold, size: 9, color: GOLD, bold: true });
+  drawText("SIGNAL STRIKE  -  REVENUE CRM", M, 16, { font: fontBold, size: 9, color: GOLD, bold: true });
   drawText("Daily Signal", M, 30, { font: fontBold, size: 26, color: WHITE, bold: true });
   drawText(today, M, 62, { font: fontReg, size: 11, color: MUTED });
   y = 90;
@@ -197,7 +197,7 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
     // Details
     let detY = y + 52;
     if (d.contact_name) {
-      const ct = clampText(d.contact_name + (d.contact_email ? "  ·  " + d.contact_email : ""), fontReg, 9, cW - 160);
+      const ct = clampText(d.contact_name + (d.contact_email ? "  " + d.contact_email : ""), fontReg, 9, cW - 160);
       drawText(ct, M + 12, detY, { font: fontReg, size: 9, color: rgb(0.63, 0.63, 0.67) });
       detY += 13;
     }
@@ -211,7 +211,7 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
       const commW = fontBold.widthOfTextAtSize(commStr, 14);
       drawText("COMMISSION", M + cW - 120, y + 52, { font: fontBold, size: 7.5, color: MUTED, bold: true });
       drawText(commStr, M + cW - commW - 10, y + 63, { font: fontBold, size: 14, color: GREEN, bold: true });
-      const tierLabel = tier.name + "  ·  " + tier.rate + "%";
+      const tierLabel = tier.name + "  " + tier.rate + "%";
       const tierW = fontReg.widthOfTextAtSize(tierLabel, 8);
       drawText(tierLabel, M + cW - tierW - 10, y + 80, { font: fontReg, size: 8, color: MUTED });
     }
@@ -220,7 +220,7 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
     if (d.next_task) {
       const taskY = y + cardH - 32;
       fillRect(M + 5, taskY - 4, cW - 10, 30, rgb(0.09, 0.08, 0.055));
-      drawText("⚡ NEXT TASK", M + 12, taskY, { font: fontBold, size: 8, color: GOLD, bold: true });
+      drawText(">> NEXT TASK", M + 12, taskY, { font: fontBold, size: 8, color: GOLD, bold: true });
       const taskText = clampText(d.next_task, fontReg, 10, cW - 30);
       drawText(taskText, M + 12, taskY + 13, { font: fontReg, size: 10, color: WHITE });
     }
