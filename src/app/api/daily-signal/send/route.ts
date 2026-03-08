@@ -87,11 +87,11 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
 
   const newPage = () => {
     page = doc.addPage([PW, PH]);
-    y = PH;
+    y = M;
   };
 
   const ensureSpace = (needed: number) => {
-    if (y - needed < 40) newPage();
+    if (y + needed > PH - 40) newPage();
   };
 
   // Draw filled rect (coords: top-left x,y, w, h — converted to pdf-lib bottom-left)
