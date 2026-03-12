@@ -441,9 +441,10 @@ export async function GET(req: NextRequest) {
   try {
     // Pull all enabled profiles — we'll filter by timezone-aware time in JS
     // (DB stores daily_signal_time in user local time; cron runs in UTC)
+    // Select * avoids PostgREST rejecting 'timezone' as a reserved word
     let query = supabase
       .from("profiles")
-      .select("id, full_name, email, daily_signal_time, daily_signal_enabled, timezone")
+      .select("*")
       .eq("daily_signal_enabled", true);
 
     if (!preview) {
@@ -490,10 +491,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, sent_to: email });
     }
 
-    const { data: allEnabledProfiles } = await query;
+    const { data: allEnabledProfiles, error: profilesError } = await query;
+    if (profilesError) {
+      console.error("[cron] Supabase profiles query error:", JSON.stringify(profilesError));
+      return NextResponse.json({ ok: false, error: profilesError.message }, { status: 500 });
+    }
     if (!allEnabledProfiles?.length) {
       return NextResponse.json({ ok: true, sent: 0, message: "No enabled users found." });
     }
+    console.log(`[cron] Found ${allEnabledProfiles.length} enabled profile(s)`);
 
     // Filter: for each user, convert current UTC time to their timezone
     // and check if it falls within the next 15-minute window
