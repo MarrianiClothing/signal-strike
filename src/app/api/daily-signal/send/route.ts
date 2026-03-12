@@ -423,32 +423,30 @@ function buildEmailHtml(userName: string, deals: any[], tiers: any[]) {
 }
 
 export async function GET(req: NextRequest) {
-  const secret  = req.nextUrl.searchParams.get("secret");
   const preview = req.nextUrl.searchParams.get("preview") === "true";
 
-  // Auth: cron uses secret, preview uses logged-in session
-  if (!preview && secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Auth: Vercel cron sends "Authorization: Bearer <CRON_SECRET>" header
+  if (!preview) {
+    const authHeader = req.headers.get("authorization") || "";
+    const cronSecret = process.env.CRON_SECRET || "";
+    // Accept header-based OR legacy query-param secret for manual testing
+    const legacySecret = req.nextUrl.searchParams.get("secret");
+    const validHeader = cronSecret && authHeader === `Bearer ${cronSecret}`;
+    const validQuery  = cronSecret && legacySecret === cronSecret;
+    if (!validHeader && !validQuery) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   try {
-    // Get current UTC time in HH:MM
-    const now     = new Date();
-    const hh      = now.getUTCHours().toString().padStart(2, "0");
-    const mm      = now.getUTCMinutes().toString().padStart(2, "0");
-    const nowTime = `${hh}:${mm}`;
-
-    // Find users to send to
+    // Pull all enabled profiles — we'll filter by timezone-aware time in JS
+    // (DB stores daily_signal_time in user local time; cron runs in UTC)
     let query = supabase
       .from("profiles")
       .select("id, full_name, email, daily_signal_time, daily_signal_enabled, timezone")
       .eq("daily_signal_enabled", true);
 
     if (!preview) {
-      // For cron: match users whose send time falls within this 15-min window
-      query = query.gte("daily_signal_time", nowTime)
-                   .lt("daily_signal_time", `${hh}:${(parseInt(mm) + 15).toString().padStart(2, "0")}`);
-    } else {
       // For preview: just get the current user (first profile returned, no filter)
       query = query.limit(1);
     }
@@ -492,9 +490,42 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, sent_to: email });
     }
 
-    const { data: profiles } = await query;
-    if (!profiles?.length) {
-      return NextResponse.json({ ok: true, sent: 0, message: "No users scheduled for this window." });
+    const { data: allEnabledProfiles } = await query;
+    if (!allEnabledProfiles?.length) {
+      return NextResponse.json({ ok: true, sent: 0, message: "No enabled users found." });
+    }
+
+    // Filter: for each user, convert current UTC time to their timezone
+    // and check if it falls within the next 15-minute window
+    const nowUtc = new Date();
+    const profiles = allEnabledProfiles.filter(profile => {
+      if (!profile.daily_signal_time) return false;
+      const tz = profile.timezone || "UTC";
+      try {
+        // Get current HH:MM in user's timezone
+        const localStr = nowUtc.toLocaleString("en-US", {
+          timeZone: tz,
+          hour:   "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+        // localStr format: "07:05" or "23:45"
+        const [localHH, localMM] = localStr.split(":").map(Number);
+        const localMinutes = localHH * 60 + localMM;
+
+        // Parse the user's stored send time
+        const [sendHH, sendMM] = profile.daily_signal_time.split(":").map(Number);
+        const sendMinutes = sendHH * 60 + sendMM;
+
+        // Match if within the current 15-minute window
+        return localMinutes >= sendMinutes && localMinutes < sendMinutes + 15;
+      } catch {
+        return false;
+      }
+    });
+
+    if (!profiles.length) {
+      return NextResponse.json({ ok: true, sent: 0, message: "No users scheduled for this window.", utc: nowUtc.toISOString() });
     }
 
     let sent = 0;
