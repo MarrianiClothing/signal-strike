@@ -502,24 +502,30 @@ export async function GET(req: NextRequest) {
       if (!profile.daily_signal_time) return false;
       const tz = profile.timezone || "UTC";
       try {
-        // Get current HH:MM in user's timezone
-        const localStr = nowUtc.toLocaleString("en-US", {
+        // Use formatToParts — reliable in all Node.js environments
+        // unlike toLocaleString which can return "07:00 AM" even with hour12:false
+        const parts = new Intl.DateTimeFormat("en-US", {
           timeZone: tz,
-          hour:   "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        });
-        // localStr format: "07:05" or "23:45"
-        const [localHH, localMM] = localStr.split(":").map(Number);
-        const localMinutes = localHH * 60 + localMM;
+          hour:     "2-digit",
+          minute:   "2-digit",
+          hour12:   false,
+        }).formatToParts(nowUtc);
 
-        // Parse the user's stored send time
+        const localHH = parseInt(parts.find(p => p.type === "hour")?.value   || "0", 10);
+        const localMM = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
+        // Normalize: formatToParts can return hour=24 for midnight
+        const localMinutes = (localHH % 24) * 60 + localMM;
+
+        // Parse the stored send time (format: "HH:MM" or "HH:MM:SS")
         const [sendHH, sendMM] = profile.daily_signal_time.split(":").map(Number);
         const sendMinutes = sendHH * 60 + sendMM;
 
+        console.log(`[cron] ${profile.full_name} | tz=${tz} | local=${localHH}:${String(localMM).padStart(2,"0")} | send=${sendHH}:${String(sendMM).padStart(2,"0")} | match=${localMinutes >= sendMinutes && localMinutes < sendMinutes + 15}`);
+
         // Match if within the current 15-minute window
         return localMinutes >= sendMinutes && localMinutes < sendMinutes + 15;
-      } catch {
+      } catch (e) {
+        console.error(`[cron] timezone error for ${profile.full_name}:`, e);
         return false;
       }
     });
