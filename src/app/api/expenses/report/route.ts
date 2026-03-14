@@ -200,39 +200,61 @@ async function buildExpenseReportPDF(
   drawTableHeader();
 
   expenses.forEach((exp, idx) => {
-    ensureSpace(28);
-    const rowBg = idx % 2 === 0 ? rgb(0.09, 0.09, 0.10) : rgb(0.07, 0.07, 0.075);
-    fillRect(M, y, PW - M * 2, 26, rowBg);
+    const hasExtra = !!(exp.notes || exp.receipt_url);
+    const rowH = hasExtra ? 46 : 28;
+    ensureSpace(rowH + 2);
 
-    // Category color bar
+    const rowBg = idx % 2 === 0 ? rgb(0.09, 0.09, 0.10) : rgb(0.07, 0.07, 0.075);
+    fillRect(M, y, PW - M * 2, rowH, rowBg);
+
+    // Category color bar — full row height
     const catRgbRow = CAT_RGB[exp.category] || [0.44, 0.44, 0.48];
-    page.drawRectangle({ x: M, y: PH - y - 26, width: 3, height: 26, color: rgb(...catRgbRow) });
+    page.drawRectangle({ x: M, y: PH - y - rowH, width: 3, height: rowH, color: rgb(...catRgbRow) });
+
+    // Main data row — vertically centered in top portion
+    const mainY = y + 9;
 
     const dateLabel = exp.expense_date
       ? new Date(exp.expense_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })
       : "—";
-    drawText(dateLabel, COL.date.x + 6, y + 8, { font: fontReg, size: 8.5, color: MUTED });
-    drawText(clamp(exp.merchant || "—", fontBold, 9, COL.merchant.w - 8), COL.merchant.x + 4, y + 8, { font: fontBold, size: 9, color: WHITE, bold: true });
-    drawText(clamp(exp.category || "—", fontReg, 8.5, COL.category.w - 8), COL.category.x + 4, y + 8, { font: fontReg, size: 8.5, color: MUTED });
+    drawText(dateLabel, COL.date.x + 6, mainY, { font: fontReg, size: 8.5, color: MUTED });
+    drawText(clamp(exp.merchant || "—", fontBold, 9, COL.merchant.w - 8), COL.merchant.x + 4, mainY, { font: fontBold, size: 9, color: WHITE, bold: true });
+    drawText(clamp(exp.category || "—", fontReg, 8.5, COL.category.w - 8), COL.category.x + 4, mainY, { font: fontReg, size: 8.5, color: MUTED });
 
     // Status badge color
     const stRgb = STATUS_RGB[exp.status] || [0.44, 0.44, 0.48];
-    drawText(exp.status || "—", COL.status.x + 4, y + 8, { font: fontBold, size: 8.5, color: rgb(...stRgb), bold: true });
+    drawText(exp.status || "—", COL.status.x + 4, mainY, { font: fontBold, size: 8.5, color: rgb(...stRgb), bold: true });
 
     // Amount right-aligned
     const amtStr = fmt(exp.amount || 0);
     const amtW = fontBold.widthOfTextAtSize(amtStr, 10);
-    drawText(amtStr, COL.amount.x + COL.amount.w - amtW - 4, y + 8, { font: fontBold, size: 10, color: GOLD, bold: true });
+    drawText(amtStr, COL.amount.x + COL.amount.w - amtW - 4, mainY, { font: fontBold, size: 10, color: GOLD, bold: true });
 
-    // Notes & receipt link on second line if present
-    if (exp.notes || exp.receipt_url) {
-      const sub: string[] = [];
-      if (exp.notes) sub.push(clamp(exp.notes, fontReg, 7.5, 280));
-      if (exp.receipt_url) sub.push("Receipt: " + exp.receipt_url.slice(0, 60) + (exp.receipt_url.length > 60 ? "…" : ""));
-      drawText(sub.join("  ·  "), COL.merchant.x + 4, y + 18, { font: fontReg, size: 7.5, color: rgb(0.35, 0.35, 0.38) });
+    // Notes / receipt — clearly separated second line
+    if (hasExtra) {
+      // Hairline divider between main row and sub-line
+      page.drawLine({
+        start: { x: M + 6,     y: PH - (y + 28) },
+        end:   { x: PW - M - 6, y: PH - (y + 28) },
+        thickness: 0.3,
+        color: rgb(0.20, 0.20, 0.21),
+      });
+      // Arrow indicator
+      drawText("↳", COL.date.x + 6, y + 31, { font: fontReg, size: 8, color: rgb(0.32, 0.32, 0.34) });
+      // Notes text
+      if (exp.notes) {
+        drawText(clamp(exp.notes, fontReg, 8, 200), COL.merchant.x + 4, y + 31, { font: fontReg, size: 8, color: rgb(0.55, 0.55, 0.58) });
+      }
+      // Receipt URL — right side, blue
+      if (exp.receipt_url) {
+        const shortUrl = exp.receipt_url.length > 52 ? exp.receipt_url.slice(0, 52) + "…" : exp.receipt_url;
+        const receiptLabel = "Receipt: " + shortUrl;
+        const rw = fontReg.widthOfTextAtSize(receiptLabel, 7.5);
+        drawText(receiptLabel, COL.amount.x + COL.amount.w - rw - 4, y + 31, { font: fontReg, size: 7.5, color: rgb(0.38, 0.64, 0.98) });
+      }
     }
 
-    y += 26;
+    y += rowH + 2;
   });
 
   // ── TOTAL ROW ──────────────────────────────────────────────────────────────
