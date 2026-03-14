@@ -93,6 +93,16 @@ export default function ExpensesPage() {
   const [filterCat, setFilterCat] = useState("All");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Report modal state
+  const [reportModal, setReportModal] = useState(false);
+  const [reportType, setReportType] = useState<"month" | "deal">("month");
+  const [reportMonth, setReportMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [reportDealId, setReportDealId] = useState("");
+  const [reportEmail, setReportEmail] = useState("");
+  const [reportMode, setReportMode] = useState<"download" | "email">("download");
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportMsg, setReportMsg] = useState("");
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -196,6 +206,35 @@ export default function ExpensesPage() {
     color: CAT_COLORS[i],
   }));
 
+  async function handleReport() {
+    setReportLoading(true);
+    setReportMsg("");
+    try {
+      const params: Record<string, string> = { mode: reportMode };
+      if (reportType === "month") params.month = reportMonth;
+      else if (reportDealId) params.deal_id = reportDealId;
+      if (reportMode === "email") params.email = reportEmail;
+
+      const res = await fetch("/api/expenses/report?" + new URLSearchParams(params));
+      if (reportMode === "download") {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Expense-Report-${reportType === "month" ? reportMonth : "deal"}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setReportMsg("✓ PDF downloaded");
+      } else {
+        const json = await res.json();
+        setReportMsg(json.ok ? "✓ Report emailed successfully" : "✗ " + (json.error || "Failed"));
+      }
+    } catch (e: any) {
+      setReportMsg("✗ Error: " + e.message);
+    }
+    setReportLoading(false);
+  }
+
   const card: React.CSSProperties = {
     background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: 24,
   };
@@ -221,13 +260,22 @@ export default function ExpensesPage() {
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa", margin: 0 }}>Expenses</h1>
           <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4 }}>{expenses.length} total expense{expenses.length !== 1 ? "s" : ""}</p>
         </div>
-        <button onClick={openAdd} style={{
-          background: "#C9A84C", color: "#000", border: "none", borderRadius: 8,
-          padding: "10px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-          fontFamily: "var(--font-montserrat, sans-serif)", letterSpacing: "0.06em",
-        }}>
-          + Add Expense
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => { setReportModal(true); setReportMsg(""); }} style={{
+            background: "transparent", color: "#C9A84C", border: "1px solid #C9A84C",
+            borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: "0.85rem",
+            cursor: "pointer", fontFamily: "var(--font-montserrat, sans-serif)", letterSpacing: "0.06em",
+          }}>
+            ⬇ Generate Report
+          </button>
+          <button onClick={openAdd} style={{
+            background: "#C9A84C", color: "#000", border: "none", borderRadius: 8,
+            padding: "10px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+            fontFamily: "var(--font-montserrat, sans-serif)", letterSpacing: "0.06em",
+          }}>
+            + Add Expense
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -372,7 +420,113 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Report Modal */}
+      {reportModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+        }} onClick={e => { if (e.target === e.currentTarget) setReportModal(false); }}>
+          <div style={{
+            background: "#111113", border: "1px solid #27272a", borderRadius: 16,
+            padding: 28, width: "100%", maxWidth: 480,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "1.1rem", margin: 0 }}>Generate Expense Report</h2>
+              <button onClick={() => setReportModal(false)} style={{ background: "transparent", border: "none", color: "#71717a", fontSize: "1.2rem", cursor: "pointer" }}>✕</button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              {/* Report type toggle */}
+              <div>
+                <label style={{ display: "block", color: "#71717a", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>Filter By</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {(["month", "deal"] as const).map(t => (
+                    <button key={t} onClick={() => setReportType(t)} style={{
+                      flex: 1, padding: "9px", borderRadius: 8, border: "1px solid",
+                      borderColor: reportType === t ? "#C9A84C" : "#27272a",
+                      background: reportType === t ? "rgba(201,168,76,0.12)" : "transparent",
+                      color: reportType === t ? "#C9A84C" : "#71717a",
+                      fontWeight: 600, fontSize: "0.85rem", cursor: "pointer",
+                      textTransform: "capitalize",
+                    }}>{t === "month" ? "📅 Month" : "📎 Deal"}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Month picker or Deal picker */}
+              {reportType === "month" ? (
+                <div>
+                  <label style={{ display: "block", color: "#71717a", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6 }}>Month</label>
+                  <input type="month" value={reportMonth} onChange={e => setReportMonth(e.target.value)}
+                    style={{ width: "100%", background: "#18181b", border: "1px solid #27272a", borderRadius: 8, color: "#fafafa", padding: "10px 12px", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" as const }} />
+                </div>
+              ) : (
+                <div>
+                  <label style={{ display: "block", color: "#71717a", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6 }}>Deal</label>
+                  <select value={reportDealId} onChange={e => setReportDealId(e.target.value)}
+                    style={{ width: "100%", background: "#18181b", border: "1px solid #27272a", borderRadius: 8, color: "#fafafa", padding: "10px 12px", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" as const }}>
+                    <option value="">— Select a deal —</option>
+                    {deals.map(d => <option key={d.id} value={d.id}>{d.title}{d.company ? ` · ${d.company}` : ""}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Delivery method */}
+              <div>
+                <label style={{ display: "block", color: "#71717a", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>Delivery</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {(["download", "email"] as const).map(m => (
+                    <button key={m} onClick={() => setReportMode(m)} style={{
+                      flex: 1, padding: "9px", borderRadius: 8, border: "1px solid",
+                      borderColor: reportMode === m ? "#C9A84C" : "#27272a",
+                      background: reportMode === m ? "rgba(201,168,76,0.12)" : "transparent",
+                      color: reportMode === m ? "#C9A84C" : "#71717a",
+                      fontWeight: 600, fontSize: "0.85rem", cursor: "pointer",
+                    }}>{m === "download" ? "⬇ PDF Download" : "✉ Send Email"}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Email input */}
+              {reportMode === "email" && (
+                <div>
+                  <label style={{ display: "block", color: "#71717a", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6 }}>Recipient Email</label>
+                  <input type="email" placeholder="client@example.com" value={reportEmail}
+                    onChange={e => setReportEmail(e.target.value)}
+                    style={{ width: "100%", background: "#18181b", border: "1px solid #27272a", borderRadius: 8, color: "#fafafa", padding: "10px 12px", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" as const }} />
+                </div>
+              )}
+
+              {/* Feedback */}
+              {reportMsg && (
+                <p style={{ color: reportMsg.startsWith("✓") ? "#34d399" : "#f87171", fontSize: "0.85rem", margin: 0 }}>{reportMsg}</p>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setReportModal(false)} style={{
+                  flex: 1, padding: "11px", borderRadius: 8, background: "transparent",
+                  border: "1px solid #27272a", color: "#71717a", cursor: "pointer", fontSize: "0.85rem",
+                }}>Cancel</button>
+                <button
+                  onClick={handleReport}
+                  disabled={reportLoading || (reportMode === "email" && !reportEmail) || (reportType === "deal" && !reportDealId)}
+                  style={{
+                    flex: 2, padding: "11px", borderRadius: 8,
+                    background: reportLoading ? "#8a7235" : "#C9A84C",
+                    border: "none", color: "#000", fontWeight: 700,
+                    cursor: reportLoading ? "not-allowed" : "pointer", fontSize: "0.85rem",
+                    fontFamily: "var(--font-montserrat, sans-serif)", letterSpacing: "0.06em",
+                  }}>
+                  {reportLoading ? "Generating..." : reportMode === "download" ? "Download PDF" : "Send Report"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expense Add/Edit Modal */}
       {modal && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000,
