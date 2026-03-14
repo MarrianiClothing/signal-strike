@@ -240,7 +240,7 @@ async function buildExpenseReportPDF(
         color: rgb(0.20, 0.20, 0.21),
       });
       // Arrow indicator
-      drawText("↳", COL.date.x + 6, y + 31, { font: fontReg, size: 8, color: rgb(0.32, 0.32, 0.34) });
+      drawText(">>", COL.date.x + 6, y + 31, { font: fontReg, size: 8, color: rgb(0.32, 0.32, 0.34) });
       // Notes text
       if (exp.notes) {
         drawText(clamp(exp.notes, fontReg, 8, 200), COL.merchant.x + 4, y + 31, { font: fontReg, size: 8, color: rgb(0.55, 0.55, 0.58) });
