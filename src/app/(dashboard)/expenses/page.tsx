@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -7,7 +8,208 @@ function useIsMobile() {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
     window.addEventListener("resize", check);
-    return (
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
+const CATEGORIES = ["Travel", "Meals & Entertainment", "Marketing", "Client Expenses"];
+const STATUSES = ["Pending", "Submitted", "Approved", "Reimbursed"];
+
+const STATUS_COLORS: Record<string, string> = {
+  Pending: "#fbbf24", Submitted: "#60a5fa", Approved: "#34d399", Reimbursed: "#C9A84C",
+};
+const CAT_COLORS = ["#C9A84C", "#34d399", "#a78bfa", "#60a5fa"];
+
+function fmt(n: number) {
+  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
+  if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "K";
+  return "$" + n.toFixed(2);
+}
+
+function DonutChart({ data }: { data: { label: string; value: number; color: string }[] }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return <div style={{ color: "#52525b", fontSize: "0.82rem", textAlign: "center", padding: "40px 0" }}>No expenses yet</div>;
+  const size = 160, radius = 58, cx = 80, cy = 80;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  const segments = data.filter(d => d.value > 0).map(d => {
+    const dash = (d.value / total) * circumference;
+    const seg = { ...d, dash, gap: circumference - dash, offset };
+    offset += dash;
+    return seg;
+  });
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+      <svg width={size} height={size} style={{ flexShrink: 0 }}>
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#27272a" strokeWidth={22} />
+        {segments.map((s, i) => (
+          <circle key={i} cx={cx} cy={cy} r={radius} fill="none" stroke={s.color} strokeWidth={22}
+            strokeDasharray={`${s.dash} ${s.gap}`} strokeDashoffset={-s.offset + circumference * 0.25}
+            style={{ transition: "all 0.4s" }} />
+        ))}
+        <text x={cx} y={cy - 8} textAnchor="middle" fill="#fafafa" fontSize={13} fontWeight={700}>{fmt(total)}</text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="#71717a" fontSize={9}>TOTAL</text>
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+        {segments.map((s, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: s.color, flexShrink: 0, marginTop: 3 }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ color: "#a1a1aa", fontSize: "0.78rem", lineHeight: 1.3 }}>{s.label}</div>
+              <div style={{ color: "#fafafa", fontSize: "0.82rem", fontWeight: 700 }}>{fmt(s.value)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const EMPTY_FORM = {
+  merchant: "", amount: "", category: CATEGORIES[0], status: "Pending",
+  expense_date: new Date().toISOString().slice(0, 10),
+  deal_id: "", notes: "", receipt_url: "",
+};
+
+export default function ExpensesPage() {
+  const supabase = createClient();
+  const isMobile = useIsMobile();
+  const [userId, setUserId] = useState("");
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterCat, setFilterCat] = useState("All");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [reportModal, setReportModal] = useState(false);
+  const [reportType, setReportType] = useState<"month" | "deal">("month");
+  const [reportMonth, setReportMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [reportDealId, setReportDealId] = useState("");
+  const [reportEmail, setReportEmail] = useState("");
+  const [reportMode, setReportMode] = useState<"download" | "email">("download");
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportMsg, setReportMsg] = useState("");
+
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setUserId(user.id);
+      const [expRes, dealRes] = await Promise.all([
+        supabase.from("expenses").select("*").eq("user_id", user.id).order("expense_date", { ascending: false }),
+        supabase.from("deals").select("id, title, company").eq("user_id", user.id).not("stage", "in", '("closed_lost")'),
+      ]);
+      setExpenses(expRes.data || []);
+      setDeals(dealRes.data || []);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  async function reload() {
+    const { data } = await supabase.from("expenses").select("*").eq("user_id", userId).order("expense_date", { ascending: false });
+    setExpenses(data || []);
+  }
+
+  function openAdd() { setEditing(null); setForm({ ...EMPTY_FORM }); setModal(true); }
+  function openEdit(exp: any) {
+    setEditing(exp);
+    setForm({ merchant: exp.merchant || "", amount: exp.amount?.toString() || "", category: exp.category || CATEGORIES[0], status: exp.status || "Pending", expense_date: exp.expense_date || new Date().toISOString().slice(0, 10), deal_id: exp.deal_id || "", notes: exp.notes || "", receipt_url: exp.receipt_url || "" });
+    setModal(true);
+  }
+
+  async function handleReceiptUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${userId}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
+    if (!error) {
+      const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
+      setForm(f => ({ ...f, receipt_url: urlData.publicUrl }));
+    }
+    setUploading(false);
+  }
+
+  async function handleSave() {
+    if (!form.merchant || !form.amount) return;
+    setSaving(true);
+    const payload = { user_id: userId, merchant: form.merchant, amount: parseFloat(form.amount), category: form.category, status: form.status, expense_date: form.expense_date, deal_id: form.deal_id || null, notes: form.notes || null, receipt_url: form.receipt_url || null };
+    if (editing) await supabase.from("expenses").update(payload).eq("id", editing.id);
+    else await supabase.from("expenses").insert([payload]);
+    await reload(); setSaving(false); setModal(false);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this expense?")) return;
+    await supabase.from("expenses").delete().eq("id", id);
+    await reload();
+  }
+
+  async function handleReport() {
+    setReportLoading(true); setReportMsg("");
+    try {
+      const params: Record<string, string> = { mode: reportMode };
+      if (reportType === "month") params.month = reportMonth;
+      else if (reportDealId) params.deal_id = reportDealId;
+      if (reportMode === "email") params.email = reportEmail;
+      const res = await fetch("/api/expenses/report?" + new URLSearchParams(params));
+      if (reportMode === "download") {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url;
+        a.download = `Expense-Report-${reportType === "month" ? reportMonth : "deal"}.pdf`;
+        a.click(); URL.revokeObjectURL(url); setReportMsg("✓ PDF downloaded");
+      } else {
+        const json = await res.json();
+        setReportMsg(json.ok ? "✓ Report emailed successfully" : "✗ " + (json.error || "Failed"));
+      }
+    } catch (e: any) { setReportMsg("✗ Error: " + e.message); }
+    setReportLoading(false);
+  }
+
+  const filtered = expenses.filter(e => (filterStatus === "All" || e.status === filterStatus) && (filterCat === "All" || e.category === filterCat));
+  const totalAmt = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+  const pendingAmt = expenses.filter(e => e.status === "Pending").reduce((s, e) => s + (e.amount || 0), 0);
+  const approvedAmt = expenses.filter(e => e.status === "Approved").reduce((s, e) => s + (e.amount || 0), 0);
+  const thisMonth = expenses.filter(e => e.expense_date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((s, e) => s + (e.amount || 0), 0);
+  const chartData = CATEGORIES.map((cat, i) => ({ label: cat, value: expenses.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0), color: CAT_COLORS[i] }));
+
+  const card: React.CSSProperties = { background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: 24 };
+  const inputStyle: React.CSSProperties = { width: "100%", background: "#18181b", border: "1px solid #27272a", borderRadius: 8, color: "#fafafa", padding: "10px 12px", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" };
+  const labelStyle: React.CSSProperties = { display: "block", color: "#71717a", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6 };
+
+  const StatusBreakdown = () => (
+    <>
+      {STATUSES.map(s => {
+        const amt = expenses.filter(e => e.status === s).reduce((sum, e) => sum + (e.amount || 0), 0);
+        const count = expenses.filter(e => e.status === s).length;
+        if (count === 0) return null;
+        return (
+          <div key={s} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLORS[s] }} />
+              <span style={{ color: "#a1a1aa", fontSize: "0.82rem" }}>{s}</span>
+              <span style={{ color: "#52525b", fontSize: "0.72rem" }}>({count})</span>
+            </div>
+            <span style={{ color: "#fafafa", fontSize: "0.82rem", fontWeight: 600 }}>{fmt(amt)}</span>
+          </div>
+        );
+      })}
+    </>
+  );
+
+  if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading...</div>;
+
+  return (
     <div style={{ padding: isMobile ? "0 16px 24px" : 32, maxWidth: isMobile ? "100%" : 1200, boxSizing: "border-box", width: "100%" }}>
 
       {/* Header */}
@@ -17,26 +219,18 @@ function useIsMobile() {
           <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4 }}>{expenses.length} total expense{expenses.length !== 1 ? "s" : ""}</p>
         </div>
         <div style={{ display: "flex", gap: 10, width: isMobile ? "100%" : "auto" }}>
-          <button onClick={() => { setReportModal(true); setReportMsg(""); }} style={{
-            flex: isMobile ? 1 : undefined,
-            background: "transparent", color: "#C9A84C", border: "1px solid #C9A84C",
-            borderRadius: 8, padding: "10px 16px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-          }}>⬇ Report</button>
-          <button onClick={openAdd} style={{
-            flex: isMobile ? 1 : undefined,
-            background: "#C9A84C", color: "#000", border: "none", borderRadius: 8,
-            padding: "10px 16px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-          }}>+ Add Expense</button>
+          <button onClick={() => { setReportModal(true); setReportMsg(""); }} style={{ flex: isMobile ? 1 : undefined, background: "transparent", color: "#C9A84C", border: "1px solid #C9A84C", borderRadius: 8, padding: "10px 16px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}>⬇ Report</button>
+          <button onClick={openAdd} style={{ flex: isMobile ? 1 : undefined, background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}>+ Add Expense</button>
         </div>
       </div>
 
-      {/* Stats — 2 col on mobile, 4 on desktop */}
+      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[
-          { label: "Total Expenses", value: fmt(totalAmt),    color: "#fafafa" },
-          { label: "Pending",        value: fmt(pendingAmt),  color: "#fbbf24" },
-          { label: "Approved",       value: fmt(approvedAmt), color: "#34d399" },
-          { label: "This Month",     value: fmt(thisMonth),   color: "#C9A84C" },
+          { label: "Total Expenses", value: fmt(totalAmt), color: "#fafafa" },
+          { label: "Pending", value: fmt(pendingAmt), color: "#fbbf24" },
+          { label: "Approved", value: fmt(approvedAmt), color: "#34d399" },
+          { label: "This Month", value: fmt(thisMonth), color: "#C9A84C" },
         ].map(s => (
           <div key={s.label} style={card}>
             <p style={{ color: "#71717a", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>{s.label}</p>
@@ -45,28 +239,16 @@ function useIsMobile() {
         ))}
       </div>
 
-      {/* Filter bars — scrollable rows */}
+      {/* Filters */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, paddingRight: 4 }}>
           {["All", ...STATUSES].map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)} style={{
-              padding: "6px 12px", borderRadius: 20, border: "1px solid", flexShrink: 0,
-              borderColor: filterStatus === s ? "#C9A84C" : "#27272a",
-              background: filterStatus === s ? "rgba(201,168,76,0.12)" : "transparent",
-              color: filterStatus === s ? "#C9A84C" : "#71717a",
-              fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
-            }}>{s}</button>
+            <button key={s} onClick={() => setFilterStatus(s)} style={{ padding: "6px 12px", borderRadius: 20, border: "1px solid", flexShrink: 0, borderColor: filterStatus === s ? "#C9A84C" : "#27272a", background: filterStatus === s ? "rgba(201,168,76,0.12)" : "transparent", color: filterStatus === s ? "#C9A84C" : "#71717a", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>{s}</button>
           ))}
         </div>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginTop: 6, paddingRight: 4 }}>
           {["All", ...CATEGORIES].map(c => (
-            <button key={c} onClick={() => setFilterCat(c)} style={{
-              padding: "6px 12px", borderRadius: 20, border: "1px solid", flexShrink: 0,
-              borderColor: filterCat === c ? "#a78bfa" : "#27272a",
-              background: filterCat === c ? "rgba(167,139,250,0.12)" : "transparent",
-              color: filterCat === c ? "#a78bfa" : "#71717a",
-              fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
-            }}>{c}</button>
+            <button key={c} onClick={() => setFilterCat(c)} style={{ padding: "6px 12px", borderRadius: 20, border: "1px solid", flexShrink: 0, borderColor: filterCat === c ? "#a78bfa" : "#27272a", background: filterCat === c ? "rgba(167,139,250,0.12)" : "transparent", color: filterCat === c ? "#a78bfa" : "#71717a", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>{c}</button>
           ))}
         </div>
       </div>
@@ -75,9 +257,7 @@ function useIsMobile() {
       {filtered.length === 0 ? (
         <div style={{ ...card, textAlign: "center", padding: "48px 24px", marginBottom: 16 }}>
           <p style={{ color: "#52525b", fontSize: "0.9rem" }}>No expenses found.</p>
-          <button onClick={openAdd} style={{ marginTop: 12, background: "transparent", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: "0.82rem" }}>
-            Add your first expense
-          </button>
+          <button onClick={openAdd} style={{ marginTop: 12, background: "transparent", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: "0.82rem" }}>Add your first expense</button>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
@@ -89,17 +269,11 @@ function useIsMobile() {
             return (
               <div key={exp.id} style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, borderLeft: `3px solid ${catColor}`, overflow: "hidden" }}>
                 <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                  {/* Date */}
                   <div style={{ textAlign: "center", flexShrink: 0, width: 40 }}>
-                    <div style={{ color: "#C9A84C", fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase" }}>
-                      {new Date(exp.expense_date + "T12:00:00").toLocaleString("en-US", { month: "short" })}
-                    </div>
-                    <div style={{ color: "#fafafa", fontSize: "1rem", fontWeight: 800, lineHeight: 1 }}>
-                      {new Date(exp.expense_date + "T12:00:00").getDate()}
-                    </div>
+                    <div style={{ color: "#C9A84C", fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase" }}>{new Date(exp.expense_date + "T12:00:00").toLocaleString("en-US", { month: "short" })}</div>
+                    <div style={{ color: "#fafafa", fontSize: "1rem", fontWeight: 800, lineHeight: 1 }}>{new Date(exp.expense_date + "T12:00:00").getDate()}</div>
                   </div>
                   <div style={{ width: 1, height: 32, background: "#27272a", flexShrink: 0 }} />
-                  {/* Details */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
                       <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.88rem", margin: 0 }}>{exp.merchant}</p>
@@ -111,7 +285,6 @@ function useIsMobile() {
                       {exp.receipt_url && <a href={exp.receipt_url} target="_blank" rel="noopener noreferrer" style={{ color: "#60a5fa", fontSize: "0.7rem", textDecoration: "none" }}>📄 Receipt</a>}
                     </div>
                   </div>
-                  {/* Amount + status + actions */}
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <p style={{ color: "#fafafa", fontWeight: 800, fontSize: "1rem", fontFamily: "var(--font-cinzel, serif)", margin: "0 0 4px" }}>{fmt(exp.amount)}</p>
                     <span style={{ fontSize: "0.68rem", padding: "2px 8px", borderRadius: 10, background: statusColor + "22", color: statusColor, fontWeight: 600, display: "block", marginBottom: 6 }}>{exp.status}</span>
@@ -127,7 +300,7 @@ function useIsMobile() {
         </div>
       )}
 
-      {/* Charts — stack vertically (desktop shows side by side in the grid) */}
+      {/* Charts */}
       {isMobile ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={card}>
@@ -136,26 +309,12 @@ function useIsMobile() {
           </div>
           <div style={card}>
             <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", marginBottom: 16 }}>By Status</h2>
-            {STATUSES.map(s => {
-              const amt = expenses.filter(e => e.status === s).reduce((sum, e) => sum + (e.amount || 0), 0);
-              const count = expenses.filter(e => e.status === s).length;
-              if (count === 0) return null;
-              return (
-                <div key={s} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLORS[s] }} />
-                    <span style={{ color: "#a1a1aa", fontSize: "0.82rem" }}>{s}</span>
-                    <span style={{ color: "#52525b", fontSize: "0.72rem" }}>({count})</span>
-                  </div>
-                  <span style={{ color: "#fafafa", fontSize: "0.82rem", fontWeight: 600 }}>{fmt(amt)}</span>
-                </div>
-              );
-            })}
+            <StatusBreakdown />
           </div>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }} />
+          <div />
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={card}>
               <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", marginBottom: 20 }}>By Category</h2>
@@ -163,21 +322,7 @@ function useIsMobile() {
             </div>
             <div style={card}>
               <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", marginBottom: 16 }}>By Status</h2>
-              {STATUSES.map(s => {
-                const amt = expenses.filter(e => e.status === s).reduce((sum, e) => sum + (e.amount || 0), 0);
-                const count = expenses.filter(e => e.status === s).length;
-                if (count === 0) return null;
-                return (
-                  <div key={s} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLORS[s] }} />
-                      <span style={{ color: "#a1a1aa", fontSize: "0.82rem" }}>{s}</span>
-                      <span style={{ color: "#52525b", fontSize: "0.72rem" }}>({count})</span>
-                    </div>
-                    <span style={{ color: "#fafafa", fontSize: "0.82rem", fontWeight: 600 }}>{fmt(amt)}</span>
-                  </div>
-                );
-              })}
+              <StatusBreakdown />
             </div>
           </div>
         </div>
@@ -250,46 +395,18 @@ function useIsMobile() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>Merchant *</label>
-                  <input style={inputStyle} placeholder="e.g. Delta Airlines" value={form.merchant} onChange={e => setForm(f => ({ ...f, merchant: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Amount *</label>
-                  <input style={inputStyle} type="number" step="0.01" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-                </div>
+                <div><label style={labelStyle}>Merchant *</label><input style={inputStyle} placeholder="e.g. Delta Airlines" value={form.merchant} onChange={e => setForm(f => ({ ...f, merchant: e.target.value }))} /></div>
+                <div><label style={labelStyle}>Amount *</label><input style={inputStyle} type="number" step="0.01" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>Category</label>
-                  <select style={inputStyle} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Status</label>
-                  <select style={inputStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                    {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
+                <div><label style={labelStyle}>Category</label><select style={inputStyle} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                <div><label style={labelStyle}>Status</label><select style={inputStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>Date</label>
-                  <input style={inputStyle} type="date" value={form.expense_date} onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Link to Deal</label>
-                  <select style={inputStyle} value={form.deal_id} onChange={e => setForm(f => ({ ...f, deal_id: e.target.value }))}>
-                    <option value="">— None —</option>
-                    {deals.map(d => <option key={d.id} value={d.id}>{d.title}{d.company ? ` · ${d.company}` : ""}</option>)}
-                  </select>
-                </div>
+                <div><label style={labelStyle}>Date</label><input style={inputStyle} type="date" value={form.expense_date} onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))} /></div>
+                <div><label style={labelStyle}>Link to Deal</label><select style={inputStyle} value={form.deal_id} onChange={e => setForm(f => ({ ...f, deal_id: e.target.value }))}><option value="">— None —</option>{deals.map(d => <option key={d.id} value={d.id}>{d.title}{d.company ? ` · ${d.company}` : ""}</option>)}</select></div>
               </div>
-              <div>
-                <label style={labelStyle}>Notes</label>
-                <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} placeholder="Optional description..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-              </div>
+              <div><label style={labelStyle}>Notes</label><textarea style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} placeholder="Optional description..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
               <div>
                 <label style={labelStyle}>Receipt</label>
                 {form.receipt_url && (
@@ -303,12 +420,8 @@ function useIsMobile() {
                   <div style={{ background: "#18181b", border: "1px dashed #3f3f46", borderRadius: 8, color: "#71717a", padding: "12px 16px", fontSize: "0.82rem", textAlign: "center" }}>Uploading...</div>
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <button onClick={() => cameraRef.current?.click()} style={{ background: "#18181b", border: "1px dashed #3f3f46", borderRadius: 8, color: "#a1a1aa", padding: "12px 10px", cursor: "pointer", fontSize: "0.82rem", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: "1.3rem" }}>📷</span><span>Take Photo</span>
-                    </button>
-                    <button onClick={() => fileRef.current?.click()} style={{ background: "#18181b", border: "1px dashed #3f3f46", borderRadius: 8, color: "#a1a1aa", padding: "12px 10px", cursor: "pointer", fontSize: "0.82rem", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: "1.3rem" }}>📎</span><span>Upload File</span>
-                    </button>
+                    <button onClick={() => cameraRef.current?.click()} style={{ background: "#18181b", border: "1px dashed #3f3f46", borderRadius: 8, color: "#a1a1aa", padding: "12px 10px", cursor: "pointer", fontSize: "0.82rem", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}><span style={{ fontSize: "1.3rem" }}>📷</span><span>Take Photo</span></button>
+                    <button onClick={() => fileRef.current?.click()} style={{ background: "#18181b", border: "1px dashed #3f3f46", borderRadius: 8, color: "#a1a1aa", padding: "12px 10px", cursor: "pointer", fontSize: "0.82rem", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}><span style={{ fontSize: "1.3rem" }}>📎</span><span>Upload File</span></button>
                   </div>
                 )}
                 <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleReceiptUpload} />
