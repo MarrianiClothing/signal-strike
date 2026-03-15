@@ -1,5 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+
+function useIsMobile() {
+  const [m, setM] = useState(false);
+  useEffect(() => { const c = () => setM(window.innerWidth < 768); c(); window.addEventListener("resize", c); return () => window.removeEventListener("resize", c); }, []);
+  return m;
+}
 import { createClient } from "@/lib/supabase/client";
 
 function getSecondsUntilNext(sendTimeStr: string): number {
@@ -28,6 +34,7 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
   const [sendTime, setSendTime] = useState<string | null>(null);
   const [sending, setSending]   = useState(false);
   const [flash, setFlash]       = useState<"sent" | "error" | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function load() {
@@ -76,7 +83,7 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
   const isImminent = seconds < 300;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "center" : "flex-end", gap: "6px", width: isMobile ? "100%" : "auto" }}>
 
       {/* Label */}
       <span style={{

@@ -1,5 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+
+function useIsMobile() {
+  const [m, setM] = useState(false);
+  useEffect(() => { const c = () => setM(window.innerWidth < 768); c(); window.addEventListener("resize", c); return () => window.removeEventListener("resize", c); }, []);
+  return m;
+}
 import { createClient } from "@/lib/supabase/client";
 
 interface Tier { id?: string; name: string; rate: string; description: string; }
@@ -11,6 +17,7 @@ export default function CommissionTiersSection({ userId }: { userId: string }) {
   const [editing, setEditing] = useState<Tier | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const isMobile = useIsMobile();
 
   const inp: React.CSSProperties = { background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 12px", color: "#fafafa", fontSize: "0.875rem", width: "100%", boxSizing: "border-box" };
   const lbl: React.CSSProperties = { color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 5 };
@@ -40,15 +47,17 @@ export default function CommissionTiersSection({ userId }: { userId: string }) {
       </div>
       {tiers.length === 0 && !editing && <p style={{ color: "#52525b", fontSize: "0.85rem" }}>No tiers yet. Add one to assign commission rates per deal type.</p>}
       {tiers.map(t => (
-        <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "#18181b", borderRadius: 8, marginBottom: 8 }}>
+        <div key={t.id} style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", padding: "12px 14px", background: "#18181b", borderRadius: 8, marginBottom: 8, gap: isMobile ? 10 : 0 }}>
           <div>
             <span style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.9rem" }}>{t.name}</span>
             {t.description && <span style={{ color: "#71717a", fontSize: "0.78rem", marginLeft: 10 }}>{t.description}</span>}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, width: isMobile ? "100%" : "auto", justifyContent: isMobile ? "space-between" : "flex-end" }}>
             <span style={{ color: "#C9A84C", fontWeight: 800, fontSize: "1rem" }}>{t.rate}%</span>
-            <button onClick={() => setEditing({ ...t, rate: String(t.rate) })} style={{ background: "transparent", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "0.75rem" }}>Edit</button>
-            <button onClick={() => handleDelete(t.id!)} style={{ background: "transparent", border: "1px solid #3f1f1f", color: "#f87171", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "0.75rem" }}>Delete</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setEditing({ ...t, rate: String(t.rate) })} style={{ background: "transparent", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 6, padding: "6px 16px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600 }}>Edit</button>
+              <button onClick={() => handleDelete(t.id!)} style={{ background: "rgba(248,113,113,0.08)", border: "1px solid #3f1f1f", color: "#f87171", borderRadius: 6, padding: "6px 16px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600 }}>Delete</button>
+            </div>
           </div>
         </div>
       ))}

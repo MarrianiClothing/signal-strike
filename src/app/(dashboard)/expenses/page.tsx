@@ -310,27 +310,30 @@ export default function ExpensesPage() {
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24 }}>
         {/* Filters + list */}
         <div>
-          {/* Filter bar */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-            {["All", ...STATUSES].map(s => (
-              <button key={s} onClick={() => setFilterStatus(s)} style={{
-                padding: "6px 14px", borderRadius: 20, border: "1px solid",
-                borderColor: filterStatus === s ? "#C9A84C" : "#27272a",
-                background: filterStatus === s ? "rgba(201,168,76,0.12)" : "transparent",
-                color: filterStatus === s ? "#C9A84C" : "#71717a",
-                fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
-              }}>{s}</button>
-            ))}
-            <div style={{ width: 1, background: "#27272a", margin: "0 4px" }} />
-            {["All", ...CATEGORIES].map(c => (
-              <button key={c} onClick={() => setFilterCat(c)} style={{
-                padding: "6px 14px", borderRadius: 20, border: "1px solid",
-                borderColor: filterCat === c ? "#a78bfa" : "#27272a",
-                background: filterCat === c ? "rgba(167,139,250,0.12)" : "transparent",
-                color: filterCat === c ? "#a78bfa" : "#71717a",
-                fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
-              }}>{c}</button>
-            ))}
+          {/* Filter bar — scrollable on mobile */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, WebkitOverflowScrolling: "touch" as any }}>
+              {["All", ...STATUSES].map(s => (
+                <button key={s} onClick={() => setFilterStatus(s)} style={{
+                  padding: "6px 12px", borderRadius: 20, border: "1px solid", flexShrink: 0,
+                  borderColor: filterStatus === s ? "#C9A84C" : "#27272a",
+                  background: filterStatus === s ? "rgba(201,168,76,0.12)" : "transparent",
+                  color: filterStatus === s ? "#C9A84C" : "#71717a",
+                  fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
+                }}>{s}</button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" as any, marginTop: 6 }}>
+              {["All", ...CATEGORIES].map(c => (
+                <button key={c} onClick={() => setFilterCat(c)} style={{
+                  padding: "6px 12px", borderRadius: 20, border: "1px solid", flexShrink: 0,
+                  borderColor: filterCat === c ? "#a78bfa" : "#27272a",
+                  background: filterCat === c ? "rgba(167,139,250,0.12)" : "transparent",
+                  color: filterCat === c ? "#a78bfa" : "#71717a",
+                  fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
+                }}>{c}</button>
+              ))}
+            </div>
           </div>
 
           {/* Expense cards */}

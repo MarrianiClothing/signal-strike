@@ -181,7 +181,45 @@ export default function PipelinePage() {
         </div>
       )}
 
-      {/* Kanban Board */}
+      {/* Kanban Board — horizontal on desktop, vertical list on mobile */}
+      {isMobile ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {STAGES.map(stage => {
+            const stageDeals = deals.filter(d => d.stage === stage.id && (!search || d.title?.toLowerCase().includes(search.toLowerCase()) || d.company?.toLowerCase().includes(search.toLowerCase()) || d.contact_name?.toLowerCase().includes(search.toLowerCase())));
+            if (stageDeals.length === 0) return null;
+            const stageValue = stageDeals.reduce((s, d) => s + (d.value || 0), 0);
+            return (
+              <div key={stage.id} style={{ background: "#111113", borderRadius: 12, border: "1px solid #27272a", overflow: "hidden" }}>
+                {/* Stage header */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderBottom: "1px solid #1c1c1f", background: "#0e0e10" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: stage.color }} />
+                    <span style={{ color: "#fafafa", fontSize: "0.85rem", fontWeight: 700 }}>{stage.label}</span>
+                    <span style={{ color: "#52525b", fontSize: "0.72rem" }}>({stageDeals.length})</span>
+                  </div>
+                  <span style={{ color: stage.color, fontSize: "0.82rem", fontWeight: 700 }}>{fmt(stageValue)}</span>
+                </div>
+                {/* Deals */}
+                <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                  {stageDeals.map(deal => (
+                    <div key={deal.id} onClick={() => router.push("/deals/" + deal.id)}
+                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "#18181b", borderRadius: 8, borderLeft: `3px solid ${stage.color}`, cursor: "pointer" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.88rem", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deal.title}</p>
+                        {deal.company && <p style={{ color: "#71717a", fontSize: "0.75rem", margin: 0 }}>{deal.company}</p>}
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
+                        <p style={{ color: "#C9A84C", fontWeight: 800, fontSize: "0.88rem", margin: "0 0 2px", fontFamily: "var(--font-cinzel, serif)" }}>{fmt(deal.value)}</p>
+                        <p style={{ color: "#52525b", fontSize: "0.7rem", margin: 0 }}>{deal.probability}%</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
       <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 16 }}>
         {STAGES.map(stage => {
           const stageDeals = deals.filter(d => d.stage === stage.id && (!search || d.title?.toLowerCase().includes(search.toLowerCase()) || d.company?.toLowerCase().includes(search.toLowerCase()) || d.contact_name?.toLowerCase().includes(search.toLowerCase())));
@@ -191,7 +229,6 @@ export default function PipelinePage() {
               onDragOver={e => e.preventDefault()}
               onDrop={() => handleDrop(stage.id)}
               style={{ minWidth: 240, flex: "0 0 240px", background: "#111113", borderRadius: 12, border: "1px solid #27272a", padding: 14 }}>
-              {/* Column header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid #1c1c1f" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: stage.color }} />
@@ -200,8 +237,6 @@ export default function PipelinePage() {
                 </div>
                 <span style={{ color: stage.color, fontSize: "0.72rem", fontWeight: 600 }}>{fmt(stageValue)}</span>
               </div>
-
-              {/* Cards */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {stageDeals.map(deal => (
                   <div key={deal.id}
@@ -209,11 +244,7 @@ export default function PipelinePage() {
                     onDragStart={() => setDragging(deal.id)}
                     onDragEnd={() => setDragging(null)}
                     onClick={() => router.push("/deals/" + deal.id)}
-                    style={{
-                      background: "#1c1c1f", borderRadius: 8, padding: "12px", cursor: "pointer",
-                      border: "1px solid #27272a",
-                      opacity: dragging === deal.id ? 0.5 : 1,
-                    }}>
+                    style={{ background: "#1c1c1f", borderRadius: 8, padding: "12px", cursor: "pointer", border: "1px solid #27272a", opacity: dragging === deal.id ? 0.5 : 1 }}>
                     <p style={{ color: "#fafafa", fontSize: "0.85rem", fontWeight: 600, marginBottom: 4 }}>{deal.title}</p>
                     {deal.company && <p style={{ color: "#71717a", fontSize: "0.75rem", marginBottom: 6 }}>{deal.company}</p>}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -227,6 +258,7 @@ export default function PipelinePage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
