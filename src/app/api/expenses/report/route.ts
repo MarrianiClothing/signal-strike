@@ -199,8 +199,8 @@ async function buildExpenseReportPDF(
 
   drawTableHeader();
 
-  // Collect PDF receipt buffers to append as pages after the main report
-  const pdfReceiptBuffers: { label: string; bytes: ArrayBuffer }[] = [];
+  // Collect all receipts (image or PDF) to append as pages after the main report
+  const pdfReceiptBuffers: { label: string; bytes: ArrayBuffer | null; image: any | null }[] = [];
 
   for (const [idx, exp] of expenses.entries()) {
     const hasNotes = !!(exp.notes);
@@ -258,43 +258,23 @@ async function buildExpenseReportPDF(
           }
 
           if (embeddedImg) {
-            // ── Inline image receipt ──────────────────────────────────────
-            const maxW = PW - M * 2;
-            const maxH = 200;
-            const scale = Math.min(maxW / embeddedImg.width, maxH / embeddedImg.height, 1);
-            const imgW = embeddedImg.width * scale;
-            const imgH = embeddedImg.height * scale;
-
-            ensureSpace(imgH + 30);
-
+            // ── Image receipt — add as full page at end of report ─────────
+            pdfReceiptBuffers.push({
+              label: `${exp.merchant || "Receipt"} · ${exp.expense_date || ""}`,
+              bytes: null,
+              image: embeddedImg,
+            });
+            ensureSpace(22);
             fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
-            drawText("RECEIPT", M + 8, y + 5, { font: fontBold, size: 7, color: MUTED, bold: true });
-            y += 18;
-
-            const imgX = M + (maxW - imgW) / 2;
-            page.drawImage(embeddedImg, {
-              x: imgX,
-              y: PH - y - imgH,
-              width: imgW,
-              height: imgH,
-            });
-            page.drawRectangle({
-              x: imgX - 1,
-              y: PH - y - imgH - 1,
-              width: imgW + 2,
-              height: imgH + 2,
-              borderColor: BORDER,
-              borderWidth: 0.5,
-              opacity: 0,
-            });
-            y += imgH + 14;
+            drawText(`RECEIPT: Image appended at end of report (${exp.merchant || ""})`, M + 8, y + 5, { font: fontReg, size: 7.5, color: GOLD });
+            y += 22;
           } else {
             // ── PDF receipt — queue for appending as pages ────────────────
             pdfReceiptBuffers.push({
               label: `${exp.merchant || "Receipt"} · ${exp.expense_date || ""}`,
               bytes: imgBytes,
+              image: null,
             });
-            // Show placeholder row
             ensureSpace(22);
             fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
             drawText(`RECEIPT: PDF appended at end of report (${exp.merchant || ""})`, M + 8, y + 5, { font: fontReg, size: 7.5, color: GOLD });
@@ -323,33 +303,53 @@ async function buildExpenseReportPDF(
   const footerW = fontReg.widthOfTextAtSize(footerTxt, 8);
   drawText(footerTxt, PW / 2 - footerW / 2, y + 12, { font: fontReg, size: 8, color: MUTED });
 
-  // ── APPEND PDF RECEIPT PAGES ─────────────────────────────────────────────
+  // ── APPEND ALL RECEIPT PAGES ─────────────────────────────────────────────
   if (pdfReceiptBuffers.length > 0) {
     for (const receipt of pdfReceiptBuffers) {
       try {
-        const receiptDoc = await PDFDocument.load(receipt.bytes);
-        const pageCount = receiptDoc.getPageCount();
-        const copiedPages = await doc.copyPages(receiptDoc, [...Array(pageCount).keys()]);
+        if (receipt.image) {
+          // ── Image receipt: draw on a new full page ──────────────────────
+          const rPage = doc.addPage([PW, PH]);
+          // Header bar
+          rPage.drawRectangle({ x: 0, y: PH - 36, width: PW, height: 36, color: DARK });
+          rPage.drawText("RECEIPT", { x: M, y: PH - 24, size: 8, font: fontBold, color: GOLD });
+          rPage.drawText(receipt.label, { x: M, y: PH - 36 + 6, size: 9, font: fontReg, color: WHITE });
 
-        for (let i = 0; i < copiedPages.length; i++) {
-          const rPage = doc.addPage(copiedPages[i]);
-          // Add a small label at the top of each receipt page
-          rPage.drawText(`RECEIPT: ${receipt.label}${pageCount > 1 ? ` (page ${i + 1} of ${pageCount})` : ""}`, {
-            x: 40,
-            y: rPage.getHeight() - 20,
-            size: 8,
-            font: fontReg,
-            color: GOLD,
+          // Scale image to fill page below header with margins
+          const maxW = PW - M * 2;
+          const maxH = PH - 36 - M * 2;
+          const img = receipt.image;
+          const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+          const imgW = img.width * scale;
+          const imgH = img.height * scale;
+          const imgX = (PW - imgW) / 2;
+          const imgY = (PH - 36 - M - imgH) / 2 + M / 2;
+
+          rPage.drawImage(img, { x: imgX, y: imgY, width: imgW, height: imgH });
+          rPage.drawRectangle({
+            x: imgX - 1, y: imgY - 1,
+            width: imgW + 2, height: imgH + 2,
+            borderColor: BORDER, borderWidth: 0.5, opacity: 0,
           });
-          rPage.drawLine({
-            start: { x: 40, y: rPage.getHeight() - 24 },
-            end:   { x: rPage.getWidth() - 40, y: rPage.getHeight() - 24 },
-            thickness: 0.5,
-            color: BORDER,
-          });
+        } else if (receipt.bytes) {
+          // ── PDF receipt: copy pages ─────────────────────────────────────
+          const receiptDoc = await PDFDocument.load(receipt.bytes);
+          const pageCount = receiptDoc.getPageCount();
+          const copiedPages = await doc.copyPages(receiptDoc, [...Array(pageCount).keys()]);
+          for (let i = 0; i < copiedPages.length; i++) {
+            const rPage = doc.addPage(copiedPages[i]);
+            rPage.drawText(`RECEIPT: ${receipt.label}${pageCount > 1 ? ` (${i + 1}/${pageCount})` : ""}`, {
+              x: 40, y: rPage.getHeight() - 16, size: 8, font: fontReg, color: GOLD,
+            });
+            rPage.drawLine({
+              start: { x: 40, y: rPage.getHeight() - 20 },
+              end:   { x: rPage.getWidth() - 40, y: rPage.getHeight() - 20 },
+              thickness: 0.5, color: BORDER,
+            });
+          }
         }
-      } catch (pdfErr) {
-        console.warn("Could not append PDF receipt:", receipt.label, pdfErr);
+      } catch (receiptErr) {
+        console.warn("Could not append receipt:", receipt.label, receiptErr);
       }
     }
   }
