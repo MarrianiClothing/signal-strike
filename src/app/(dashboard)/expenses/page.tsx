@@ -267,7 +267,7 @@ export default function ExpensesPage() {
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading...</div>;
 
   return (
-    <div style={{ padding: isMobile ? "16px 0" : 32, maxWidth: isMobile ? "100%" : 1200 }}>
+    <div style={{ padding: isMobile ? 16 : 32, maxWidth: isMobile ? "100%" : 1200 }}>
       {/* Header */}
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 28, gap: 12, margin: isMobile ? "0 16px" : 0 }}>
         <div>

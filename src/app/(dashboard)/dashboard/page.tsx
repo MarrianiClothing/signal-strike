@@ -89,7 +89,7 @@ export default function DashboardPage() {
   const totalCommission = tieredDeals.reduce((sum: number, d: any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
 
   return (
-    <div style={{ padding: isMobile ? "16px 0" : 32, maxWidth: isMobile ? "100%" : 1200 }}>
+    <div style={{ padding: isMobile ? 16 : 32, maxWidth: isMobile ? "100%" : 1200 }}>
       {/* Header */}
       <div style={{ marginBottom: isMobile ? 20 : 32, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "center" : "flex-start", gap: isMobile ? 12 : 0, margin: isMobile ? "0 16px" : 0 }}>
         <div style={{ flexShrink: 0 }}>
