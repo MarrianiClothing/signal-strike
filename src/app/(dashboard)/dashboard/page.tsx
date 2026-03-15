@@ -89,12 +89,11 @@ export default function DashboardPage() {
   const totalCommission = tieredDeals.reduce((sum: number, d: any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
 
   return (
-    <div style={{ padding: isMobile ? 0 : 32, maxWidth: isMobile ? "100%" : 1200 }}>
+    <div style={{ padding: isMobile ? "16px 0" : 32, maxWidth: isMobile ? "100%" : 1200 }}>
       {/* Header */}
-      <div style={{ padding: isMobile ? "0 16px" : 0 }}>
-      <div style={{ marginBottom: isMobile ? 20 : 32, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "flex-start", gap: isMobile ? 12 : 0 }}>
+      <div style={{ marginBottom: isMobile ? 20 : 32, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "center" : "flex-start", gap: isMobile ? 12 : 0, padding: isMobile ? "0 16px" : 0 }}>
         <div style={{ flexShrink: 0 }}>
-          <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.6rem", fontWeight: 800, color: "#fafafa", textAlign: isMobile ? "center" : "left" }}>
+          <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.6rem", fontWeight: 800, color: "#fafafa", textAlign: isMobile ? "center" : "left", margin: 0 }}>
             {userName ? `Welcome back, ${userName} ` : "Dashboard"}
           </h1>
           <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4, textAlign: isMobile ? "center" : "left" }}>
@@ -106,9 +105,8 @@ export default function DashboardPage() {
       </div>
 
 
-      </div>
       {/* Stats row */}
-      <div style={{ padding: isMobile ? "0 16px" : 0 }}><div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24, padding: isMobile ? "0 16px" : 0 }}>
         {[
           { label: "Pipeline Value", value: fmt(totalPipeline), sub: `${openDeals} open deals`, color: "#34d399" },
           { label: "Won Revenue", value: fmt(wonRevenue), sub: `${deals.filter(d => d.stage === "closed_won").length} deals closed`, color: "#C9A84C" },
@@ -128,9 +126,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      </div></div>
-      <div style={{ padding: isMobile ? "0 16px" : 0 }}>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap: 20, padding: isMobile ? "0 16px" : 0 }}>
         {/* Commission Tracker */}
         <div style={card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -232,7 +228,6 @@ export default function DashboardPage() {
             })}
           </div>
         </div>
-      </div>
       </div>
     </div>
   );
