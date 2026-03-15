@@ -151,10 +151,12 @@ export default function SettingsPage() {
           <p style={{ color: "#fafafa", fontSize: "0.88rem", fontWeight: 600, marginBottom: 10 }}>Gmail</p>
           {gmailEmail ? (
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80" }} />
-                <span style={{ color: "#fafafa", fontSize: "0.85rem" }}>{gmailEmail}</span>
-                <span style={{ fontSize: "0.72rem", color: "#4ade80" }}>Connected</span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", marginTop: 5, flexShrink: 0 }} />
+                <div>
+                  <div style={{ color: "#fafafa", fontSize: "0.85rem", wordBreak: "break-all" }}>{gmailEmail}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#4ade80", marginTop: 3 }}>Connected</div>
+                </div>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={syncGmail} disabled={syncing === "gmail"}
@@ -178,10 +180,12 @@ export default function SettingsPage() {
           <p style={{ color: "#fafafa", fontSize: "0.88rem", fontWeight: 600, marginBottom: 10 }}>Outlook</p>
           {outlookEmail ? (
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80" }} />
-                <span style={{ color: "#fafafa", fontSize: "0.85rem" }}>{outlookEmail}</span>
-                <span style={{ fontSize: "0.72rem", color: "#4ade80" }}>Connected</span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", marginTop: 5, flexShrink: 0 }} />
+                <div>
+                  <div style={{ color: "#fafafa", fontSize: "0.85rem", wordBreak: "break-all" }}>{outlookEmail}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#4ade80", marginTop: 3 }}>Connected</div>
+                </div>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={syncOutlook} disabled={syncing === "outlook"}
