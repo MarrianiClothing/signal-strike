@@ -200,7 +200,7 @@ async function buildExpenseReportPDF(
   drawTableHeader();
 
   expenses.forEach((exp, idx) => {
-    const hasExtra = !!(exp.notes || exp.receipt_url);
+    const hasExtra = !!(exp.notes); // receipt shown as embedded image, not text
     const rowH = hasExtra ? 46 : 28;
     ensureSpace(rowH + 2);
 
@@ -251,13 +251,14 @@ async function buildExpenseReportPDF(
     // Embed receipt image if present
     if (exp.receipt_url) {
       try {
-        const isImage = /\.(jpg|jpeg|png)(\?|$)/i.test(exp.receipt_url);
+        // Fetch first, then check Content-Type — more reliable than URL regex
+        const imgRes = await fetch(exp.receipt_url);
+        const contentType = imgRes.headers.get("content-type") || "";
+        const isImage = imgRes.ok && (contentType.includes("jpeg") || contentType.includes("jpg") || contentType.includes("png") || /\.(jpg|jpeg|png)/i.test(exp.receipt_url));
         if (isImage) {
-          // Fetch the image bytes
-          const imgRes = await fetch(exp.receipt_url);
           if (imgRes.ok) {
             const imgBytes = await imgRes.arrayBuffer();
-            const isJpg = /\.(jpg|jpeg)(\?|$)/i.test(exp.receipt_url);
+            const isJpg = contentType.includes("jpeg") || contentType.includes("jpg") || /\.(jpg|jpeg)/i.test(exp.receipt_url);
             const embeddedImg = isJpg
               ? await doc.embedJpg(imgBytes)
               : await doc.embedPng(imgBytes);
@@ -293,7 +294,7 @@ async function buildExpenseReportPDF(
               borderColor: BORDER, borderWidth: 0.5, opacity: 0,
             });
           }
-        } else {
+        } else if (!isImage) {
           // PDF receipt — note only
           ensureSpace(22);
           fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
