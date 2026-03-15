@@ -267,7 +267,8 @@ export default function ExpensesPage() {
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading...</div>;
 
   return (
-    <div style={{ padding: isMobile ? 16 : 32, maxWidth: 1200 }}>
+    <div style={{ padding: isMobile ? 0 : 32, maxWidth: isMobile ? "100%" : 1200 }}>
+      <div style={{ padding: isMobile ? "0 16px" : 0 }}>
       {/* Header */}
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 28, gap: 12 }}>
         <div>
@@ -292,8 +293,8 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
+      </div>
+      <div style={{ padding: isMobile ? "0 16px" : 0 }}><div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[
           { label: "Total Expenses",  value: fmt(totalAmt),    color: "#fafafa" },
           { label: "Pending",         value: fmt(pendingAmt),  color: "#fbbf24" },
@@ -307,6 +308,8 @@ export default function ExpensesPage() {
         ))}
       </div>
 
+      </div></div>
+      <div style={{ padding: isMobile ? "0 16px" : 0 }}>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24 }}>
         {/* Filters + list */}
         <div>
@@ -437,6 +440,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
+      </div>
       {/* Report Modal */}
       {reportModal && (
         <div style={{

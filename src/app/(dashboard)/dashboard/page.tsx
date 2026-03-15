@@ -89,14 +89,15 @@ export default function DashboardPage() {
   const totalCommission = tieredDeals.reduce((sum: number, d: any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
 
   return (
-    <div style={{ padding: isMobile ? 16 : 32, maxWidth: 1200 }}>
+    <div style={{ padding: isMobile ? 0 : 32, maxWidth: isMobile ? "100%" : 1200 }}>
       {/* Header */}
+      <div style={{ padding: isMobile ? "0 16px" : 0 }}>
       <div style={{ marginBottom: isMobile ? 20 : 32, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "flex-start", gap: isMobile ? 12 : 0 }}>
         <div style={{ flexShrink: 0 }}>
-          <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa" }}>
+          <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.6rem", fontWeight: 800, color: "#fafafa", textAlign: isMobile ? "center" : "left" }}>
             {userName ? `Welcome back, ${userName} ` : "Dashboard"}
           </h1>
-          <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4 }}>
+          <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4, textAlign: isMobile ? "center" : "left" }}>
             {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
         </div>
@@ -105,8 +106,9 @@ export default function DashboardPage() {
       </div>
 
 
+      </div>
       {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
+      <div style={{ padding: isMobile ? "0 16px" : 0 }}><div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[
           { label: "Pipeline Value", value: fmt(totalPipeline), sub: `${openDeals} open deals`, color: "#34d399" },
           { label: "Won Revenue", value: fmt(wonRevenue), sub: `${deals.filter(d => d.stage === "closed_won").length} deals closed`, color: "#C9A84C" },
@@ -126,6 +128,8 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      </div></div>
+      <div style={{ padding: isMobile ? "0 16px" : 0 }}>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap: 20 }}>
         {/* Commission Tracker */}
         <div style={card}>
@@ -228,6 +232,7 @@ export default function DashboardPage() {
             })}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
