@@ -267,7 +267,7 @@ export default function ExpensesPage() {
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading...</div>;
 
   return (
-    <div style={{ padding: isMobile ? 16 : 32, maxWidth: isMobile ? "100%" : 1200, width: "100%", boxSizing: "border-box" as const }}>
+    <div style={{ padding: isMobile ? 16 : 32, maxWidth: isMobile ? "100%" : 1200, width: "100%", boxSizing: "border-box" as const, overflow: isMobile ? "hidden" : "visible" }}>
       {/* Header */}
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 28, gap: 12, margin: isMobile ? "0 16px" : 0 }}>
         <div>
@@ -307,7 +307,7 @@ export default function ExpensesPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24, minWidth: 0 }}>
         {/* Filters + list */}
         <div>
           {/* Filter bar — scrollable on mobile */}

@@ -89,7 +89,7 @@ export default function DashboardPage() {
   const totalCommission = tieredDeals.reduce((sum: number, d: any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
 
   return (
-    <div style={{ padding: isMobile ? 16 : 32, maxWidth: isMobile ? "100%" : 1200, width: "100%", boxSizing: "border-box" as const }}>
+    <div style={{ padding: isMobile ? 16 : 32, maxWidth: isMobile ? "100%" : 1200, width: "100%", boxSizing: "border-box" as const, overflow: isMobile ? "hidden" : "visible" }}>
       {/* Header */}
       <div style={{ marginBottom: isMobile ? 20 : 32, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "center" : "flex-start", gap: isMobile ? 12 : 0 }}>
         <div style={{ flexShrink: 0 }}>
@@ -126,7 +126,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap: 20, minWidth: 0 }}>
         {/* Commission Tracker */}
         <div style={card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
