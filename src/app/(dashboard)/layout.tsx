@@ -15,16 +15,7 @@ function useIsMobile() {
 }
 
 // Detect mobile viewport
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-  return isMobile;
-}
+
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
