@@ -3,6 +3,18 @@ import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+// Detect mobile viewport
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/pipeline", label: "Pipeline" },
@@ -18,7 +30,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [initials, setInitials] = useState("?");
   const [fullName, setFullName] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function loadProfile() {
@@ -60,13 +74,61 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Get page title from pathname
   const pageTitle = NAV.find(n => n.href === pathname || (n.href !== "/dashboard" && pathname.startsWith(n.href)))?.label ?? "Dashboard";
 
+  // Close sidebar when navigating on mobile
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0a0a0b" }}>
+
+      {/* ── Mobile hamburger button ── */}
+      {isMobile && (
+        <button
+          onClick={() => setSidebarOpen(o => !o)}
+          style={{
+            position: "fixed", top: 14, left: 14, zIndex: 200,
+            width: 40, height: 40, borderRadius: 10,
+            background: "rgba(0,0,0,0.85)", border: "1px solid #27272a",
+            color: "#fafafa", cursor: "pointer",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", gap: 5,
+          }}
+        >
+          {sidebarOpen ? (
+            <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>✕</span>
+          ) : (
+            <>
+              <span style={{ width: 18, height: 2, background: "#C9A84C", borderRadius: 2, display: "block" }} />
+              <span style={{ width: 18, height: 2, background: "#C9A84C", borderRadius: 2, display: "block" }} />
+              <span style={{ width: 18, height: 2, background: "#C9A84C", borderRadius: 2, display: "block" }} />
+            </>
+          )}
+        </button>
+      )}
+
+      {/* ── Mobile overlay backdrop ── */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 149,
+            background: "rgba(0,0,0,0.6)",
+          }}
+        />
+      )}
+
       {/* ── Sidebar ── */}
       <aside style={{
         width: 220, background: "#000000", borderRight: "1px solid #18181b",
         display: "flex", flexDirection: "column", padding: "24px 0", flexShrink: 0,
-        position: "sticky", top: 0, height: "100vh",
+        // Desktop: sticky. Mobile: fixed overlay, hidden when closed
+        ...(isMobile ? {
+          position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 150,
+          transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.25s ease",
+          boxShadow: sidebarOpen ? "4px 0 32px rgba(0,0,0,0.7)" : "none",
+        } : {
+          position: "sticky", top: 0, height: "100vh",
+        }),
       }}>
         {/* Logo */}
         <div style={{ padding: "0 20px 28px", textAlign: "center" }}>
@@ -191,7 +253,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* ── Main ── */}
-      <main style={{ flex: 1, overflowY: "auto", position: "relative" }}>
+      <main style={{
+        flex: 1, overflowY: "auto", position: "relative",
+        // On mobile add top padding for hamburger button
+        paddingTop: isMobile ? 0 : 0,
+        minWidth: 0,
+      }}>
+      {isMobile && <div style={{ height: 60 }} />}
         <div style={{ display: "none" }}>
             <button
               onClick={() => setDropdownOpen(prev => !prev)}
