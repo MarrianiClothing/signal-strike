@@ -269,7 +269,7 @@ export default function ExpensesPage() {
   return (
     <div style={{ padding: isMobile ? "16px 0" : 32, maxWidth: isMobile ? "100%" : 1200 }}>
       {/* Header */}
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 28, gap: 12, padding: isMobile ? "0 16px" : 0 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 28, gap: 12, margin: isMobile ? "0 16px" : 0 }}>
         <div>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa", margin: 0 }}>Expenses</h1>
           <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4 }}>{expenses.length} total expense{expenses.length !== 1 ? "s" : ""}</p>
@@ -293,7 +293,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24, padding: isMobile ? "0 16px" : 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24, margin: isMobile ? "0 16px" : 0 }}>
         {[
           { label: "Total Expenses",  value: fmt(totalAmt),    color: "#fafafa" },
           { label: "Pending",         value: fmt(pendingAmt),  color: "#fbbf24" },
@@ -307,7 +307,7 @@ export default function ExpensesPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24, padding: isMobile ? "0 16px" : 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24, margin: isMobile ? "0 16px" : 0 }}>
         {/* Filters + list */}
         <div>
           {/* Filter bar — scrollable on mobile */}
