@@ -91,7 +91,8 @@ export default function ExpensesPage() {
   const [uploading, setUploading] = useState(false);
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterCat, setFilterCat] = useState("All");
-  const fileRef = useRef<HTMLInputElement>(null);
+  const fileRef   = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   // Report modal state
   const [reportModal, setReportModal] = useState(false);
@@ -603,22 +604,78 @@ export default function ExpensesPage() {
               {/* Receipt Upload */}
               <div>
                 <label style={labelStyle}>Receipt</label>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <button onClick={() => fileRef.current?.click()} style={{
-                    background: "#18181b", border: "1px dashed #3f3f46", borderRadius: 8,
-                    color: "#a1a1aa", padding: "10px 16px", cursor: "pointer", fontSize: "0.82rem",
-                    flex: 1, textAlign: "left",
+
+                {/* Status / preview row */}
+                {form.receipt_url && (
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)",
+                    borderRadius: 8, padding: "8px 12px", marginBottom: 10,
                   }}>
-                    {uploading ? "Uploading..." : form.receipt_url ? "✓ Receipt uploaded — click to replace" : "📎 Click to upload photo or PDF"}
-                  </button>
-                  {form.receipt_url && (
+                    <span style={{ color: "#34d399", fontSize: "0.8rem", flex: 1 }}>
+                      ✓ Receipt attached
+                    </span>
                     <a href={form.receipt_url} target="_blank" rel="noopener noreferrer"
-                      style={{ color: "#60a5fa", fontSize: "0.78rem", textDecoration: "none" }}>
+                      style={{ color: "#60a5fa", fontSize: "0.75rem", textDecoration: "none" }}>
                       View
                     </a>
-                  )}
-                </div>
-                <input ref={fileRef} type="file" accept="image/*,.pdf" style={{ display: "none" }} onChange={handleReceiptUpload} />
+                    <button onClick={() => setForm(f => ({ ...f, receipt_url: "" }))}
+                      style={{ background: "transparent", border: "none", color: "#f87171", cursor: "pointer", fontSize: "0.8rem", padding: 0 }}>
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {uploading ? (
+                  <div style={{
+                    background: "#18181b", border: "1px dashed #3f3f46", borderRadius: 8,
+                    color: "#71717a", padding: "12px 16px", fontSize: "0.82rem", textAlign: "center",
+                  }}>
+                    Uploading receipt...
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {/* Camera capture — opens rear camera on mobile */}
+                    <button onClick={() => cameraRef.current?.click()} style={{
+                      background: "#18181b", border: "1px dashed #3f3f46", borderRadius: 8,
+                      color: "#a1a1aa", padding: "12px 10px", cursor: "pointer",
+                      fontSize: "0.82rem", textAlign: "center", display: "flex",
+                      flexDirection: "column", alignItems: "center", gap: 6,
+                    }}>
+                      <span style={{ fontSize: "1.3rem" }}>📷</span>
+                      <span>Take Photo</span>
+                    </button>
+
+                    {/* File picker — for desktop or existing files */}
+                    <button onClick={() => fileRef.current?.click()} style={{
+                      background: "#18181b", border: "1px dashed #3f3f46", borderRadius: 8,
+                      color: "#a1a1aa", padding: "12px 10px", cursor: "pointer",
+                      fontSize: "0.82rem", textAlign: "center", display: "flex",
+                      flexDirection: "column", alignItems: "center", gap: 6,
+                    }}>
+                      <span style={{ fontSize: "1.3rem" }}>📎</span>
+                      <span>Upload File</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Camera input — capture="environment" opens rear camera on mobile */}
+                <input
+                  ref={cameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{ display: "none" }}
+                  onChange={handleReceiptUpload}
+                />
+                {/* File input — standard picker for desktop + any file type */}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  style={{ display: "none" }}
+                  onChange={handleReceiptUpload}
+                />
               </div>
 
               {/* Save */}
