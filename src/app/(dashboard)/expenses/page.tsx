@@ -307,7 +307,7 @@ export default function ExpensesPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24, margin: isMobile ? "0 16px" : 0 }}>
         {/* Filters + list */}
         <div>
           {/* Filter bar — scrollable on mobile */}
