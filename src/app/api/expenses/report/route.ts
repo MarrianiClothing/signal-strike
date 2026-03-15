@@ -240,64 +240,71 @@ async function buildExpenseReportPDF(
 
     y += rowH + 2;
 
-    // Embed receipt image (await works here because we use for...of)
+    // Embed receipt — try JPG then PNG regardless of content-type
+    // (Supabase serves files as application/octet-stream so content-type is unreliable)
     if (exp.receipt_url) {
       try {
         const imgRes = await fetch(exp.receipt_url);
-        const contentType = imgRes.headers.get("content-type") || "";
-        const isJpg = contentType.includes("jpeg") || contentType.includes("jpg") || /\.(jpg|jpeg)/i.test(exp.receipt_url);
-        const isPng = contentType.includes("png") || /\.png/i.test(exp.receipt_url);
-        const isImage = imgRes.ok && (isJpg || isPng);
-
-        if (isImage) {
+        if (imgRes.ok) {
           const imgBytes = await imgRes.arrayBuffer();
-          const embeddedImg = isJpg
-            ? await doc.embedJpg(imgBytes)
-            : await doc.embedPng(imgBytes);
+          let embeddedImg: any = null;
 
-          const maxW = PW - M * 2;
-          const maxH = 180;
-          const scale = Math.min(maxW / embeddedImg.width, maxH / embeddedImg.height, 1);
-          const imgW = embeddedImg.width * scale;
-          const imgH = embeddedImg.height * scale;
+          // Try JPG first, then PNG
+          try {
+            embeddedImg = await doc.embedJpg(imgBytes);
+          } catch {
+            try {
+              embeddedImg = await doc.embedPng(imgBytes);
+            } catch {
+              embeddedImg = null;
+            }
+          }
 
-          ensureSpace(imgH + 30);
+          if (embeddedImg) {
+            const maxW = PW - M * 2;
+            const maxH = 200;
+            const scale = Math.min(maxW / embeddedImg.width, maxH / embeddedImg.height, 1);
+            const imgW = embeddedImg.width * scale;
+            const imgH = embeddedImg.height * scale;
 
-          // Receipt label bar
-          fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
-          drawText("RECEIPT", M + 8, y + 5, { font: fontBold, size: 7, color: MUTED, bold: true });
-          y += 18;
+            ensureSpace(imgH + 30);
 
-          // Draw image centered
-          const imgX = M + (maxW - imgW) / 2;
-          page.drawImage(embeddedImg, {
-            x: imgX,
-            y: PH - y - imgH,
-            width: imgW,
-            height: imgH,
-          });
+            // Receipt label bar
+            fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
+            drawText("RECEIPT", M + 8, y + 5, { font: fontBold, size: 7, color: MUTED, bold: true });
+            y += 18;
 
-          // Border around receipt
-          page.drawRectangle({
-            x: imgX - 1,
-            y: PH - y - imgH - 1,
-            width: imgW + 2,
-            height: imgH + 2,
-            borderColor: BORDER,
-            borderWidth: 0.5,
-            opacity: 0,
-          });
+            // Draw image centered
+            const imgX = M + (maxW - imgW) / 2;
+            page.drawImage(embeddedImg, {
+              x: imgX,
+              y: PH - y - imgH,
+              width: imgW,
+              height: imgH,
+            });
 
-          y += imgH + 12;
-        } else {
-          // Non-image receipt (PDF etc) — label only
-          ensureSpace(22);
-          fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
-          drawText("RECEIPT: PDF - see attached file", M + 8, y + 5, { font: fontReg, size: 7.5, color: rgb(0.38, 0.64, 0.98) });
-          y += 22;
+            // Border around image
+            page.drawRectangle({
+              x: imgX - 1,
+              y: PH - y - imgH - 1,
+              width: imgW + 2,
+              height: imgH + 2,
+              borderColor: BORDER,
+              borderWidth: 0.5,
+              opacity: 0,
+            });
+
+            y += imgH + 14;
+          } else {
+            // Could not decode as image — must be a PDF receipt
+            ensureSpace(22);
+            fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
+            drawText("RECEIPT: PDF file (cannot be embedded inline)", M + 8, y + 5, { font: fontReg, size: 7.5, color: rgb(0.38, 0.64, 0.98) });
+            y += 22;
+          }
         }
       } catch (imgErr) {
-        console.warn("Could not embed receipt:", exp.receipt_url, imgErr);
+        console.warn("Receipt embed error:", exp.receipt_url, imgErr);
       }
     }
   }
