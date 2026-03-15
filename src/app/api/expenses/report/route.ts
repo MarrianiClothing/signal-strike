@@ -199,114 +199,108 @@ async function buildExpenseReportPDF(
 
   drawTableHeader();
 
-  expenses.forEach((exp, idx) => {
-    const hasExtra = !!(exp.notes); // receipt shown as embedded image, not text
-    const rowH = hasExtra ? 46 : 28;
+  for (const [idx, exp] of expenses.entries()) {
+    const hasNotes = !!(exp.notes);
+    const rowH = hasNotes ? 46 : 28;
     ensureSpace(rowH + 2);
 
     const rowBg = idx % 2 === 0 ? rgb(0.09, 0.09, 0.10) : rgb(0.07, 0.07, 0.075);
     fillRect(M, y, PW - M * 2, rowH, rowBg);
 
-    // Category color bar — full row height
+    // Category color bar
     const catRgbRow = CAT_RGB[exp.category] || [0.44, 0.44, 0.48];
     page.drawRectangle({ x: M, y: PH - y - rowH, width: 3, height: rowH, color: rgb(...catRgbRow) });
 
-    // Main data row — vertically centered in top portion
     const mainY = y + 9;
-
     const dateLabel = exp.expense_date
       ? new Date(exp.expense_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })
-      : "—";
+      : "-";
     drawText(dateLabel, COL.date.x + 6, mainY, { font: fontReg, size: 8.5, color: MUTED });
-    drawText(clamp(exp.merchant || "—", fontBold, 9, COL.merchant.w - 8), COL.merchant.x + 4, mainY, { font: fontBold, size: 9, color: WHITE, bold: true });
-    drawText(clamp(exp.category || "—", fontReg, 8.5, COL.category.w - 8), COL.category.x + 4, mainY, { font: fontReg, size: 8.5, color: MUTED });
+    drawText(clamp(exp.merchant || "-", fontBold, 9, COL.merchant.w - 8), COL.merchant.x + 4, mainY, { font: fontBold, size: 9, color: WHITE, bold: true });
+    drawText(clamp(exp.category || "-", fontReg, 8.5, COL.category.w - 8), COL.category.x + 4, mainY, { font: fontReg, size: 8.5, color: MUTED });
 
-    // Status badge color
     const stRgb = STATUS_RGB[exp.status] || [0.44, 0.44, 0.48];
-    drawText(exp.status || "—", COL.status.x + 4, mainY, { font: fontBold, size: 8.5, color: rgb(...stRgb), bold: true });
+    drawText(exp.status || "-", COL.status.x + 4, mainY, { font: fontBold, size: 8.5, color: rgb(...stRgb), bold: true });
 
-    // Amount right-aligned
     const amtStr = fmt(exp.amount || 0);
     const amtW = fontBold.widthOfTextAtSize(amtStr, 10);
     drawText(amtStr, COL.amount.x + COL.amount.w - amtW - 4, mainY, { font: fontBold, size: 10, color: GOLD, bold: true });
 
-    // Notes / receipt — clearly separated second line
-    if (hasExtra) {
-      // Hairline divider between main row and sub-line
+    // Notes sub-line
+    if (hasNotes) {
       page.drawLine({
-        start: { x: M + 6,     y: PH - (y + 28) },
+        start: { x: M + 6,      y: PH - (y + 28) },
         end:   { x: PW - M - 6, y: PH - (y + 28) },
         thickness: 0.3,
         color: rgb(0.20, 0.20, 0.21),
       });
-      // Arrow indicator + notes only (receipt shown as embedded image below)
       drawText(">>", COL.date.x + 6, y + 31, { font: fontReg, size: 8, color: rgb(0.32, 0.32, 0.34) });
-      if (exp.notes) {
-        drawText(clamp(exp.notes, fontReg, 8, 380), COL.merchant.x + 4, y + 31, { font: fontReg, size: 8, color: rgb(0.55, 0.55, 0.58) });
-      }
+      drawText(clamp(exp.notes, fontReg, 8, 380), COL.merchant.x + 4, y + 31, { font: fontReg, size: 8, color: rgb(0.55, 0.55, 0.58) });
     }
 
     y += rowH + 2;
 
-    // Embed receipt image if present
+    // Embed receipt image (await works here because we use for...of)
     if (exp.receipt_url) {
       try {
-        // Fetch first, then check Content-Type — more reliable than URL regex
         const imgRes = await fetch(exp.receipt_url);
         const contentType = imgRes.headers.get("content-type") || "";
-        const isImage = imgRes.ok && (contentType.includes("jpeg") || contentType.includes("jpg") || contentType.includes("png") || /\.(jpg|jpeg|png)/i.test(exp.receipt_url));
+        const isJpg = contentType.includes("jpeg") || contentType.includes("jpg") || /\.(jpg|jpeg)/i.test(exp.receipt_url);
+        const isPng = contentType.includes("png") || /\.png/i.test(exp.receipt_url);
+        const isImage = imgRes.ok && (isJpg || isPng);
+
         if (isImage) {
-          if (imgRes.ok) {
-            const imgBytes = await imgRes.arrayBuffer();
-            const isJpg = contentType.includes("jpeg") || contentType.includes("jpg") || /\.(jpg|jpeg)/i.test(exp.receipt_url);
-            const embeddedImg = isJpg
-              ? await doc.embedJpg(imgBytes)
-              : await doc.embedPng(imgBytes);
+          const imgBytes = await imgRes.arrayBuffer();
+          const embeddedImg = isJpg
+            ? await doc.embedJpg(imgBytes)
+            : await doc.embedPng(imgBytes);
 
-            // Scale to max width of content area, max height 180px
-            const maxW = PW - M * 2;
-            const maxH = 180;
-            const scale = Math.min(maxW / embeddedImg.width, maxH / embeddedImg.height, 1);
-            const imgW = embeddedImg.width * scale;
-            const imgH = embeddedImg.height * scale;
+          const maxW = PW - M * 2;
+          const maxH = 180;
+          const scale = Math.min(maxW / embeddedImg.width, maxH / embeddedImg.height, 1);
+          const imgW = embeddedImg.width * scale;
+          const imgH = embeddedImg.height * scale;
 
-            ensureSpace(imgH + 28);
+          ensureSpace(imgH + 30);
 
-            // Receipt label bar
-            fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
-            drawText("RECEIPT", M + 8, y + 5, { font: fontBold, size: 7, color: MUTED, bold: true });
-            y += 18;
+          // Receipt label bar
+          fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
+          drawText("RECEIPT", M + 8, y + 5, { font: fontBold, size: 7, color: MUTED, bold: true });
+          y += 18;
 
-            // Draw image centered
-            const imgX = M + (maxW - imgW) / 2;
-            page.drawImage(embeddedImg, {
-              x: imgX,
-              y: PH - y - imgH,
-              width: imgW,
-              height: imgH,
-            });
-            y += imgH + 12;
+          // Draw image centered
+          const imgX = M + (maxW - imgW) / 2;
+          page.drawImage(embeddedImg, {
+            x: imgX,
+            y: PH - y - imgH,
+            width: imgW,
+            height: imgH,
+          });
 
-            // Thin border around receipt
-            page.drawRectangle({
-              x: imgX - 1, y: PH - y + 12 - 1,
-              width: imgW + 2, height: imgH + 2,
-              borderColor: BORDER, borderWidth: 0.5, opacity: 0,
-            });
-          }
-        } else if (!isImage) {
-          // PDF receipt — note only
+          // Border around receipt
+          page.drawRectangle({
+            x: imgX - 1,
+            y: PH - y - imgH - 1,
+            width: imgW + 2,
+            height: imgH + 2,
+            borderColor: BORDER,
+            borderWidth: 0.5,
+            opacity: 0,
+          });
+
+          y += imgH + 12;
+        } else {
+          // Non-image receipt (PDF etc) — label only
           ensureSpace(22);
           fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
-          drawText("RECEIPT: PDF document attached separately (see original file)", M + 8, y + 5, { font: fontReg, size: 7.5, color: rgb(0.38, 0.64, 0.98) });
+          drawText("RECEIPT: PDF - see attached file", M + 8, y + 5, { font: fontReg, size: 7.5, color: rgb(0.38, 0.64, 0.98) });
           y += 22;
         }
       } catch (imgErr) {
-        // Skip silently if image fetch fails
         console.warn("Could not embed receipt:", exp.receipt_url, imgErr);
       }
     }
-  });
+  }
 
   // ── TOTAL ROW ──────────────────────────────────────────────────────────────
   ensureSpace(30);
