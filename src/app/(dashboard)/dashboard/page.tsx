@@ -5,6 +5,18 @@ import { createClient } from "@/lib/supabase/client";
 import DailySignalCountdown from "@/components/DailySignalCountdown";
 import DailyQuote from "@/components/DailyQuote";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
+
 function fmt(n: number) {
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
   if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "K";
@@ -29,6 +41,7 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDealsGoal, setOpenDealsGoal] = useState<number | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function load() {
@@ -76,9 +89,9 @@ export default function DashboardPage() {
   const totalCommission = tieredDeals.reduce((sum: number, d: any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
 
   return (
-    <div style={{ padding: 32, maxWidth: 1200 }}>
+    <div style={{ padding: isMobile ? 16 : 32, maxWidth: 1200 }}>
       {/* Header */}
-      <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div style={{ marginBottom: isMobile ? 20 : 32, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "flex-start", gap: isMobile ? 12 : 0 }}>
         <div style={{ flexShrink: 0 }}>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa" }}>
             {userName ? `Welcome back, ${userName} ` : "Dashboard"}
@@ -93,7 +106,7 @@ export default function DashboardPage() {
 
 
       {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[
           { label: "Pipeline Value", value: fmt(totalPipeline), sub: `${openDeals} open deals`, color: "#34d399" },
           { label: "Won Revenue", value: fmt(wonRevenue), sub: `${deals.filter(d => d.stage === "closed_won").length} deals closed`, color: "#C9A84C" },
@@ -113,7 +126,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap: 20 }}>
         {/* Commission Tracker */}
         <div style={card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>

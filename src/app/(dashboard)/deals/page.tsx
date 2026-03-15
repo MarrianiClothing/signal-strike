@@ -3,6 +3,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
+
 const STAGE_LABELS: Record<string, string> = {
   prospecting: "Prospecting", qualification: "Qualified", proposal: "Proposal",
   negotiation: "Negotiation", closed_won: "Won", closed_lost: "Lost",
@@ -24,6 +36,7 @@ export default function DealsPage() {
   const [search, setSearch] = useState("");
   const supabase = createClient();
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function load() {
@@ -45,15 +58,15 @@ export default function DealsPage() {
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading deals...</div>;
 
   return (
-    <div style={{ padding: 32 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+    <div style={{ padding: isMobile ? 16 : 32 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 24, gap: 12 }}>
         <div>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fafafa" }}>Deals</h1>
           <p style={{ color: "#71717a", fontSize: "0.82rem", marginTop: 3 }}>{deals.length} total deals</p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, width: isMobile ? "100%" : "auto" }}>
           <input
-            style={{ background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 14px", color: "#fafafa", fontSize: "0.85rem", width: 220 }}
+            style={{ background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 14px", color: "#fafafa", fontSize: "0.85rem", width: isMobile ? "100%" : 220, flex: isMobile ? 1 : undefined }}
             placeholder="Search deals..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -65,6 +78,35 @@ export default function DealsPage() {
         </div>
       </div>
 
+      {isMobile ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {filtered.length === 0 ? (
+            <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: 32, textAlign: "center", color: "#52525b" }}>
+              {search ? "No deals match your search." : "No deals yet."}
+            </div>
+          ) : filtered.map(deal => {
+            const stageColor = STAGE_COLORS[deal.stage] || "#71717a";
+            return (
+              <div key={deal.id} onClick={() => router.push("/deals/" + deal.id)}
+                style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, borderLeft: `3px solid ${stageColor}`, padding: "14px 16px", cursor: "pointer" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div>
+                    <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: "0 0 3px" }}>{deal.title}</p>
+                    <p style={{ color: "#71717a", fontSize: "0.78rem", margin: 0 }}>{deal.company || "—"}</p>
+                  </div>
+                  <span style={{ color: "#C9A84C", fontWeight: 800, fontSize: "1rem", fontFamily: "var(--font-cinzel, serif)" }}>{fmt(deal.value)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: "#71717a", fontSize: "0.78rem" }}>{deal.contact_name || "—"}</span>
+                  <span style={{ fontSize: "0.72rem", padding: "3px 10px", borderRadius: 20, background: stageColor + "22", color: stageColor, fontWeight: 600 }}>
+                    {STAGE_LABELS[deal.stage] || deal.stage}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
       <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
@@ -106,6 +148,7 @@ export default function DealsPage() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

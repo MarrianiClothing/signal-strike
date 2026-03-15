@@ -3,6 +3,18 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
+
 const STAGES = [
   { id: "prospecting", label: "Prospecting", color: "#71717a" },
   { id: "qualification", label: "Qualified", color: "#60a5fa" },
@@ -31,6 +43,7 @@ export default function PipelinePage() {
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
   const [commissionTiers, setCommissionTiers] = useState<any[]>([]);
+  const isMobile = useIsMobile();
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -88,14 +101,14 @@ export default function PipelinePage() {
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading pipeline...</div>;
 
   return (
-    <div style={{ padding: 32 }}>
+    <div style={{ padding: isMobile ? 16 : 32 }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 28, gap: 12 }}>
         <div>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fafafa" }}>Pipeline</h1>
           <p style={{ color: "#71717a", fontSize: "0.82rem", marginTop: 3 }}>{deals.length} deals</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, width: isMobile ? "100%" : "auto" }}>
           <input
             type="text"
             placeholder="Search pipeline..."
@@ -104,7 +117,7 @@ export default function PipelinePage() {
             style={{
               background: "#111113", border: "1px solid #27272a", borderRadius: 8,
               color: "#fafafa", padding: "8px 14px", fontSize: "0.875rem",
-              outline: "none", width: 220,
+              outline: "none", flex: isMobile ? 1 : undefined, width: isMobile ? undefined : 220,
             }}
           />
           <button onClick={() => setShowAdd(true)} style={{

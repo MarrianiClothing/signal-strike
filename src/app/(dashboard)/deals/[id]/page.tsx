@@ -4,6 +4,18 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ActivityLog from "@/components/ActivityLog";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
+
 const STAGES = ["prospecting","qualification","proposal","negotiation","closed_won","closed_lost"];
 const STAGE_LABELS: Record<string,string> = {
   prospecting:"Prospecting", qualification:"Qualified", proposal:"Proposal",
@@ -42,6 +54,7 @@ export default function DealDetailPage() {
   const [msg,     setMsg]     = useState<{ok:boolean;text:string}|null>(null);
   const [edit,    setEdit]    = useState<any>(null);
   const [tiers,   setTiers]   = useState<any[]>([]);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function load() {
@@ -122,14 +135,14 @@ export default function DealDetailPage() {
   const commission = activeTier ? (deal.value || 0) * (activeTier.rate / 100) : null;
 
   return (
-    <div style={{ padding: 32, maxWidth: 1100 }}>
+    <div style={{ padding: isMobile ? 16 : 32, maxWidth: 1100 }}>
       <button onClick={() => router.back()}
         style={{ background: "none", border: "none", color: "#71717a", cursor: "pointer",
           fontSize: "0.85rem", marginBottom: 20, padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
         ← Back
       </button>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, gap: 16 }}>
         <div>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa", marginBottom: 4 }}>{deal.title}</h1>
           <span style={{ fontSize: "0.8rem", color: stageColor, background: stageColor + "22",
@@ -150,7 +163,7 @@ export default function DealDetailPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 380px", gap: 20 }}>
         {/* Left — Edit form */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: 24 }}>

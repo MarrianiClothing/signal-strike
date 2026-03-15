@@ -1,5 +1,17 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
 import { createClient } from "@/lib/supabase/client";
 
 const CATEGORIES = ["Travel", "Meals & Entertainment", "Marketing", "Client Expenses"];
@@ -103,6 +115,7 @@ export default function ExpensesPage() {
   const [reportMode, setReportMode] = useState<"download" | "email">("download");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportMsg, setReportMsg] = useState("");
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function load() {
@@ -254,14 +267,14 @@ export default function ExpensesPage() {
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading...</div>;
 
   return (
-    <div style={{ padding: 32, maxWidth: 1200 }}>
+    <div style={{ padding: isMobile ? 16 : 32, maxWidth: 1200 }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 28, gap: 12 }}>
         <div>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa", margin: 0 }}>Expenses</h1>
           <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4 }}>{expenses.length} total expense{expenses.length !== 1 ? "s" : ""}</p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, width: isMobile ? "100%" : "auto" }}>
           <button onClick={() => { setReportModal(true); setReportMsg(""); }} style={{
             background: "transparent", color: "#C9A84C", border: "1px solid #C9A84C",
             borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: "0.85rem",
@@ -280,7 +293,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[
           { label: "Total Expenses",  value: fmt(totalAmt),    color: "#fafafa" },
           { label: "Pending",         value: fmt(pendingAmt),  color: "#fbbf24" },
@@ -294,7 +307,7 @@ export default function ExpensesPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24 }}>
         {/* Filters + list */}
         <div>
           {/* Filter bar */}
