@@ -43,6 +43,7 @@ export default function PipelinePage() {
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
   const [commissionTiers, setCommissionTiers] = useState<any[]>([]);
+  const [filterStage, setFilterStage] = useState("All");
   const isMobile = useIsMobile();
 
   const load = useCallback(async () => {
@@ -181,11 +182,29 @@ export default function PipelinePage() {
         </div>
       )}
 
+      {/* Stage filter pills */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+        {["All", ...STAGES.map(s => s.label)].map(label => {
+          const stage = STAGES.find(s => s.label === label);
+          const isActive = filterStage === label;
+          return (
+            <button key={label} onClick={() => setFilterStage(label)} style={{
+              padding: "6px 14px", borderRadius: 20, border: "1px solid",
+              borderColor: isActive ? (stage?.color ?? "#C9A84C") : "#27272a",
+              background: isActive ? (stage?.color ?? "#C9A84C") + "22" : "transparent",
+              color: isActive ? (stage?.color ?? "#C9A84C") : "#71717a",
+              fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
+            }}>{label}</button>
+          );
+        })}
+      </div>
+
       {/* Pipeline — vertical list on all screen sizes */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 860 }}>
         {STAGES.map(stage => {
           const stageDeals = deals.filter(d => d.stage === stage.id && (!search || d.title?.toLowerCase().includes(search.toLowerCase()) || d.company?.toLowerCase().includes(search.toLowerCase()) || d.contact_name?.toLowerCase().includes(search.toLowerCase())));
           if (stageDeals.length === 0) return null;
+          if (filterStage !== "All" && filterStage !== stage.label) return null;
           const stageValue = stageDeals.reduce((s, d) => s + (d.value || 0), 0);
           return (
             <div key={stage.id} style={{ background: "#111113", borderRadius: 12, border: "1px solid #27272a", overflow: "hidden" }}>
