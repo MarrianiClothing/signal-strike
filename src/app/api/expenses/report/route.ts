@@ -239,22 +239,72 @@ async function buildExpenseReportPDF(
         thickness: 0.3,
         color: rgb(0.20, 0.20, 0.21),
       });
-      // Arrow indicator
+      // Arrow indicator + notes only (receipt shown as embedded image below)
       drawText(">>", COL.date.x + 6, y + 31, { font: fontReg, size: 8, color: rgb(0.32, 0.32, 0.34) });
-      // Notes text
       if (exp.notes) {
-        drawText(clamp(exp.notes, fontReg, 8, 200), COL.merchant.x + 4, y + 31, { font: fontReg, size: 8, color: rgb(0.55, 0.55, 0.58) });
-      }
-      // Receipt URL — right side, blue
-      if (exp.receipt_url) {
-        const shortUrl = exp.receipt_url.length > 52 ? exp.receipt_url.slice(0, 52) + "…" : exp.receipt_url;
-        const receiptLabel = "Receipt: " + shortUrl;
-        const rw = fontReg.widthOfTextAtSize(receiptLabel, 7.5);
-        drawText(receiptLabel, COL.amount.x + COL.amount.w - rw - 4, y + 31, { font: fontReg, size: 7.5, color: rgb(0.38, 0.64, 0.98) });
+        drawText(clamp(exp.notes, fontReg, 8, 380), COL.merchant.x + 4, y + 31, { font: fontReg, size: 8, color: rgb(0.55, 0.55, 0.58) });
       }
     }
 
     y += rowH + 2;
+
+    // Embed receipt image if present
+    if (exp.receipt_url) {
+      try {
+        const isImage = /\.(jpg|jpeg|png)(\?|$)/i.test(exp.receipt_url);
+        if (isImage) {
+          // Fetch the image bytes
+          const imgRes = await fetch(exp.receipt_url);
+          if (imgRes.ok) {
+            const imgBytes = await imgRes.arrayBuffer();
+            const isJpg = /\.(jpg|jpeg)(\?|$)/i.test(exp.receipt_url);
+            const embeddedImg = isJpg
+              ? await doc.embedJpg(imgBytes)
+              : await doc.embedPng(imgBytes);
+
+            // Scale to max width of content area, max height 180px
+            const maxW = PW - M * 2;
+            const maxH = 180;
+            const scale = Math.min(maxW / embeddedImg.width, maxH / embeddedImg.height, 1);
+            const imgW = embeddedImg.width * scale;
+            const imgH = embeddedImg.height * scale;
+
+            ensureSpace(imgH + 28);
+
+            // Receipt label bar
+            fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
+            drawText("RECEIPT", M + 8, y + 5, { font: fontBold, size: 7, color: MUTED, bold: true });
+            y += 18;
+
+            // Draw image centered
+            const imgX = M + (maxW - imgW) / 2;
+            page.drawImage(embeddedImg, {
+              x: imgX,
+              y: PH - y - imgH,
+              width: imgW,
+              height: imgH,
+            });
+            y += imgH + 12;
+
+            // Thin border around receipt
+            page.drawRectangle({
+              x: imgX - 1, y: PH - y + 12 - 1,
+              width: imgW + 2, height: imgH + 2,
+              borderColor: BORDER, borderWidth: 0.5, opacity: 0,
+            });
+          }
+        } else {
+          // PDF receipt — note only
+          ensureSpace(22);
+          fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
+          drawText("RECEIPT: PDF document attached separately (see original file)", M + 8, y + 5, { font: fontReg, size: 7.5, color: rgb(0.38, 0.64, 0.98) });
+          y += 22;
+        }
+      } catch (imgErr) {
+        // Skip silently if image fetch fails
+        console.warn("Could not embed receipt:", exp.receipt_url, imgErr);
+      }
+    }
   });
 
   // ── TOTAL ROW ──────────────────────────────────────────────────────────────
