@@ -199,6 +199,9 @@ async function buildExpenseReportPDF(
 
   drawTableHeader();
 
+  // Collect PDF receipt buffers to append as pages after the main report
+  const pdfReceiptBuffers: { label: string; bytes: ArrayBuffer }[] = [];
+
   for (const [idx, exp] of expenses.entries()) {
     const hasNotes = !!(exp.notes);
     const rowH = hasNotes ? 46 : 28;
@@ -240,8 +243,7 @@ async function buildExpenseReportPDF(
 
     y += rowH + 2;
 
-    // Embed receipt — try JPG then PNG regardless of content-type
-    // (Supabase serves files as application/octet-stream so content-type is unreliable)
+    // Embed receipt — try JPG/PNG inline, queue PDF receipts for end of report
     if (exp.receipt_url) {
       try {
         const imgRes = await fetch(exp.receipt_url);
@@ -250,17 +252,13 @@ async function buildExpenseReportPDF(
           let embeddedImg: any = null;
 
           // Try JPG first, then PNG
-          try {
-            embeddedImg = await doc.embedJpg(imgBytes);
-          } catch {
-            try {
-              embeddedImg = await doc.embedPng(imgBytes);
-            } catch {
-              embeddedImg = null;
-            }
+          try { embeddedImg = await doc.embedJpg(imgBytes); } catch { /* not jpg */ }
+          if (!embeddedImg) {
+            try { embeddedImg = await doc.embedPng(imgBytes); } catch { /* not png */ }
           }
 
           if (embeddedImg) {
+            // ── Inline image receipt ──────────────────────────────────────
             const maxW = PW - M * 2;
             const maxH = 200;
             const scale = Math.min(maxW / embeddedImg.width, maxH / embeddedImg.height, 1);
@@ -269,12 +267,10 @@ async function buildExpenseReportPDF(
 
             ensureSpace(imgH + 30);
 
-            // Receipt label bar
             fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
             drawText("RECEIPT", M + 8, y + 5, { font: fontBold, size: 7, color: MUTED, bold: true });
             y += 18;
 
-            // Draw image centered
             const imgX = M + (maxW - imgW) / 2;
             page.drawImage(embeddedImg, {
               x: imgX,
@@ -282,8 +278,6 @@ async function buildExpenseReportPDF(
               width: imgW,
               height: imgH,
             });
-
-            // Border around image
             page.drawRectangle({
               x: imgX - 1,
               y: PH - y - imgH - 1,
@@ -293,13 +287,17 @@ async function buildExpenseReportPDF(
               borderWidth: 0.5,
               opacity: 0,
             });
-
             y += imgH + 14;
           } else {
-            // Could not decode as image — must be a PDF receipt
+            // ── PDF receipt — queue for appending as pages ────────────────
+            pdfReceiptBuffers.push({
+              label: `${exp.merchant || "Receipt"} · ${exp.expense_date || ""}`,
+              bytes: imgBytes,
+            });
+            // Show placeholder row
             ensureSpace(22);
             fillRect(M, y, PW - M * 2, 18, rgb(0.08, 0.08, 0.09));
-            drawText("RECEIPT: PDF file (cannot be embedded inline)", M + 8, y + 5, { font: fontReg, size: 7.5, color: rgb(0.38, 0.64, 0.98) });
+            drawText(`RECEIPT: PDF appended at end of report (${exp.merchant || ""})`, M + 8, y + 5, { font: fontReg, size: 7.5, color: GOLD });
             y += 22;
           }
         }
@@ -324,6 +322,37 @@ async function buildExpenseReportPDF(
   const footerTxt = "Signal Strike  ·  Revenue CRM  ·  Powered by Hilltop Ave";
   const footerW = fontReg.widthOfTextAtSize(footerTxt, 8);
   drawText(footerTxt, PW / 2 - footerW / 2, y + 12, { font: fontReg, size: 8, color: MUTED });
+
+  // ── APPEND PDF RECEIPT PAGES ─────────────────────────────────────────────
+  if (pdfReceiptBuffers.length > 0) {
+    for (const receipt of pdfReceiptBuffers) {
+      try {
+        const receiptDoc = await PDFDocument.load(receipt.bytes);
+        const pageCount = receiptDoc.getPageCount();
+        const copiedPages = await doc.copyPages(receiptDoc, [...Array(pageCount).keys()]);
+
+        for (let i = 0; i < copiedPages.length; i++) {
+          const rPage = doc.addPage(copiedPages[i]);
+          // Add a small label at the top of each receipt page
+          rPage.drawText(`RECEIPT: ${receipt.label}${pageCount > 1 ? ` (page ${i + 1} of ${pageCount})` : ""}`, {
+            x: 40,
+            y: rPage.getHeight() - 20,
+            size: 8,
+            font: fontReg,
+            color: GOLD,
+          });
+          rPage.drawLine({
+            start: { x: 40, y: rPage.getHeight() - 24 },
+            end:   { x: rPage.getWidth() - 40, y: rPage.getHeight() - 24 },
+            thickness: 0.5,
+            color: BORDER,
+          });
+        }
+      } catch (pdfErr) {
+        console.warn("Could not append PDF receipt:", receipt.label, pdfErr);
+      }
+    }
+  }
 
   const bytes = await doc.save();
   return Buffer.from(bytes);
