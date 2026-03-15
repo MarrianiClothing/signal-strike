@@ -307,7 +307,7 @@ export default function ExpensesPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 20, marginBottom: 24, minWidth: 0 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, marginBottom: 24 }}>
         {/* Filters + list */}
         <div>
           {/* Filter bar — scrollable on mobile */}
@@ -409,7 +409,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Chart */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, width: isMobile ? "100%" : 320, flexShrink: 0 }}>
           <div style={card}>
             <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", marginBottom: 20 }}>By Category</h2>
             <DonutChart data={chartData} />
