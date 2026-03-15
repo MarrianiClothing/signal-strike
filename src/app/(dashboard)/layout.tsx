@@ -3,6 +3,17 @@ import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
 // Detect mobile viewport
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -73,6 +84,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Get page title from pathname
   const pageTitle = NAV.find(n => n.href === pathname || (n.href !== "/dashboard" && pathname.startsWith(n.href)))?.label ?? "Dashboard";
+
+  useEffect(() => { if (isMobile) setSidebarOpen(false); }, [pathname]);
 
   // Close sidebar when navigating on mobile
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
