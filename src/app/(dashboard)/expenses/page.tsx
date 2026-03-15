@@ -47,7 +47,7 @@ function useIsMobile() {
 
       {/* Filter bars — scrollable rows */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, paddingRight: 4 }}>
           {["All", ...STATUSES].map(s => (
             <button key={s} onClick={() => setFilterStatus(s)} style={{
               padding: "6px 12px", borderRadius: 20, border: "1px solid", flexShrink: 0,
@@ -58,7 +58,7 @@ function useIsMobile() {
             }}>{s}</button>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginTop: 6 }}>
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginTop: 6, paddingRight: 4 }}>
           {["All", ...CATEGORIES].map(c => (
             <button key={c} onClick={() => setFilterCat(c)} style={{
               padding: "6px 12px", borderRadius: 20, border: "1px solid", flexShrink: 0,
