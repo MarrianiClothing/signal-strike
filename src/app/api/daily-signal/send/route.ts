@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
@@ -242,11 +242,16 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
 
 
 
-function buildExcel(deals: any[], tiers: any[], today: string): Buffer {
+async function buildExcel(deals: any[], tiers: any[], today: string): Promise<Buffer> {
   const tiersMap: Record<string, any> = {};
   for (const t of tiers) tiersMap[t.id] = t;
 
   const activeDeals = deals.filter(d => d.stage !== "closed_lost");
+  const totalValue  = activeDeals.reduce((s, d) => s + (d.value || 0), 0);
+  const totalComm   = activeDeals.reduce((s, d) => {
+    const tier = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
+    return s + (tier ? (d.value || 0) * (tier.rate / 100) : 0);
+  }, 0);
 
   const STAGE_LABELS: Record<string, string> = {
     prospecting: "Prospecting", qualification: "Qualified",
@@ -254,72 +259,100 @@ function buildExcel(deals: any[], tiers: any[], today: string): Buffer {
     closed_won: "Won", closed_lost: "Lost",
   };
 
-  // ── Summary sheet ──────────────────────────────────────────────────────────
-  const totalValue = activeDeals.reduce((s, d) => s + (d.value || 0), 0);
-  const totalComm  = activeDeals.reduce((s, d) => {
-    const tier = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
-    return s + (tier ? (d.value || 0) * (tier.rate / 100) : 0);
-  }, 0);
-
   const fmtUSD = (n: number) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const summaryRows = [
-    ["SIGNAL STRIKE — Daily Signal", "", ""],
-    [today, "", ""],
-    ["", "", ""],
-    ["SUMMARY", "", ""],
-    ["Active Deals", activeDeals.length, ""],
-    ["Pipeline Value", fmtUSD(totalValue), ""],
-    ["Total Commission", fmtUSD(totalComm), ""],
-    ["Tasks Pending", activeDeals.filter((d: any) => d.next_task).length, ""],
-  ];
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-  summarySheet["!cols"] = [{ wch: 24 }, { wch: 22 }, { wch: 18 }];
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Signal Strike";
+  wb.created = new Date();
 
-  // ── Deals sheet ────────────────────────────────────────────────────────────
+  // ── SUMMARY SHEET ─────────────────────────────────────────────────────────
+  const ws = wb.addWorksheet("Summary");
+  ws.columns = [{ width: 26 }, { width: 24 }, { width: 18 }];
+
+  const titleRow = ws.addRow(["SIGNAL STRIKE — Daily Signal"]);
+  titleRow.getCell(1).font = { bold: true, size: 13 };
+
+  ws.addRow([today]).getCell(1).font = { color: { argb: "FF71717A" }, size: 10 };
+  ws.addRow([]);
+
+  const summaryLabelRow = ws.addRow(["SUMMARY"]);
+  summaryLabelRow.getCell(1).font = { bold: true, size: 10, color: { argb: "FF71717A" } };
+
+  const summaryData = [
+    ["Active Deals",      activeDeals.length,        null],
+    ["Pipeline Value",    fmtUSD(totalValue),         null],
+    ["Total Commission",  fmtUSD(totalComm),          null],
+    ["Tasks Pending",     activeDeals.filter((d: any) => d.next_task).length, null],
+  ];
+  for (const [label, value] of summaryData) {
+    const row = ws.addRow([label, value]);
+    row.getCell(1).font = { size: 10 };
+    row.getCell(2).font = { bold: true, size: 11 };
+  }
+
+  // ── DEALS SHEET ───────────────────────────────────────────────────────────
+  const ds = wb.addWorksheet("Deals");
+  ds.columns = [
+    { key: "title",         width: 30 },
+    { key: "company",       width: 22 },
+    { key: "contact_name",  width: 20 },
+    { key: "contact_email", width: 28 },
+    { key: "contact_phone", width: 16 },
+    { key: "stage",         width: 14 },
+    { key: "value",         width: 16 },
+    { key: "probability",   width: 16 },
+    { key: "commission",    width: 18 },
+    { key: "tier_name",     width: 20 },
+    { key: "tier_rate",     width: 18 },
+    { key: "close_date",    width: 16 },
+    { key: "next_task",     width: 40 },
+    { key: "notes",         width: 40 },
+  ];
+
   const headers = [
     "Deal Title", "Company", "Contact Name", "Contact Email", "Contact Phone",
     "Stage", "Value ($)", "Probability (%)", "Commission ($)", "Commission Tier",
     "Commission Rate (%)", "Expected Close", "Next Task", "Notes",
   ];
 
-  const dealRows = activeDeals.map(d => {
+  const headerRow = ds.addRow(headers);
+  headerRow.eachCell(cell => {
+    cell.fill   = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+    cell.font   = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+    cell.border = {
+      bottom: { style: "thin", color: { argb: "FF333333" } },
+    };
+    cell.alignment = { vertical: "middle", horizontal: "left" };
+  });
+  headerRow.height = 22;
+
+  for (const d of activeDeals) {
     const tier       = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
     const commission = tier ? (d.value || 0) * (tier.rate / 100) : "";
-    return [
+    ds.addRow([
       d.title || "",
       d.company || "",
       d.contact_name || "",
       d.contact_email || "",
       d.contact_phone || "",
       STAGE_LABELS[d.stage] || d.stage || "",
-      d.value || 0,
+      d.value ? fmtUSD(d.value) : "",
       d.probability || "",
-      commission,
+      commission ? fmtUSD(commission as number) : "",
       tier ? tier.name : "",
-      tier ? tier.rate : "",
+      tier ? tier.rate + "%" : "",
       d.expected_close_date
         ? new Date(d.expected_close_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
         : "",
       d.next_task || "",
       d.notes || "",
-    ];
-  });
+    ]);
+  }
 
-  const dealsSheet = XLSX.utils.aoa_to_sheet([headers, ...dealRows]);
-  dealsSheet["!cols"] = [
-    { wch: 28 }, { wch: 22 }, { wch: 20 }, { wch: 28 }, { wch: 16 },
-    { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 20 },
-    { wch: 18 }, { wch: 16 }, { wch: 40 }, { wch: 40 },
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
-  XLSX.utils.book_append_sheet(wb, dealsSheet, "Deals");
-
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  const buf = await wb.xlsx.writeBuffer();
   return Buffer.from(buf);
 }
+
 
 
 function buildEmailHtml(userName: string, deals: any[], tiers: any[]) {
@@ -559,7 +592,7 @@ export async function GET(req: NextRequest) {
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
       const pdfBuffer = await buildPDF(deals || [], tiers || [], today2);
       const dateStr = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-      const xlsxBuffer = buildExcel(deals || [], tiers || [], today2);
+      const xlsxBuffer = await buildExcel(deals || [], tiers || [], today2);
       await resend.emails.send({
         from:    "Signal Strike <onboarding@resend.dev>",
         to:      email,
@@ -643,7 +676,7 @@ export async function GET(req: NextRequest) {
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
       const pdfBuf = await buildPDF(deals || [], tiers || [], todayCron);
       const dateStrCron = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-      const xlsxBuf = buildExcel(deals || [], tiers || [], todayCron);
+      const xlsxBuf = await buildExcel(deals || [], tiers || [], todayCron);
       await resend.emails.send({
         from:    "Signal Strike <onboarding@resend.dev>",
         to:      userEmail,
