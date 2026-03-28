@@ -261,18 +261,20 @@ function buildExcel(deals: any[], tiers: any[], today: string): Buffer {
     return s + (tier ? (d.value || 0) * (tier.rate / 100) : 0);
   }, 0);
 
+  const fmtUSD = (n: number) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   const summaryRows = [
     ["SIGNAL STRIKE — Daily Signal", "", ""],
     [today, "", ""],
     ["", "", ""],
     ["SUMMARY", "", ""],
     ["Active Deals", activeDeals.length, ""],
-    ["Pipeline Value", totalValue, ""],
-    ["Total Commission", totalComm, ""],
+    ["Pipeline Value", fmtUSD(totalValue), ""],
+    ["Total Commission", fmtUSD(totalComm), ""],
     ["Tasks Pending", activeDeals.filter((d: any) => d.next_task).length, ""],
   ];
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-  summarySheet["!cols"] = [{ wch: 24 }, { wch: 18 }, { wch: 18 }];
+  summarySheet["!cols"] = [{ wch: 24 }, { wch: 22 }, { wch: 18 }];
 
   // ── Deals sheet ────────────────────────────────────────────────────────────
   const headers = [
