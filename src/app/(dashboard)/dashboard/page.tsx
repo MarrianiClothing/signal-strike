@@ -41,6 +41,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [openDealsGoal, setOpenDealsGoal] = useState<number | null>(null);
   const isMobile = useIsMobile();
+  const [search, setSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -81,6 +83,20 @@ export default function DashboardPage() {
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading...</div>;
 
   const openDealsColor = !openDealsGoal ? "#a78bfa" : openDeals >= openDealsGoal ? "#C9A84C" : openDeals >= openDealsGoal * 0.5 ? "#34d399" : "#f87171";
+
+  const searchResults = search.trim().length < 2 ? [] : deals.filter(d => {
+    const q = search.toLowerCase();
+    return (
+      d.title?.toLowerCase().includes(q) ||
+      d.company?.toLowerCase().includes(q) ||
+      d.contact_name?.toLowerCase().includes(q) ||
+      d.contact_email?.toLowerCase().includes(q) ||
+      d.contact_phone?.toLowerCase().includes(q) ||
+      (STAGE_LABELS[d.stage] || "").toLowerCase().includes(q) ||
+      String(d.value || "").includes(q) ||
+      d.notes?.toLowerCase().includes(q)
+    );
+  }).slice(0, 8);
 
   const GoalsList = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -148,6 +164,89 @@ export default function DashboardPage() {
         </div>
         <DailyQuote />
         {userId && <DailySignalCountdown userId={userId} />}
+      </div>
+
+      {/* Signal Search */}
+      <div style={{ marginBottom: 24, position: "relative" }}>
+        {/* Label */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C" }}>⚡ Signal Search</span>
+        </div>
+        {/* Input */}
+        <div style={{ position: "relative" }}>
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#52525b", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Search deals by title, company, contact, value, stage..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+            style={{
+              width: "100%", boxSizing: "border-box",
+              background: "#111113", border: `1px solid ${searchFocused ? "#C9A84C" : "#27272a"}`,
+              borderRadius: 10, padding: "11px 14px 11px 40px",
+              color: "#fafafa", fontSize: "0.9rem", outline: "none",
+              transition: "border-color 0.2s",
+              fontFamily: "var(--font-montserrat, sans-serif)",
+            }}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#52525b", cursor: "pointer", fontSize: "1rem", padding: 0, lineHeight: 1 }}>×</button>
+          )}
+        </div>
+
+        {/* Results dropdown */}
+        {searchFocused && search.trim().length >= 2 && (
+          <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 100, background: "#111113", border: "1px solid #27272a", borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>
+            {searchResults.length === 0 ? (
+              <div style={{ padding: "16px 18px", color: "#52525b", fontSize: "0.85rem" }}>No deals match "{search}"</div>
+            ) : (
+              <>
+                <div style={{ padding: "8px 14px 6px", borderBottom: "1px solid #1c1c1f" }}>
+                  <span style={{ color: "#52525b", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>{searchResults.length} result{searchResults.length !== 1 ? "s" : ""}</span>
+                </div>
+                {searchResults.map(d => {
+                  const stageColor = STAGE_COLORS[d.stage] || "#71717a";
+                  const commission = d.commission_tiers ? (d.value || 0) * (d.commission_tiers.rate / 100) : null;
+                  return (
+                    <div key={d.id}
+                      onClick={() => { setSearch(""); router.push("/deals/" + d.id); }}
+                      style={{ padding: "12px 16px", borderBottom: "1px solid #18181b", cursor: "pointer", borderLeft: `3px solid ${stageColor}`, transition: "background 0.1s" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#1c1c1f")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.9rem", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            {d.company && <span style={{ color: "#71717a", fontSize: "0.75rem" }}>{d.company}</span>}
+                            {d.contact_name && <span style={{ color: "#52525b", fontSize: "0.75rem" }}>· {d.contact_name}</span>}
+                            {d.contact_email && <span style={{ color: "#52525b", fontSize: "0.72rem" }}>· {d.contact_email}</span>}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <p style={{ color: "#C9A84C", fontWeight: 800, fontSize: "0.95rem", margin: "0 0 4px", fontFamily: "var(--font-cinzel, serif)" }}>{fmt(d.value || 0)}</p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
+                            {commission !== null && <span style={{ color: "#34d399", fontSize: "0.72rem", fontFamily: "monospace" }}>{fmt(commission)}</span>}
+                            <span style={{ fontSize: "0.68rem", padding: "2px 8px", borderRadius: 20, background: stageColor + "22", color: stageColor, fontWeight: 600 }}>{STAGE_LABELS[d.stage] || d.stage}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {deals.filter(d => {
+                  const q = search.toLowerCase();
+                  return d.title?.toLowerCase().includes(q) || d.company?.toLowerCase().includes(q) || d.contact_name?.toLowerCase().includes(q) || d.contact_email?.toLowerCase().includes(q) || d.contact_phone?.toLowerCase().includes(q) || (STAGE_LABELS[d.stage]||"").toLowerCase().includes(q) || String(d.value||"").includes(q) || d.notes?.toLowerCase().includes(q);
+                }).length > 8 && (
+                  <div style={{ padding: "10px 16px", color: "#52525b", fontSize: "0.78rem", textAlign: "center", borderTop: "1px solid #1c1c1f" }}>
+                    Showing top 8 results — refine your search for more
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats */}
