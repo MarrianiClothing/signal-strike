@@ -269,14 +269,31 @@ async function buildExcel(deals: any[], tiers: any[], today: string): Promise<Bu
   const ws = wb.addWorksheet("Summary");
   ws.columns = [{ width: 26 }, { width: 24 }, { width: 18 }];
 
-  const titleRow = ws.addRow(["SIGNAL STRIKE — Daily Signal"]);
-  titleRow.getCell(1).font = { bold: true, size: 13 };
+  const titleRow = ws.addRow(["SIGNAL STRIKE — Daily Signal", "", ""]);
+  titleRow.height = 26;
+  titleRow.eachCell(cell => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+    cell.font = { bold: true, size: 13, color: { argb: "FFFFFFFF" } };
+    cell.alignment = { vertical: "middle" };
+  });
 
-  ws.addRow([today]).getCell(1).font = { color: { argb: "FF71717A" }, size: 10 };
+  const dateRow = ws.addRow([today, "", ""]);
+  dateRow.height = 18;
+  dateRow.eachCell(cell => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+    cell.font = { size: 10, color: { argb: "FF71717A" } };
+    cell.alignment = { vertical: "middle" };
+  });
+
   ws.addRow([]);
 
-  const summaryLabelRow = ws.addRow(["SUMMARY"]);
-  summaryLabelRow.getCell(1).font = { bold: true, size: 10, color: { argb: "FF71717A" } };
+  const summaryLabelRow = ws.addRow(["SUMMARY", "", ""]);
+  summaryLabelRow.height = 20;
+  summaryLabelRow.eachCell(cell => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+    cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+    cell.alignment = { vertical: "middle" };
+  });
 
   const summaryData = [
     ["Active Deals",      activeDeals.length,        null],
