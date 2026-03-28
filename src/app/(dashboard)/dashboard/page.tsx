@@ -162,6 +162,9 @@ export default function DashboardPage() {
             {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
           {/* Signal Search */}
+          <div style={{ marginBottom: 6 }}>
+            <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C" }}>⚡ Signal Search</span>
+          </div>
           <div style={{ position: "relative" }}>
             <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#52525b", fontSize: "0.85rem", pointerEvents: "none" }}>🔍</span>
             <input
