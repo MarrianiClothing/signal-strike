@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as XLSX from "xlsx";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
@@ -241,6 +242,84 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
 
 
 
+function buildExcel(deals: any[], tiers: any[], today: string): Buffer {
+  const tiersMap: Record<string, any> = {};
+  for (const t of tiers) tiersMap[t.id] = t;
+
+  const activeDeals = deals.filter(d => d.stage !== "closed_lost");
+
+  const STAGE_LABELS: Record<string, string> = {
+    prospecting: "Prospecting", qualification: "Qualified",
+    proposal: "Proposal", negotiation: "Negotiation",
+    closed_won: "Won", closed_lost: "Lost",
+  };
+
+  // ── Summary sheet ──────────────────────────────────────────────────────────
+  const totalValue = activeDeals.reduce((s, d) => s + (d.value || 0), 0);
+  const totalComm  = activeDeals.reduce((s, d) => {
+    const tier = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
+    return s + (tier ? (d.value || 0) * (tier.rate / 100) : 0);
+  }, 0);
+
+  const summaryRows = [
+    ["SIGNAL STRIKE — Daily Signal", "", ""],
+    [today, "", ""],
+    ["", "", ""],
+    ["SUMMARY", "", ""],
+    ["Active Deals", activeDeals.length, ""],
+    ["Pipeline Value", totalValue, ""],
+    ["Total Commission", totalComm, ""],
+    ["Tasks Pending", activeDeals.filter((d: any) => d.next_task).length, ""],
+  ];
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+  summarySheet["!cols"] = [{ wch: 24 }, { wch: 18 }, { wch: 18 }];
+
+  // ── Deals sheet ────────────────────────────────────────────────────────────
+  const headers = [
+    "Deal Title", "Company", "Contact Name", "Contact Email", "Contact Phone",
+    "Stage", "Value ($)", "Probability (%)", "Commission ($)", "Commission Tier",
+    "Commission Rate (%)", "Expected Close", "Next Task", "Notes",
+  ];
+
+  const dealRows = activeDeals.map(d => {
+    const tier       = d.commission_tier_id ? tiersMap[d.commission_tier_id] : null;
+    const commission = tier ? (d.value || 0) * (tier.rate / 100) : "";
+    return [
+      d.title || "",
+      d.company || "",
+      d.contact_name || "",
+      d.contact_email || "",
+      d.contact_phone || "",
+      STAGE_LABELS[d.stage] || d.stage || "",
+      d.value || 0,
+      d.probability || "",
+      commission,
+      tier ? tier.name : "",
+      tier ? tier.rate : "",
+      d.expected_close_date
+        ? new Date(d.expected_close_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        : "",
+      d.next_task || "",
+      d.notes || "",
+    ];
+  });
+
+  const dealsSheet = XLSX.utils.aoa_to_sheet([headers, ...dealRows]);
+  dealsSheet["!cols"] = [
+    { wch: 28 }, { wch: 22 }, { wch: 20 }, { wch: 28 }, { wch: 16 },
+    { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 20 },
+    { wch: 18 }, { wch: 16 }, { wch: 40 }, { wch: 40 },
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+  XLSX.utils.book_append_sheet(wb, dealsSheet, "Deals");
+
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  return Buffer.from(buf);
+}
+
+
 function buildEmailHtml(userName: string, deals: any[], tiers: any[]) {
   const tiersMap: Record<string, any> = {};
   for (const t of tiers) tiersMap[t.id] = t;
@@ -478,15 +557,22 @@ export async function GET(req: NextRequest) {
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
       const pdfBuffer = await buildPDF(deals || [], tiers || [], today2);
       const dateStr = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      const xlsxBuffer = buildExcel(deals || [], tiers || [], today2);
       await resend.emails.send({
         from:    "Signal Strike <onboarding@resend.dev>",
         to:      email,
         subject: `Daily Signal · ${dateStr}`,
         html,
-        attachments: [{
-          filename: `Daily-Signal-${new Date().toISOString().slice(0,10)}.pdf`,
-          content: pdfBuffer.toString("base64"),
-        }],
+        attachments: [
+          {
+            filename: `Daily-Signal-${new Date().toISOString().slice(0,10)}.pdf`,
+            content: pdfBuffer.toString("base64"),
+          },
+          {
+            filename: `Daily-Signal-${new Date().toISOString().slice(0,10)}.xlsx`,
+            content: xlsxBuffer.toString("base64"),
+          },
+        ],
       });
       return NextResponse.json({ ok: true, sent_to: email });
     }
@@ -555,15 +641,22 @@ export async function GET(req: NextRequest) {
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
       const pdfBuf = await buildPDF(deals || [], tiers || [], todayCron);
       const dateStrCron = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      const xlsxBuf = buildExcel(deals || [], tiers || [], todayCron);
       await resend.emails.send({
         from:    "Signal Strike <onboarding@resend.dev>",
         to:      userEmail,
         subject: `Daily Signal · ${dateStrCron}`,
         html,
-        attachments: [{
-          filename: `Daily-Signal-${new Date().toISOString().slice(0,10)}.pdf`,
-          content: pdfBuf.toString("base64"),
-        }],
+        attachments: [
+          {
+            filename: `Daily-Signal-${new Date().toISOString().slice(0,10)}.pdf`,
+            content: pdfBuf.toString("base64"),
+          },
+          {
+            filename: `Daily-Signal-${new Date().toISOString().slice(0,10)}.xlsx`,
+            content: xlsxBuf.toString("base64"),
+          },
+        ],
       });
       sent++;
     }
