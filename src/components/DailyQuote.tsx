@@ -88,7 +88,7 @@ export default function DailyQuote() {
       borderRadius: "10px",
       padding: "12px 16px",
       display: "flex",
-      alignItems: "flex-start",
+      alignItems: "center",
       gap: "10px",
       minWidth: 0,
     }}>

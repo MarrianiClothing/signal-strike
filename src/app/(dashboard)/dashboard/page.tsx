@@ -153,7 +153,7 @@ export default function DashboardPage() {
     <div style={{ padding: isMobile ? "0 16px 24px" : 32, maxWidth: isMobile ? "100%" : 1200, boxSizing: "border-box", width: "100%" }}>
 
       {/* Header */}
-      <div style={{ marginBottom: isMobile ? 20 : 32, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "center" : "flex-start", gap: isMobile ? 12 : 0 }}>
+      <div style={{ marginBottom: isMobile ? 20 : 32, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "center" : "stretch", gap: isMobile ? 12 : 0 }}>
         <div style={{ flexShrink: 0 }}>
           <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.6rem", fontWeight: 800, color: "#fafafa", textAlign: isMobile ? "center" : "left", margin: 0 }}>
             {userName ? `Welcome back, ${userName}` : "Dashboard"}
