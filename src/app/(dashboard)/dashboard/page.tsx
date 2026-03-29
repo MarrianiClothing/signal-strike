@@ -84,7 +84,7 @@ export default function DashboardPage() {
 
   const openDealsColor = !openDealsGoal ? "#a78bfa" : openDeals >= openDealsGoal ? "#C9A84C" : openDeals >= openDealsGoal * 0.5 ? "#34d399" : "#f87171";
 
-  const searchResults = search.trim().length < 2 ? [] : deals.filter(d => {
+  const searchResults = search.trim().length < 1 ? [] : deals.filter(d => {
     const q = search.toLowerCase();
     return (
       d.title?.toLowerCase().includes(q) ||
@@ -186,7 +186,7 @@ export default function DashboardPage() {
               <button onClick={() => setSearch("")} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#52525b", cursor: "pointer", fontSize: "1rem", padding: 0, lineHeight: 1 }}>×</button>
             )}
             {/* Results dropdown */}
-            {searchFocused && search.trim().length >= 2 && (
+            {searchFocused && search.trim().length >= 1 && (
               <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 100, background: "#111113", border: "1px solid #27272a", borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.6)", minWidth: 340 }}>
                 {searchResults.length === 0 ? (
                   <div style={{ padding: "14px 16px", color: "#52525b", fontSize: "0.82rem" }}>No deals match "{search}"</div>
