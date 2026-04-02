@@ -137,30 +137,55 @@ export default function DealDetailPage() {
     if (!file) return;
     setUploading(true); setUploadMsg(null);
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${userId}/${id}/${Date.now()}_${safeName}`;
+    const filePath = `${userId}/${id}/${Date.now()}_${safeName}`;
 
-    // Upload via server-side API route (uses service role key — bypasses RLS)
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("path", path);
-    const res  = await fetch("/api/contracts/upload", { method: "POST", body: formData });
-    const json = await res.json();
+    try {
+      // Upload via server-side API route (uses service role key — bypasses RLS)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("path", filePath);
 
-    if (!res.ok || json.error) {
-      setUploadMsg({ ok: false, text: "Upload failed: " + (json.error || "Unknown error") });
-    } else {
-      setUploadMsg({ ok: true, text: `✓ ${file.name} uploaded` });
-      // Refresh list via server-side API
-      const listRes  = await fetch(`/api/contracts/list?prefix=${userId}/${id}`);
-      const listJson = await listRes.json();
-      setContracts(listJson.files || []);
-      // Log to activity
-      await supabase.from("activities").insert({
-        user_id: userId, deal_id: id, type: "note",
-        title: `Contract uploaded: ${file.name}`,
-        body: null, occurred_at: new Date().toISOString(),
-      });
+      const controller = new AbortController();
+      const timeout    = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+      let res: Response;
+      try {
+        res = await fetch("/api/contracts/upload", {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      const rawText = await res.text();
+      console.log("[upload] status:", res.status, "body:", rawText);
+
+      let json: any = {};
+      try { json = JSON.parse(rawText); } catch { json = { error: rawText || "Empty response" }; }
+
+      if (!res.ok || json.error) {
+        setUploadMsg({ ok: false, text: "Upload failed: " + (json.error || `HTTP ${res.status}`) });
+      } else {
+        setUploadMsg({ ok: true, text: `✓ ${file.name} uploaded` });
+        // Refresh list
+        const listRes  = await fetch(`/api/contracts/list?prefix=${userId}/${id}`);
+        const listJson = await listRes.json();
+        setContracts(listJson.files || []);
+        // Log to activity
+        await supabase.from("activities").insert({
+          user_id: userId, deal_id: id, type: "note",
+          title: `Contract uploaded: ${file.name}`,
+          body: null, occurred_at: new Date().toISOString(),
+        });
+      }
+    } catch (err: any) {
+      console.error("[upload] caught:", err);
+      const msg = err?.name === "AbortError" ? "Upload timed out after 30s" : (err?.message ?? "Unknown error");
+      setUploadMsg({ ok: false, text: "Upload failed: " + msg });
     }
+
     setUploading(false);
     e.target.value = "";
   }
