@@ -8,34 +8,27 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Returns a signed upload URL — client uploads directly to Supabase (no file through Vercel)
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const path = formData.get("path") as string | null;
+    const { path } = await req.json();
 
-    if (!file || !path) {
-      return NextResponse.json({ error: "Missing file or path" }, { status: 400 });
+    if (!path) {
+      return NextResponse.json({ error: "Missing path" }, { status: 400 });
     }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const uint8Array  = new Uint8Array(arrayBuffer);
 
     const { data, error } = await supabaseAdmin.storage
       .from("contracts")
-      .upload(path, uint8Array, {
-        contentType: file.type || "application/octet-stream",
-        upsert: false,
-      });
+      .createSignedUploadUrl(path);
 
     if (error) {
-      console.error("[contracts/upload] Supabase error:", error);
+      console.error("[contracts/upload] signed URL error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, path: data?.path });
+    return NextResponse.json({ signedUrl: data.signedUrl, token: data.token, path: data.path });
   } catch (err: any) {
-    console.error("[contracts/upload] Caught error:", err);
+    console.error("[contracts/upload] caught:", err);
     return NextResponse.json({ error: err?.message ?? "Unknown error" }, { status: 500 });
   }
 }

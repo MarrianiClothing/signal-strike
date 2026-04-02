@@ -140,33 +140,32 @@ export default function DealDetailPage() {
     const filePath = `${userId}/${id}/${Date.now()}_${safeName}`;
 
     try {
-      // Upload via server-side API route (uses service role key — bypasses RLS)
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("path", filePath);
+      // Step 1: Get a signed upload URL from our API (tiny JSON request — no file payload)
+      const signRes  = await fetch("/api/contracts/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: filePath }),
+      });
+      const signJson = await signRes.json();
 
-      const controller = new AbortController();
-      const timeout    = setTimeout(() => controller.abort(), 30000); // 30s timeout
-
-      let res: Response;
-      try {
-        res = await fetch("/api/contracts/upload", {
-          method: "POST",
-          body: formData,
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeout);
+      if (!signRes.ok || signJson.error) {
+        setUploadMsg({ ok: false, text: "Upload failed: " + (signJson.error || `HTTP ${signRes.status}`) });
+        setUploading(false);
+        e.target.value = "";
+        return;
       }
 
-      const rawText = await res.text();
-      console.log("[upload] status:", res.status, "body:", rawText);
+      // Step 2: Upload file DIRECTLY to Supabase using the signed URL (bypasses Vercel entirely)
+      const { signedUrl } = signJson;
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
 
-      let json: any = {};
-      try { json = JSON.parse(rawText); } catch { json = { error: rawText || "Empty response" }; }
-
-      if (!res.ok || json.error) {
-        setUploadMsg({ ok: false, text: "Upload failed: " + (json.error || `HTTP ${res.status}`) });
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        setUploadMsg({ ok: false, text: "Upload failed: " + (errText || `HTTP ${uploadRes.status}`) });
       } else {
         setUploadMsg({ ok: true, text: `✓ ${file.name} uploaded` });
         // Refresh list
@@ -182,8 +181,7 @@ export default function DealDetailPage() {
       }
     } catch (err: any) {
       console.error("[upload] caught:", err);
-      const msg = err?.name === "AbortError" ? "Upload timed out after 30s" : (err?.message ?? "Unknown error");
-      setUploadMsg({ ok: false, text: "Upload failed: " + msg });
+      setUploadMsg({ ok: false, text: "Upload failed: " + (err?.message ?? "Unknown error") });
     }
 
     setUploading(false);
