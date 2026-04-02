@@ -53,7 +53,10 @@ export default function DealDetailPage() {
   const [saving,  setSaving]  = useState(false);
   const [msg,     setMsg]     = useState<{ok:boolean;text:string}|null>(null);
   const [edit,    setEdit]    = useState<any>(null);
-  const [tiers,   setTiers]   = useState<any[]>([]);
+  const [tiers,      setTiers]      = useState<any[]>([]);
+  const [contracts,  setContracts]  = useState<any[]>([]);
+  const [uploading,  setUploading]  = useState(false);
+  const [uploadMsg,  setUploadMsg]  = useState<{ok:boolean;text:string}|null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -73,6 +76,11 @@ export default function DealDetailPage() {
       setTiers(tiersData || []);
       setDeal(data);
       setEdit(data);
+      // Load contracts
+      const { data: contractFiles } = await supabase.storage
+        .from("contracts")
+        .list(`${user!.id}/${id}`, { sortBy: { column: "created_at", order: "desc" } });
+      setContracts(contractFiles || []);
       setLoading(false);
     }
     load();
@@ -119,6 +127,43 @@ export default function DealDetailPage() {
       setMsg({ ok: false, text: error.message });
     }
     setSaving(false);
+  }
+
+  async function handleContractUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setUploadMsg(null);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${userId}/${id}/${Date.now()}_${safeName}`;
+    const { error } = await supabase.storage.from("contracts").upload(path, file, { upsert: false });
+    if (error) {
+      setUploadMsg({ ok: false, text: "Upload failed: " + error.message });
+    } else {
+      setUploadMsg({ ok: true, text: `✓ ${file.name} uploaded` });
+      const { data: refreshed } = await supabase.storage
+        .from("contracts").list(`${userId}/${id}`, { sortBy: { column: "created_at", order: "desc" } });
+      setContracts(refreshed || []);
+      // Log to activity
+      await supabase.from("activities").insert({
+        user_id: userId, deal_id: id, type: "note",
+        title: `Contract uploaded: ${file.name}`,
+        body: null, occurred_at: new Date().toISOString(),
+      });
+    }
+    setUploading(false);
+    e.target.value = "";
+  }
+
+  async function handleContractDelete(fileName: string) {
+    if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
+    const path = `${userId}/${id}/${fileName}`;
+    await supabase.storage.from("contracts").remove([path]);
+    setContracts(prev => prev.filter((c:any) => c.name !== fileName));
+  }
+
+  function getContractUrl(fileName: string) {
+    const { data } = supabase.storage.from("contracts").getPublicUrl(`${userId}/${id}/${fileName}`);
+    return data.publicUrl;
   }
 
   async function handleDelete() {
@@ -256,6 +301,58 @@ export default function DealDetailPage() {
                 {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>
+          </div>
+          {/* Contracts */}
+          <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: 0 }}>📄 Contracts & Documents</h2>
+              <label style={{
+                background: "#C9A84C", color: "#000", borderRadius: 8, padding: "7px 14px",
+                fontWeight: 700, fontSize: "0.78rem", cursor: uploading ? "not-allowed" : "pointer",
+                opacity: uploading ? 0.6 : 1, whiteSpace: "nowrap",
+              }}>
+                {uploading ? "Uploading..." : "+ Attach File"}
+                <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" style={{ display: "none" }} onChange={handleContractUpload} disabled={uploading} />
+              </label>
+            </div>
+
+            {uploadMsg && (
+              <p style={{ color: uploadMsg.ok ? "#4ade80" : "#f87171", fontSize: "0.82rem", marginBottom: 12 }}>{uploadMsg.text}</p>
+            )}
+
+            {contracts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "28px 0", color: "#3f3f46" }}>
+                <div style={{ fontSize: "2rem", marginBottom: 8 }}>📁</div>
+                <p style={{ fontSize: "0.82rem", margin: 0 }}>No files attached yet.</p>
+                <p style={{ fontSize: "0.75rem", margin: "4px 0 0", color: "#27272a" }}>PDF, Word, Excel, or images</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {contracts.map((c: any) => {
+                  const rawName = c.name.replace(/^\d+_/, "");
+                  const ext = rawName.split(".").pop()?.toLowerCase() || "";
+                  const icon = ["pdf"].includes(ext) ? "📕" : ["doc","docx"].includes(ext) ? "📘" : ["xls","xlsx"].includes(ext) ? "📗" : ["png","jpg","jpeg"].includes(ext) ? "🖼️" : "📄";
+                  const sizeKB = c.metadata?.size ? (c.metadata.size / 1024).toFixed(1) + " KB" : "";
+                  return (
+                    <div key={c.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#18181b", borderRadius: 8, border: "1px solid #27272a" }}>
+                      <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>{icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ color: "#fafafa", fontSize: "0.85rem", fontWeight: 600, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rawName}</p>
+                        {sizeKB && <p style={{ color: "#52525b", fontSize: "0.72rem", margin: 0 }}>{sizeKB}</p>}
+                      </div>
+                      <a href={getContractUrl(c.name)} target="_blank" rel="noopener noreferrer"
+                        style={{ background: "#27272a", border: "none", color: "#a1a1aa", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: "0.75rem", textDecoration: "none", flexShrink: 0 }}>
+                        View
+                      </a>
+                      <button onClick={() => handleContractDelete(c.name)}
+                        style={{ background: "rgba(248,113,113,0.08)", border: "none", color: "#f87171", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: "0.75rem", flexShrink: 0 }}>
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
