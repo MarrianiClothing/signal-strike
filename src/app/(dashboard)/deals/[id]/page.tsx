@@ -76,11 +76,14 @@ export default function DealDetailPage() {
       setTiers(tiersData || []);
       setDeal(data);
       setEdit(data);
-      // Load contracts
-      const { data: contractFiles } = await supabase.storage
-        .from("contracts")
-        .list(`${user!.id}/${id}`, { sortBy: { column: "created_at", order: "desc" } });
-      setContracts(contractFiles || []);
+      // Load contracts via server-side API (service role key)
+      try {
+        const res = await fetch(`/api/contracts/list?prefix=${user!.id}/${id}`);
+        const json = await res.json();
+        setContracts(json.files || []);
+      } catch {
+        setContracts([]);
+      }
       setLoading(false);
     }
     load();
@@ -135,14 +138,22 @@ export default function DealDetailPage() {
     setUploading(true); setUploadMsg(null);
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `${userId}/${id}/${Date.now()}_${safeName}`;
-    const { error } = await supabase.storage.from("contracts").upload(path, file, { upsert: false });
-    if (error) {
-      setUploadMsg({ ok: false, text: "Upload failed: " + error.message });
+
+    // Upload via server-side API route (uses service role key — bypasses RLS)
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("path", path);
+    const res  = await fetch("/api/contracts/upload", { method: "POST", body: formData });
+    const json = await res.json();
+
+    if (!res.ok || json.error) {
+      setUploadMsg({ ok: false, text: "Upload failed: " + (json.error || "Unknown error") });
     } else {
       setUploadMsg({ ok: true, text: `✓ ${file.name} uploaded` });
-      const { data: refreshed } = await supabase.storage
-        .from("contracts").list(`${userId}/${id}`, { sortBy: { column: "created_at", order: "desc" } });
-      setContracts(refreshed || []);
+      // Refresh list via server-side API
+      const listRes  = await fetch(`/api/contracts/list?prefix=${userId}/${id}`);
+      const listJson = await listRes.json();
+      setContracts(listJson.files || []);
       // Log to activity
       await supabase.from("activities").insert({
         user_id: userId, deal_id: id, type: "note",
@@ -157,7 +168,12 @@ export default function DealDetailPage() {
   async function handleContractDelete(fileName: string) {
     if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
     const path = `${userId}/${id}/${fileName}`;
-    await supabase.storage.from("contracts").remove([path]);
+    // Delete via server-side API route (uses service role key — bypasses RLS)
+    await fetch("/api/contracts/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    });
     setContracts(prev => prev.filter((c:any) => c.name !== fileName));
   }
 
