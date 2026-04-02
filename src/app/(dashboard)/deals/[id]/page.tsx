@@ -140,7 +140,7 @@ export default function DealDetailPage() {
     const filePath = `${userId}/${id}/${Date.now()}_${safeName}`;
 
     try {
-      // Step 1: Get a signed upload URL from our API (tiny JSON request — no file payload)
+      // Step 1: Get a signed upload token from our API (no file payload through Vercel)
       const signRes  = await fetch("/api/contracts/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,17 +155,16 @@ export default function DealDetailPage() {
         return;
       }
 
-      // Step 2: Upload file DIRECTLY to Supabase using the signed URL (bypasses Vercel entirely)
-      const { signedUrl } = signJson;
-      const uploadRes = await fetch(signedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
-      });
+      // Step 2: Upload directly to Supabase using the signed token via the Supabase client
+      // (uploadToSignedUrl is the correct method — raw fetch PUT doesn't work with Supabase signed URLs)
+      const { error: uploadError } = await supabase.storage
+        .from("contracts")
+        .uploadToSignedUrl(signJson.path, signJson.token, file, {
+          contentType: file.type || "application/octet-stream",
+        });
 
-      if (!uploadRes.ok) {
-        const errText = await uploadRes.text();
-        setUploadMsg({ ok: false, text: "Upload failed: " + (errText || `HTTP ${uploadRes.status}`) });
+      if (uploadError) {
+        setUploadMsg({ ok: false, text: "Upload failed: " + uploadError.message });
       } else {
         setUploadMsg({ ok: true, text: `✓ ${file.name} uploaded` });
         // Refresh list
