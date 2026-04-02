@@ -140,34 +140,19 @@ export default function DealDetailPage() {
     const filePath = `${userId}/${id}/${Date.now()}_${safeName}`;
 
     try {
-      // Step 1: Get a signed upload token from our API (no file payload through Vercel)
-      const signRes  = await fetch("/api/contracts/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: filePath }),
-      });
-      const signJson = await signRes.json();
-
-      if (!signRes.ok || signJson.error) {
-        setUploadMsg({ ok: false, text: "Upload failed: " + (signJson.error || `HTTP ${signRes.status}`) });
-        setUploading(false);
-        e.target.value = "";
-        return;
-      }
-
-      // Step 2: Upload directly to Supabase using the signed token via the Supabase client
-      // (uploadToSignedUrl is the correct method — raw fetch PUT doesn't work with Supabase signed URLs)
+      // Upload directly from browser → Supabase (no Vercel function involved, no size limit)
       const { error: uploadError } = await supabase.storage
         .from("contracts")
-        .uploadToSignedUrl(signJson.path, signJson.token, file, {
+        .upload(filePath, file, {
           contentType: file.type || "application/octet-stream",
+          upsert: false,
         });
 
       if (uploadError) {
         setUploadMsg({ ok: false, text: "Upload failed: " + uploadError.message });
       } else {
         setUploadMsg({ ok: true, text: `✓ ${file.name} uploaded` });
-        // Refresh list
+        // Refresh list via server-side API
         const listRes  = await fetch(`/api/contracts/list?prefix=${userId}/${id}`);
         const listJson = await listRes.json();
         setContracts(listJson.files || []);
@@ -190,12 +175,12 @@ export default function DealDetailPage() {
   async function handleContractDelete(fileName: string) {
     if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
     const path = `${userId}/${id}/${fileName}`;
-    // Delete via server-side API route (uses service role key — bypasses RLS)
-    await fetch("/api/contracts/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path }),
-    });
+    // Delete directly via Supabase client (RLS policy ensures user can only delete their own files)
+    const { error } = await supabase.storage.from("contracts").remove([path]);
+    if (error) {
+      alert("Delete failed: " + error.message);
+      return;
+    }
     setContracts(prev => prev.filter((c:any) => c.name !== fileName));
   }
 
