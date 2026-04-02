@@ -38,7 +38,7 @@ export default function PipelinePage() {
   const [loading, setLoading] = useState(true);
   const [dragging, setDragging] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [newDeal, setNewDeal] = useState({ title: "", company: "", contact_name: "", contact_email: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
+  const [newDeal, setNewDeal] = useState({ title: "", company: "", contact_name: "", contact_email: "", contact_phone: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
@@ -77,6 +77,7 @@ export default function PipelinePage() {
       company: newDeal.company,
       contact_name: newDeal.contact_name,
       contact_email: newDeal.contact_email,
+      contact_phone: newDeal.contact_phone || null,
       value: parseFloat(newDeal.value) || 0,
       stage: newDeal.stage,
       probability: parseInt(newDeal.probability) || 20,
@@ -87,7 +88,7 @@ export default function PipelinePage() {
       updated_at: new Date().toISOString(),
     });
     if (!error) {
-      setNewDeal({ title: "", company: "", contact_name: "", contact_email: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
+      setNewDeal({ title: "", company: "", contact_name: "", contact_email: "", contact_phone: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
       setShowAdd(false);
       await load();
     } else setMsg(error.message);
@@ -139,6 +140,7 @@ export default function PipelinePage() {
                 { label: "Company", key: "company" },
                 { label: "Contact Name", key: "contact_name" },
                 { label: "Contact Email", key: "contact_email", type: "email" },
+                { label: "Contact Phone", key: "contact_phone", type: "tel" },
                 { label: "Value ($) *", key: "value", type: "number" },
                 { label: "Probability (%)", key: "probability", type: "number" },
                 { label: "Expected Close", key: "expected_close_date", type: "date" },
