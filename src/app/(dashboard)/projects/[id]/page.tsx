@@ -19,6 +19,8 @@ interface Project  { id:string; user_id:string; deal_id:string|null; name:string
 interface Phase    { id:string; project_id:string; name:string; start_date:string|null; end_date:string|null; color:string; status:string; sort_order:number; }
 interface Task     { id:string; phase_id:string; name:string; assignee:string|null; start_date:string|null; due_date:string|null; status:string; notes:string|null; sort_order:number; }
 interface Timeline { minTime:number; maxTime:number; totalMs:number; }
+interface ImportTask  { name:string; assignee:string|null; start_date:string|null; due_date:string|null; status:string; notes:string|null; }
+interface ImportPhase { name:string; start_date:string|null; end_date:string|null; status:string; color:string; tasks:ImportTask[]; }
 
 // ── Gantt helpers ──────────────────────────────────────────────────────────────
 function buildTimeline(phases: Phase[]): Timeline | null {
@@ -98,6 +100,12 @@ export default function ProjectDetailPage() {
   const [taskForm,   setTaskForm]   = useState(BTK);
   const [taskSaving, setTaskSaving] = useState(false);
 
+  const [importModal,   setImportModal]   = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPhase[]|null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importSaving,  setImportSaving]  = useState(false);
+  const [importError,   setImportError]   = useState("");
+
   const loadAll = useCallback(async () => {
     const { data: proj } = await supabase.from("projects").select("*").eq("id", id).single();
     if (!proj) { setLoading(false); return; }
@@ -126,6 +134,51 @@ export default function ProjectDetailPage() {
   const progPct   = allTasks.length ? Math.round(doneTasks / allTasks.length * 100) : 0;
 
   const togglePhase = (phId: string) => setExpanded(prev => { const n = new Set(prev); n.has(phId)?n.delete(phId):n.add(phId); return n; });
+
+  // Import handler
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportLoading(true); setImportError(""); setImportPreview(null);
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res  = await fetch("/api/projects/import", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok || json.error) { setImportError(json.error ?? "Parse failed"); setImportLoading(false); return; }
+      setImportPreview(json.phases);
+    } catch (err: any) {
+      setImportError(err?.message ?? "Upload failed");
+    }
+    setImportLoading(false);
+    e.target.value = "";
+  }
+
+  async function handleConfirmImport() {
+    if (!importPreview?.length) return;
+    setImportSaving(true);
+    for (let pi = 0; pi < importPreview.length; pi++) {
+      const ip = importPreview[pi];
+      const { data: ph, error: phErr } = await supabase.from("project_phases").insert({
+        project_id: id, name: ip.name,
+        start_date: ip.start_date || null, end_date: ip.end_date || null,
+        color: ip.color, status: ip.status, sort_order: pi,
+      }).select("id").single();
+      if (phErr || !ph) continue;
+      if (ip.tasks.length) {
+        await supabase.from("project_tasks").insert(
+          ip.tasks.map((t, ti) => ({
+            phase_id: ph.id, name: t.name,
+            assignee: t.assignee || null, start_date: t.start_date || null,
+            due_date: t.due_date || null, status: t.status,
+            notes: t.notes || null, sort_order: ti,
+          }))
+        );
+      }
+    }
+    setImportSaving(false); setImportModal(false); setImportPreview(null);
+    loadAll();
+  }
 
   // Phase CRUD
   function openAddPhase()    { setPhaseForm(BPH); setPhaseModal({open:true,editing:null}); }
@@ -208,10 +261,18 @@ export default function ProjectDetailPage() {
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-        <button onClick={openAddPhase}
-          style={{background:"#C9A84C",color:"#000",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:"0.82rem",cursor:"pointer"}}>
-          + Add Phase
-        </button>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={openAddPhase}
+            style={{background:"#C9A84C",color:"#000",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:"0.82rem",cursor:"pointer"}}>
+            + Add Phase
+          </button>
+          <label style={{background:"#1c1c1f",border:"1px solid #27272a",color:"#a1a1aa",borderRadius:8,padding:"8px 14px",fontWeight:600,fontSize:"0.82rem",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}
+            title="Import from Excel or CSV">
+            ↑ Import Schedule
+            <input type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}}
+              onChange={e => { setImportModal(true); setImportPreview(null); setImportError(""); handleImportFile(e); }} />
+          </label>
+        </div>
         <div style={{display:"flex",gap:3,background:"#111113",border:"1px solid #27272a",borderRadius:8,padding:3}}>
           {(["list","gantt"] as const).map(m => (
             <button key={m} onClick={() => setViewMode(m)}
@@ -389,6 +450,102 @@ export default function ProjectDetailPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Import Modal ──────────────────────────────────────────────────────── */}
+      {importModal && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"#111113",border:"1px solid #27272a",borderRadius:14,padding:28,width:"100%",maxWidth:600,maxHeight:"80vh",display:"flex",flexDirection:"column",gap:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h2 style={{color:"#fafafa",fontWeight:700,fontSize:"1.05rem",margin:0}}>Import Schedule</h2>
+              <button onClick={() => { setImportModal(false); setImportPreview(null); setImportError(""); }}
+                style={{background:"none",border:"none",color:"#52525b",fontSize:"1.2rem",cursor:"pointer",padding:"2px 6px"}}>✕</button>
+            </div>
+
+            {/* Loading */}
+            {importLoading && (
+              <div style={{textAlign:"center",padding:"40px 0",color:"#71717a"}}>
+                <div style={{fontSize:"2rem",marginBottom:12}}>⏳</div>
+                <p style={{margin:0}}>Parsing file...</p>
+              </div>
+            )}
+
+            {/* Error */}
+            {importError && !importLoading && (
+              <div style={{background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:10,padding:16,marginBottom:16}}>
+                <p style={{color:"#f87171",fontSize:"0.85rem",margin:"0 0 8px",fontWeight:600}}>Could not parse file</p>
+                <p style={{color:"#a1a1aa",fontSize:"0.82rem",margin:"0 0 12px",lineHeight:1.5}}>{importError}</p>
+                <p style={{color:"#52525b",fontSize:"0.78rem",margin:0}}>
+                  Expected columns: <strong style={{color:"#71717a"}}>Phase, Task, Assignee, Start Date, End Date, Status</strong>
+                </p>
+              </div>
+            )}
+
+            {/* No file yet — show instructions */}
+            {!importLoading && !importError && !importPreview && (
+              <div style={{textAlign:"center",padding:"32px 0",color:"#52525b"}}>
+                <div style={{fontSize:"2.5rem",marginBottom:12}}>📊</div>
+                <p style={{margin:"0 0 8px",fontSize:"0.9rem",color:"#a1a1aa"}}>Select a file to import</p>
+                <p style={{margin:"0 0 16px",fontSize:"0.8rem",lineHeight:1.6}}>
+                  Supported: <strong style={{color:"#71717a"}}>.xlsx, .xls, .csv</strong><br/>
+                  Required column: <strong style={{color:"#71717a"}}>Phase</strong><br/>
+                  Optional columns: Task, Assignee, Start Date, End Date, Status, Notes
+                </p>
+                <p style={{margin:0,fontSize:"0.75rem",color:"#3f3f46"}}>
+                  MS Project users: File → Save As → Excel Workbook (.xlsx)
+                </p>
+              </div>
+            )}
+
+            {/* Preview */}
+            {importPreview && !importLoading && (
+              <div style={{flex:1,overflowY:"auto",marginBottom:16}}>
+                <div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:8,padding:"10px 14px",marginBottom:14,display:"flex",gap:16}}>
+                  <span style={{color:"#34d399",fontSize:"0.82rem",fontWeight:600}}>✓ Parsed successfully</span>
+                  <span style={{color:"#52525b",fontSize:"0.82rem"}}>{importPreview.length} phases · {importPreview.reduce((s,p)=>s+p.tasks.length,0)} tasks</span>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {importPreview.map((ph,pi) => (
+                    <div key={pi} style={{background:"#18181b",border:"1px solid #27272a",borderRadius:8,overflow:"hidden"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:ph.tasks.length?"1px solid #1c1c1f":"none"}}>
+                        <div style={{width:10,height:10,borderRadius:2,background:ph.color,flexShrink:0}} />
+                        <span style={{fontSize:"0.85rem",fontWeight:700,color:"#fafafa",flex:1}}>{ph.name}</span>
+                        {ph.start_date && ph.end_date && (
+                          <span style={{fontSize:"0.72rem",color:"#52525b",whiteSpace:"nowrap"}}>
+                            {new Date(ph.start_date).toLocaleDateString("en-US",{month:"short",day:"numeric"})} – {new Date(ph.end_date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"2-digit"})}
+                          </span>
+                        )}
+                        <span style={{fontSize:"0.72rem",color:"#3f3f46"}}>{ph.tasks.length} task{ph.tasks.length!==1?"s":""}</span>
+                      </div>
+                      {ph.tasks.map((t,ti) => (
+                        <div key={ti} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 14px 7px 30px",borderBottom:ti<ph.tasks.length-1?"1px solid #1c1c1f":"none"}}>
+                          <span style={{fontSize:"0.75rem",color:"#52525b"}}>○</span>
+                          <span style={{fontSize:"0.8rem",color:"#a1a1aa",flex:1}}>{t.name}</span>
+                          {t.assignee && <span style={{fontSize:"0.72rem",color:"#52525b"}}>👤 {t.assignee}</span>}
+                          {t.due_date  && <span style={{fontSize:"0.72rem",color:"#52525b",whiteSpace:"nowrap"}}>📅 {new Date(t.due_date).toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:importPreview?12:0,borderTop:importPreview?"1px solid #1c1c1f":"none",marginTop:"auto"}}>
+              <button onClick={() => { setImportModal(false); setImportPreview(null); setImportError(""); }}
+                style={{background:"none",border:"1px solid #27272a",color:"#71717a",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontSize:"0.85rem"}}>
+                Cancel
+              </button>
+              {importPreview && (
+                <button onClick={handleConfirmImport} disabled={importSaving}
+                  style={{background:"#C9A84C",color:"#000",border:"none",borderRadius:8,padding:"8px 20px",fontWeight:700,fontSize:"0.85rem",cursor:"pointer"}}>
+                  {importSaving ? "Importing..." : `Import ${importPreview.length} Phases`}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
