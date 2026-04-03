@@ -15,11 +15,12 @@ function useIsMobile() {
 }
 
 const NAV = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/pipeline",  label: "Pipeline"  },
-  { href: "/deals",     label: "Deals"     },
-  { href: "/expenses",  label: "Expenses"  },
-  { href: "/settings",  label: "Settings"  },
+  { href: "/dashboard",  label: "Dashboard"  },
+  { href: "/pipeline",   label: "Pipeline"   },
+  { href: "/deals",      label: "Deals"      },
+  { href: "/contracts",  label: "Contracts"  },
+  { href: "/expenses",   label: "Expenses"   },
+  { href: "/settings",   label: "Settings"   },
   { href: "/ask-signal", label: "Ask Signal" },
 ];
 
