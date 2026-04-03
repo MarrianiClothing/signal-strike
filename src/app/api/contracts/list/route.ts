@@ -12,14 +12,15 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const prefix = searchParams.get("prefix");
-    const all    = searchParams.get("all"); // pass all=1 to list all deal folders
+    const all    = searchParams.get("all");
 
     if (!prefix) {
       return NextResponse.json({ error: "Missing prefix" }, { status: 400 });
     }
 
     if (all === "1") {
-      // List all deal folders under this userId, then list files in each
+      // List all deal folders under userId/
+      // NOTE: Supabase returns folder entries with id=null — do NOT filter on id
       const { data: folders, error: folderError } = await supabaseAdmin.storage
         .from("contracts")
         .list(prefix, { limit: 200 });
@@ -28,15 +29,25 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: folderError.message }, { status: 500 });
       }
 
-      // For each folder (dealId), list its files
       const results: { dealId: string; files: any[] }[] = [];
+
       for (const folder of (folders || [])) {
-        if (!folder.id) continue; // skip placeholder entries
-        const { data: files } = await supabaseAdmin.storage
+        // Skip actual files (they have metadata); we only want folder entries
+        if (folder.metadata !== null) continue;
+        if (!folder.name) continue;
+
+        const { data: files, error: filesError } = await supabaseAdmin.storage
           .from("contracts")
-          .list(`${prefix}/${folder.name}`, { sortBy: { column: "created_at", order: "desc" } });
-        if (files && files.length > 0) {
-          results.push({ dealId: folder.name, files });
+          .list(`${prefix}/${folder.name}`, {
+            sortBy: { column: "created_at", order: "desc" },
+          });
+
+        if (filesError || !files || files.length === 0) continue;
+
+        // Filter out any placeholder entries (files have non-null metadata)
+        const realFiles = files.filter(f => f.metadata !== null || f.name !== ".emptyFolderPlaceholder");
+        if (realFiles.length > 0) {
+          results.push({ dealId: folder.name, files: realFiles });
         }
       }
 
