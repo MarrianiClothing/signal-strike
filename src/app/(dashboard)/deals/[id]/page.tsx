@@ -57,6 +57,7 @@ export default function DealDetailPage() {
   const [contracts,  setContracts]  = useState<any[]>([]);
   const [uploading,  setUploading]  = useState(false);
   const [uploadMsg,  setUploadMsg]  = useState<{ok:boolean;text:string}|null>(null);
+  const [projectId,  setProjectId]  = useState<string|null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -84,6 +85,9 @@ export default function DealDetailPage() {
       } catch {
         setContracts([]);
       }
+      // Check for existing project
+      const { data: proj } = await supabase.from("projects").select("id").eq("deal_id", id).maybeSingle();
+      setProjectId(proj?.id ?? null);
       setLoading(false);
     }
     load();
@@ -187,6 +191,14 @@ export default function DealDetailPage() {
   function getContractUrl(fileName: string) {
     const { data } = supabase.storage.from("contracts").getPublicUrl(`${userId}/${id}/${fileName}`);
     return data.publicUrl;
+  }
+
+  async function handleLaunchProject() {
+    const { data, error } = await supabase
+      .from("projects")
+      .insert({ user_id: userId, deal_id: id, name: deal.title, status: "active" })
+      .select("id").single();
+    if (!error && data) router.push(`/projects/${data.id}`);
   }
 
   async function handleDelete() {
@@ -384,6 +396,25 @@ export default function DealDetailPage() {
           <ActivityLog dealId={id} userId={userId} />
         </div>
       </div>
+
+      {/* Project Schedule — visible when deal is Won */}
+      {edit?.stage === "closed_won" && (
+        <div style={{ marginTop: 20, background: "#111113", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 12, padding: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: "0 0 4px" }}>📋 Project Schedule</h2>
+              <p style={{ color: "#52525b", fontSize: "0.8rem", margin: 0 }}>
+                {projectId ? "View and manage phases for this project" : "Launch a schedule to track this won deal to completion"}
+              </p>
+            </div>
+            <button
+              onClick={projectId ? () => router.push(`/projects/${projectId}`) : handleLaunchProject}
+              style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+              {projectId ? "View Schedule →" : "Launch Project →"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

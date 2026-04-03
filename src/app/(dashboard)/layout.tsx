@@ -19,6 +19,7 @@ const NAV = [
   { href: "/pipeline",   label: "Pipeline"   },
   { href: "/deals",      label: "Deals"      },
   { href: "/contracts",  label: "Contracts"  },
+  { href: "/projects",   label: "Projects"   },
   { href: "/expenses",   label: "Expenses"   },
   { href: "/settings",   label: "Settings"   },
   { href: "/ask-signal", label: "Ask Signal" },
