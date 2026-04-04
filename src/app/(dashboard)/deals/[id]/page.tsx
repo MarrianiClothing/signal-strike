@@ -58,6 +58,12 @@ export default function DealDetailPage() {
   const [uploading,  setUploading]  = useState(false);
   const [uploadMsg,  setUploadMsg]  = useState<{ok:boolean;text:string}|null>(null);
   const [projectId,  setProjectId]  = useState<string|null>(null);
+  const [exportModal,   setExportModal]   = useState(false);
+  const [exportEmail,   setExportEmail]   = useState("");
+  const [exportName,    setExportName]    = useState("");
+  const [exportSending, setExportSending] = useState(false);
+  const [exportMsg,     setExportMsg]     = useState<{ok:boolean;text:string}|null>(null);
+  const [downloading,   setDownloading]   = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -191,6 +197,46 @@ export default function DealDetailPage() {
   function getContractUrl(fileName: string) {
     const { data } = supabase.storage.from("contracts").getPublicUrl(`${userId}/${id}/${fileName}`);
     return data.publicUrl;
+  }
+
+  async function handleDownloadPDF() {
+    setDownloading(true);
+    try {
+      const res = await fetch("/api/deals/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId: id, mode: "download" }),
+      });
+      if (!res.ok) { const j = await res.json(); alert("Export failed: " + j.error); setDownloading(false); return; }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = (deal.title || "deal").replace(/[^a-zA-Z0-9\s-]/g,"").trim().replace(/\s+/g,"-").slice(0,60) + ".pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert("Export failed: " + (err?.message ?? "Unknown error"));
+    }
+    setDownloading(false);
+  }
+
+  async function handleEmailPDF() {
+    if (!exportEmail.trim()) return;
+    setExportSending(true); setExportMsg(null);
+    try {
+      const res  = await fetch("/api/deals/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId: id, mode: "email", recipientEmail: exportEmail.trim(), recipientName: exportName.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) setExportMsg({ ok:false, text: json.error ?? "Failed" });
+      else { setExportMsg({ ok:true, text: `Sent to ${exportEmail}` }); setTimeout(()=>{ setExportModal(false); setExportMsg(null); }, 2500); }
+    } catch (err: any) {
+      setExportMsg({ ok:false, text: err?.message ?? "Network error" });
+    }
+    setExportSending(false);
   }
 
   async function handleLaunchProject() {
@@ -412,6 +458,77 @@ export default function DealDetailPage() {
               style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", whiteSpace: "nowrap" }}>
               {projectId ? "View Schedule →" : "Launch Project →"}
             </button>
+          </div>
+        </div>
+      )}
+      {/* ── Export Bar ──────────────────────────────────────────────────────── */}
+      <div style={{ marginTop: 16, background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.88rem", margin: "0 0 2px" }}>📄 Export Deal</p>
+          <p style={{ color: "#52525b", fontSize: "0.75rem", margin: 0 }}>Download a PDF summary or email it to a contact</p>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={handleDownloadPDF} disabled={downloading}
+            style={{ background: "#1c1c1f", border: "1px solid #27272a", color: downloading ? "#52525b" : "#a1a1aa", borderRadius: 8, padding: "8px 16px", fontWeight: 600, fontSize: "0.82rem", cursor: downloading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            {downloading ? "Generating..." : "↓ Download PDF"}
+          </button>
+          <button onClick={() => { setExportModal(true); setExportMsg(null); }}
+            style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            ✉ Email PDF
+          </button>
+        </div>
+      </div>
+
+      {/* ── Email Export Modal ───────────────────────────────────────────────── */}
+      {exportModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 14, padding: 28, width: "100%", maxWidth: 420 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>✉ Email Deal Summary</h2>
+              <button onClick={() => { setExportModal(false); setExportMsg(null); }}
+                style={{ background: "none", border: "none", color: "#52525b", fontSize: "1.2rem", cursor: "pointer", padding: "2px 6px" }}>✕</button>
+            </div>
+            <p style={{ color: "#71717a", fontSize: "0.82rem", marginBottom: 20, lineHeight: 1.5 }}>
+              Sends a branded PDF deal summary to the specified email.
+            </p>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ color: "#71717a", fontSize: "0.72rem", textTransform: "uppercase" as const, letterSpacing: "0.05em", marginBottom: 5, display: "block" }}>Recipient Email *</label>
+              <input
+                style={{ width: "100%", background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 12px", color: "#fafafa", fontSize: "0.875rem", boxSizing: "border-box" as const }}
+                type="email" autoFocus placeholder="client@example.com"
+                value={exportEmail} onChange={e => setExportEmail(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ color: "#71717a", fontSize: "0.72rem", textTransform: "uppercase" as const, letterSpacing: "0.05em", marginBottom: 5, display: "block" }}>
+                Recipient Name <span style={{ color: "#3f3f46", textTransform: "none" as const, letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
+              </label>
+              <input
+                style={{ width: "100%", background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 12px", color: "#fafafa", fontSize: "0.875rem", boxSizing: "border-box" as const }}
+                placeholder="e.g. Jennifer Box"
+                value={exportName} onChange={e => setExportName(e.target.value)} />
+            </div>
+            {/* Attachment preview */}
+            <div style={{ background: "#18181b", border: "1px solid #1c1c1f", borderRadius: 8, padding: "12px 14px", marginBottom: 20 }}>
+              <p style={{ color: "#52525b", fontSize: "0.72rem", textTransform: "uppercase" as const, letterSpacing: "0.06em", margin: "0 0 6px" }}>Attachment</p>
+              <p style={{ color: "#a1a1aa", fontSize: "0.82rem", margin: 0 }}>
+                📕 {(deal?.title || "deal").replace(/[^a-zA-Z0-9\s-]/g,"").trim().replace(/\s+/g,"-").slice(0,40)}.pdf
+              </p>
+            </div>
+            {exportMsg && (
+              <div style={{ background: exportMsg.ok ? "rgba(52,211,153,0.08)" : "rgba(248,113,113,0.08)", border: `1px solid ${exportMsg.ok ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)"}`, borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>
+                <p style={{ color: exportMsg.ok ? "#34d399" : "#f87171", fontSize: "0.83rem", margin: 0, fontWeight: 600 }}>{exportMsg.ok ? "✓ " : ""}{exportMsg.text}</p>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => { setExportModal(false); setExportMsg(null); }}
+                style={{ background: "none", border: "1px solid #27272a", color: "#71717a", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: "0.85rem" }}>
+                Cancel
+              </button>
+              <button onClick={handleEmailPDF} disabled={exportSending || !exportEmail.trim()}
+                style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "8px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", opacity: exportEmail.trim() && !exportSending ? 1 : 0.5 }}>
+                {exportSending ? "Sending..." : "Send PDF"}
+              </button>
+            </div>
           </div>
         </div>
       )}
