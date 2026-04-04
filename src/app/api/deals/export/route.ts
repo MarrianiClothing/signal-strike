@@ -192,13 +192,63 @@ async function buildDealPDF(deal: any, tier: any|null, activities: any[]): Promi
   page.drawRectangle({ x:ML, y, width:W, height:0.5, color:r(...BORDER) });
   y -= 18;
 
-  // ── Recent activity ─────────────────────────────────────────────────────────
+  // ── Activity log (all entries, with page breaks) ────────────────────────────
   if (activities.length > 0) {
-    page.drawText("RECENT ACTIVITY", { x:ML, y, font:fontB, size:7.5, color:r(...GOLD), letterSpacing:1 });
+    // Check if we need a new page before the section header
+    if (y < 120) {
+      const newPg = pdfDoc.addPage([612, 792]);
+      newPg.drawRectangle({ x:0, y:0, width:PW, height:PH, color:r(...DARK) });
+      // Return new page ref — we use a closure-style approach
+      Object.assign(page, newPg); // reassign drawing context
+      y = PH - 40;
+    }
+
+    page.drawText("ACTIVITY LOG", { x:ML, y, font:fontB, size:7.5, color:r(...GOLD), letterSpacing:1 });
     y -= 16;
 
-    for (const act of activities.slice(0, 6)) {
-      if (y < 80) break;
+    for (const act of activities) {
+      // Page break if needed — add a new page
+      if (y < 60) {
+        const nextPage = pdfDoc.addPage([612, 792]);
+        nextPage.drawRectangle({ x:0, y:0, width:PW, height:PH, color:r(...DARK) });
+        // Draw footer on this continuation page
+        nextPage.drawRectangle({ x:0, y:0, width:PW, height:36, color:r(...CARD) });
+        nextPage.drawRectangle({ x:0, y:36, width:PW, height:0.5, color:r(...BORDER) });
+        nextPage.drawText("Powered by Signal Strike  ·  HillTop Ave", { x:ML, y:14, font:fontR, size:7, color:r(...DIM) });
+        nextPage.drawText("CONFIDENTIAL", { x:PW/2 - fontR.widthOfTextAtSize("CONFIDENTIAL",7)/2, y:14, font:fontB, size:7, color:r(...DIM), letterSpacing:1 });
+        nextPage.drawText(exportDate, { x:PW-MR-fontR.widthOfTextAtSize(exportDate,7), y:14, font:fontR, size:7, color:r(...DIM) });
+        // Continuation header
+        nextPage.drawText(`ACTIVITY LOG (continued) — ${act ? (deal.title||"").slice(0,50) : ""}`, {
+          x:ML, y:PH-30, font:fontB, size:8, color:r(...GOLD), letterSpacing:0.8,
+        });
+        // Use nextPage for subsequent draws by reassigning page drawing calls
+        // We accomplish this by tracking currentPage
+        y = PH - 52;
+        // Draw remaining on nextPage
+        for (const remAct of activities.slice(activities.indexOf(act))) {
+          if (y < 60) break;
+          const typeClr2: RGB3 = remAct.type === "email" ? BLUE : remAct.type === "call" ? GREEN : GOLD;
+          const typeStr2 = (remAct.type || "note").toUpperCase();
+          const tw2      = fontB.widthOfTextAtSize(typeStr2, 7);
+          nextPage.drawRectangle({ x:ML, y:y-13, width:W, height:18, color:r(...CARD) });
+          nextPage.drawRectangle({ x:ML+4, y:y-11, width:tw2+8, height:13, color:r(...typeClr2) });
+          nextPage.drawText(typeStr2, { x:ML+8, y:y-9, font:fontB, size:7, color:r(0,0,0) });
+          const title2 = (remAct.title || "").slice(0, 70);
+          nextPage.drawText(title2, { x:ML+tw2+20, y:y-8, font:fontR, size:8.5, color:r(...WHITE) });
+          if (remAct.occurred_at) {
+            const ds2 = new Date(remAct.occurred_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+            nextPage.drawText(ds2, { x:PW-MR-fontR.widthOfTextAtSize(ds2,7), y:y-8, font:fontR, size:7, color:r(...DIM) });
+          }
+          if (remAct.body?.trim()) {
+            const bodySnip = remAct.body.trim().slice(0,90);
+            nextPage.drawText(bodySnip, { x:ML+tw2+20, y:y-19, font:fontR, size:7.5, color:r(...DIM) });
+          }
+          nextPage.drawRectangle({ x:ML, y:y-14, width:W, height:0.3, color:r(...MID) });
+          y -= remAct.body?.trim() ? 32 : 22;
+        }
+        break; // handled remaining on nextPage
+      }
+
       const typeClr: RGB3 = act.type === "email" ? BLUE : act.type === "call" ? GREEN : GOLD;
       const typeStr = (act.type || "note").toUpperCase();
       const tw      = fontB.widthOfTextAtSize(typeStr, 7);
@@ -207,7 +257,7 @@ async function buildDealPDF(deal: any, tier: any|null, activities: any[]): Promi
       page.drawRectangle({ x:ML+4, y:y-11, width:tw+8, height:13, color:r(...typeClr) });
       page.drawText(typeStr, { x:ML+8, y:y-9, font:fontB, size:7, color:r(0,0,0) });
 
-      const title = (act.title || "").slice(0, 60);
+      const title = (act.title || "").slice(0, 70);
       page.drawText(title, { x:ML+tw+20, y:y-8, font:fontR, size:8.5, color:r(...WHITE) });
 
       if (act.occurred_at) {
@@ -215,8 +265,15 @@ async function buildDealPDF(deal: any, tier: any|null, activities: any[]): Promi
         const dw      = fontR.widthOfTextAtSize(dateStr, 7);
         page.drawText(dateStr, { x:PW-MR-dw, y:y-8, font:fontR, size:7, color:r(...DIM) });
       }
+
+      // Show body snippet if present
+      if (act.body?.trim()) {
+        const bodySnip = act.body.trim().slice(0, 90);
+        page.drawText(bodySnip, { x:ML+tw+20, y:y-19, font:fontR, size:7.5, color:r(...DIM) });
+      }
+
       page.drawRectangle({ x:ML, y:y-14, width:W, height:0.3, color:r(...MID) });
-      y -= 22;
+      y -= act.body?.trim() ? 32 : 22;
     }
   }
 
@@ -253,7 +310,7 @@ export async function POST(req: NextRequest) {
     // Load recent activities
     const { data: activities } = await supabaseAdmin
       .from("activities").select("*").eq("deal_id",dealId)
-      .order("occurred_at",{ascending:false}).limit(6);
+      .order("occurred_at",{ascending:false});
 
     const pdfBytes = await buildDealPDF(deal, tier, activities || []);
     const safeName = deal.title.replace(/[^a-zA-Z0-9\s-]/g,"").trim().replace(/\s+/g,"-").slice(0,60);
