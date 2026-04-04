@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import PDFDocument from "pdfkit";
 
 export const runtime = "nodejs";
 
@@ -10,364 +11,411 @@ const supabaseAdmin = createClient(
 );
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
-// ── Status helpers ─────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const ST_LBL: Record<string,string> = {
   not_started:"Not Started", in_progress:"In Progress",
   completed:"Completed",     blocked:"Blocked",
 };
-const ST_CLR: Record<string,string> = {
-  not_started:"#71717a", in_progress:"#C9A84C",
-  completed:"#34d399",   blocked:"#f87171",
+const ST_CLR: Record<string,[number,number,number]> = {
+  not_started:[82,82,91],  in_progress:[201,168,76],
+  completed:  [52,211,153], blocked:   [248,113,113],
 };
+const PHASE_COLORS: [number,number,number][] = [
+  [201,168,76],[96,165,250],[52,211,153],[167,139,250],[251,146,60],[248,113,113],
+];
 
+function hexToRgb(hex: string): [number,number,number] {
+  const h = hex.replace("#","");
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
 function fmtDate(d: string|null) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
 }
 function fmtDateShort(d: string|null) {
-  if (!d) return "—";
+  if (!d) return "";
   return new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric"});
 }
 
-// ── Gantt SVG builder ──────────────────────────────────────────────────────────
-function buildGanttSVG(phases: any[], taskMap: Record<string,any[]>): string {
-  const datedPhases = phases.filter(p => p.start_date && p.end_date);
-  if (!datedPhases.length) return "";
+// ── PDF Builder ───────────────────────────────────────────────────────────────
+async function buildPDF(
+  project: any,
+  phases:  any[],
+  taskMap: Record<string,any[]>,
+  dealTitle: string
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: "LETTER", layout: "landscape",
+      margins: { top:40, bottom:40, left:40, right:40 },
+      info: { Title: project.name, Author: "Signal Strike · HillTop Ave" },
+    });
 
-  const minTime = Math.min(...datedPhases.map(p => new Date(p.start_date).getTime()));
-  const maxTime = Math.max(...datedPhases.map(p => new Date(p.end_date).getTime())) + 86400000;
-  const totalMs = maxTime - minTime;
-  const toPct   = (t: number) => Math.min(100, Math.max(0, (t - minTime) / totalMs * 100));
+    const chunks: Buffer[] = [];
+    doc.on("data",  c => chunks.push(c));
+    doc.on("end",   () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
 
-  // Build month headers
-  const months: {label:string; lp:number; wp:number}[] = [];
-  let cur = new Date(minTime);
-  cur = new Date(cur.getFullYear(), cur.getMonth(), 1);
-  while (cur.getTime() < maxTime) {
-    const next = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
-    const s = Math.max(cur.getTime(), minTime);
-    const e = Math.min(next.getTime(), maxTime);
-    const lp = toPct(s); const wp = toPct(e) - lp;
-    if (wp > 0) months.push({ label: cur.toLocaleString("en-US",{month:"short",year:"2-digit"}), lp, wp });
-    cur = next;
-  }
+    const W    = doc.page.width  - 80; // usable width (margins)
+    const GOLD : [number,number,number] = [201,168,76];
+    const DARK : [number,number,number] = [10,10,11];
+    const CARD : [number,number,number] = [17,17,19];
+    const MID  : [number,number,number] = [28,28,31];
+    const DIM  : [number,number,number] = [82,82,91];
+    const WHITE: [number,number,number] = [250,250,250];
+    const GREEN: [number,number,number] = [52,211,153];
+    const RED  : [number,number,number] = [248,113,113];
 
-  const LABEL_W = 200;
-  const CHART_W = 700;
-  const TOTAL_W = LABEL_W + CHART_W;
-  const HDR_H   = 28;
-  const PH_H    = 36;
-  const TASK_H  = 24;
-  const PAD     = 20;
+    const allTasks  = Object.values(taskMap).flat();
+    const doneTasks = allTasks.filter((t:any) => t.status === "completed").length;
+    const progPct   = allTasks.length ? Math.round(doneTasks / allTasks.length * 100) : 0;
+    const exportDate = new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
 
-  // Calculate total height
-  let totalH = HDR_H;
-  for (const ph of phases) {
-    totalH += PH_H;
-    totalH += (taskMap[ph.id]||[]).length * TASK_H;
-  }
-  totalH += PAD * 2;
+    // ── Page background ───────────────────────────────────────────────────────
+    doc.rect(0, 0, doc.page.width, doc.page.height).fill(DARK);
 
-  const SVG_W = TOTAL_W + PAD * 2;
-  const SVG_H = totalH + PAD;
+    let y = 40;
+    const L = 40; // left margin
 
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}" font-family="Arial, sans-serif">`;
-  svg += `<rect width="${SVG_W}" height="${SVG_H}" fill="#0a0a0b"/>`;
+    // ── Header ────────────────────────────────────────────────────────────────
+    doc.font("Helvetica").fontSize(9).fillColor(GOLD)
+       .text("PROJECT SCHEDULE  ·  SIGNAL STRIKE", L, y, { characterSpacing: 1.5 });
+    doc.font("Helvetica-Bold").fontSize(18).fillColor(WHITE)
+       .text(project.name, L, y + 14);
+    if (dealTitle) {
+      doc.font("Helvetica").fontSize(11).fillColor(GOLD)
+         .text(dealTitle, L, y + 36);
+    }
 
-  // Month headers bg
-  svg += `<rect x="${PAD}" y="${PAD}" width="${TOTAL_W}" height="${HDR_H}" fill="#0d0d0f"/>`;
+    // Right side — progress + date
+    doc.font("Helvetica").fontSize(9).fillColor(DIM)
+       .text(`Exported ${exportDate}`, L, y, { align:"right", width:W });
+    doc.font("Helvetica-Bold").fontSize(14)
+       .fillColor(progPct===100 ? GREEN : GOLD)
+       .text(`${progPct}% Complete`, L, y+14, { align:"right", width:W });
+    doc.font("Helvetica").fontSize(9).fillColor(DIM)
+       .text(`${doneTasks} of ${allTasks.length} tasks done`, L, y+30, { align:"right", width:W });
 
-  // Month header labels
-  for (const m of months) {
-    const x = PAD + LABEL_W + (m.lp / 100) * CHART_W;
-    const w = (m.wp / 100) * CHART_W;
-    svg += `<rect x="${x}" y="${PAD}" width="${w}" height="${HDR_H}" fill="none" stroke="#27272a" stroke-width="0.5"/>`;
-    svg += `<text x="${x+6}" y="${PAD+18}" font-size="10" fill="#71717a" font-weight="600">${m.label}</text>`;
-  }
+    y += dealTitle ? 62 : 48;
 
-  // Label column header
-  svg += `<rect x="${PAD}" y="${PAD}" width="${LABEL_W}" height="${HDR_H}" fill="#0d0d0f" stroke="#27272a" stroke-width="0.5"/>`;
-  svg += `<text x="${PAD+10}" y="${PAD+18}" font-size="10" fill="#C9A84C" font-weight="700">PHASE / TASK</text>`;
+    // Progress bar
+    doc.rect(L, y, W, 5).fill(MID);
+    const barW = Math.round(W * progPct / 100);
+    if (barW > 0) doc.rect(L, y, barW, 5).fill(progPct===100 ? GREEN : GOLD);
+    y += 18;
 
-  // Today line
-  const now = Date.now();
-  if (now >= minTime && now <= maxTime) {
-    const todayX = PAD + LABEL_W + (toPct(now) / 100) * CHART_W;
-    svg += `<line x1="${todayX}" y1="${PAD+HDR_H}" x2="${todayX}" y2="${SVG_H-PAD}" stroke="#f87171" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>`;
-  }
+    // Divider
+    doc.rect(L, y, W, 0.5).fill([39,39,42]);
+    y += 16;
 
-  let y = PAD + HDR_H;
+    // ── Gantt Chart ───────────────────────────────────────────────────────────
+    const datedPhases = phases.filter(p => p.start_date && p.end_date);
+    if (datedPhases.length > 0) {
+      doc.font("Helvetica-Bold").fontSize(9).fillColor(GOLD)
+         .text("GANTT CHART", L, y, { characterSpacing: 1.2 });
+      y += 16;
 
-  for (const ph of phases) {
-    const tasks = taskMap[ph.id] || [];
-    const phColor = ph.color || "#C9A84C";
+      const minTime = Math.min(...datedPhases.map((p:any) => new Date(p.start_date).getTime()));
+      const maxTime = Math.max(...datedPhases.map((p:any) => new Date(p.end_date).getTime())) + 86400000;
+      const totalMs = maxTime - minTime;
+      const toPct   = (t: number) => Math.min(1, Math.max(0, (t - minTime) / totalMs));
 
-    // Phase row bg
-    svg += `<rect x="${PAD}" y="${y}" width="${TOTAL_W}" height="${PH_H}" fill="#111113" stroke="#1c1c1f" stroke-width="0.5"/>`;
+      const LABEL_W  = 150;
+      const GANTT_W  = W - LABEL_W - 8;
+      const GANTT_X  = L + LABEL_W + 8;
+      const PH_H     = 20;
+      const TASK_H   = 14;
+      const HDR_H    = 18;
 
-    // Phase color dot + label
-    svg += `<rect x="${PAD+10}" y="${y+13}" width="10" height="10" rx="2" fill="${phColor}"/>`;
-    const phLabel = ph.name.length > 22 ? ph.name.slice(0,22)+"…" : ph.name;
-    svg += `<text x="${PAD+26}" y="${y+22}" font-size="11" fill="#fafafa" font-weight="700">${escXML(phLabel)}</text>`;
+      // Month headers
+      doc.rect(GANTT_X, y, GANTT_W, HDR_H).fill([13,13,15]);
+      let cur = new Date(minTime);
+      cur = new Date(cur.getFullYear(), cur.getMonth(), 1);
+      while (cur.getTime() < maxTime) {
+        const next   = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+        const s      = Math.max(cur.getTime(), minTime);
+        const e      = Math.min(next.getTime(), maxTime);
+        const lp     = toPct(s);
+        const wp     = toPct(e) - lp;
+        const mX     = GANTT_X + lp * GANTT_W;
+        const mW     = wp * GANTT_W;
+        const mLabel = cur.toLocaleString("en-US",{month:"short",year:"2-digit"});
+        doc.rect(mX, y, mW, HDR_H).stroke([39,39,42]);
+        if (mW > 20) {
+          doc.font("Helvetica-Bold").fontSize(7).fillColor(DIM)
+             .text(mLabel, mX+3, y+6, { width:mW-4, ellipsis:true });
+        }
+        cur = next;
+      }
 
-    // Phase bar
-    if (ph.start_date && ph.end_date) {
-      const lp = toPct(new Date(ph.start_date).getTime());
-      const rp = toPct(new Date(ph.end_date).getTime() + 86400000);
-      const bx = PAD + LABEL_W + (lp / 100) * CHART_W;
-      const bw = Math.max(((rp - lp) / 100) * CHART_W, 3);
-      svg += `<rect x="${bx}" y="${y+8}" width="${bw}" height="20" rx="3" fill="${phColor}"/>`;
-      if (bw > 40) {
-        const barLabel = ph.name.length > 14 ? ph.name.slice(0,14)+"…" : ph.name;
-        svg += `<text x="${bx+6}" y="${y+22}" font-size="9" fill="#000" font-weight="700">${escXML(barLabel)}</text>`;
+      // Label col header
+      doc.rect(L, y, LABEL_W, HDR_H).fill([13,13,15]);
+      doc.font("Helvetica-Bold").fontSize(7).fillColor(GOLD)
+         .text("PHASE / TASK", L+6, y+6, { width:LABEL_W-8 });
+      y += HDR_H;
+
+      // Today line position
+      const todayPct = toPct(Date.now());
+      const todayX   = GANTT_X + todayPct * GANTT_W;
+
+      // Phase + task rows
+      for (let pi = 0; pi < phases.length; pi++) {
+        const ph    = phases[pi];
+        const phRgb = hexToRgb(ph.color || "#C9A84C");
+        const tasks = taskMap[ph.id] || [];
+
+        // Phase row bg
+        doc.rect(L, y, LABEL_W + 8 + GANTT_W, PH_H).fill(CARD);
+
+        // Phase color square + label
+        doc.rect(L+6, y+6, 8, 8).fill(phRgb);
+        doc.font("Helvetica-Bold").fontSize(8).fillColor(WHITE)
+           .text(ph.name, L+18, y+7, { width:LABEL_W-22, ellipsis:true });
+
+        // Phase bar
+        if (ph.start_date && ph.end_date) {
+          const bL = toPct(new Date(ph.start_date).getTime());
+          const bR = toPct(new Date(ph.end_date).getTime() + 86400000);
+          const bX = GANTT_X + bL * GANTT_W;
+          const bW = Math.max((bR - bL) * GANTT_W, 3);
+          doc.rect(bX, y+4, bW, 12).fill(phRgb);
+          if (bW > 30) {
+            doc.font("Helvetica-Bold").fontSize(6.5).fillColor([0,0,0])
+               .text(ph.name, bX+3, y+7, { width:bW-4, ellipsis:true });
+          }
+        }
+
+        // Row divider
+        doc.rect(L, y+PH_H-0.5, LABEL_W+8+GANTT_W, 0.5).fill([28,28,31]);
+        y += PH_H;
+
+        // Task rows
+        for (const t of tasks) {
+          doc.rect(L, y, LABEL_W+8+GANTT_W, TASK_H).fill([24,24,27]);
+          const tClr = ST_CLR[t.status] ?? DIM;
+          doc.circle(L+10, y+7, 3).fill(tClr);
+          const tColor = t.status === "completed" ? DIM : [161,161,170] as [number,number,number];
+          doc.font("Helvetica").fontSize(7).fillColor(tColor)
+             .text(t.name, L+18, y+4, { width:LABEL_W-20, ellipsis:true });
+
+          if (t.start_date && t.due_date) {
+            const bL = toPct(new Date(t.start_date).getTime());
+            const bR = toPct(new Date(t.due_date).getTime() + 86400000);
+            const bX = GANTT_X + bL * GANTT_W;
+            const bW = Math.max((bR-bL)*GANTT_W, 2);
+            doc.rect(bX, y+3, bW, 7).fill([phRgb[0],phRgb[1],phRgb[2],0.45] as any);
+          } else if (t.due_date) {
+            const mX = GANTT_X + toPct(new Date(t.due_date).getTime()) * GANTT_W;
+            doc.polygon([mX,y+2],[mX+4,y+7],[mX,y+12],[mX-4,y+7]).fill(phRgb);
+          }
+          doc.rect(L, y+TASK_H-0.5, LABEL_W+8+GANTT_W, 0.5).fill([28,28,31]);
+          y += TASK_H;
+        }
+      }
+
+      // Today line (drawn on top)
+      if (todayPct >= 0 && todayPct <= 1) {
+        doc.rect(todayX, y - (HDR_H + phases.reduce((s,p)=>s+PH_H+(taskMap[p.id]||[]).length*TASK_H,0)), 1,
+          HDR_H + phases.reduce((s,p)=>s+PH_H+(taskMap[p.id]||[]).length*TASK_H,0))
+          .fillOpacity(0.5).fill(RED).fillOpacity(1);
+      }
+
+      y += 20;
+    }
+
+    // ── New page for list view if gantt took a lot of space ───────────────────
+    if (y > doc.page.height - 200) {
+      doc.addPage();
+      doc.rect(0,0,doc.page.width,doc.page.height).fill(DARK);
+      y = 40;
+    }
+
+    // ── List View ─────────────────────────────────────────────────────────────
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(GOLD)
+       .text("SCHEDULE — LIST VIEW", L, y, { characterSpacing: 1.2 });
+    y += 16;
+
+    // Table header
+    const COL = { phase:200, start:90, end:90, status:90, progress:W-200-90-90-90 };
+    const cols = [
+      { label:"PHASE / TASK",   w:COL.phase,    x:L },
+      { label:"START",          w:COL.start,    x:L+COL.phase },
+      { label:"END / DUE",      w:COL.end,      x:L+COL.phase+COL.start },
+      { label:"STATUS",         w:COL.status,   x:L+COL.phase+COL.start+COL.end },
+      { label:"ASSIGNEE / NOTE",w:COL.progress, x:L+COL.phase+COL.start+COL.end+COL.status },
+    ];
+
+    // Header bg
+    doc.rect(L, y, W, 18).fill([13,13,15]);
+    for (const c of cols) {
+      doc.font("Helvetica-Bold").fontSize(7).fillColor(GOLD)
+         .text(c.label, c.x+4, y+6, { width:c.w-6, ellipsis:true, characterSpacing:0.8 });
+    }
+    // Gold underline
+    doc.rect(L, y+17, W, 0.5).fill(GOLD);
+    y += 19;
+
+    const PH_ROW = 18;
+    const TK_ROW = 14;
+
+    for (const ph of phases) {
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        doc.rect(0,0,doc.page.width,doc.page.height).fill(DARK);
+        y = 40;
+      }
+
+      const phRgb  = hexToRgb(ph.color || "#C9A84C");
+      const tasks  = taskMap[ph.id] || [];
+      const doneC  = tasks.filter((t:any) => t.status==="completed").length;
+      const stClr  = ST_CLR[ph.status] ?? DIM;
+
+      // Phase row
+      doc.rect(L, y, W, PH_ROW).fill(CARD);
+      doc.rect(L+COL.phase, y, W-COL.phase, PH_ROW).fill(CARD);
+
+      // Color swatch
+      doc.rect(L+4, y+5, 8, 8).fill(phRgb);
+      // Phase name
+      doc.font("Helvetica-Bold").fontSize(8.5).fillColor(WHITE)
+         .text(ph.name, L+16, y+5, { width:COL.phase-20, ellipsis:true });
+      // Dates
+      doc.font("Helvetica").fontSize(8).fillColor(DIM)
+         .text(fmtDate(ph.start_date), cols[1].x+4, y+5, { width:COL.start-6 })
+         .text(fmtDate(ph.end_date),   cols[2].x+4, y+5, { width:COL.end-6   });
+      // Status badge
+      doc.rect(cols[3].x+4, y+4, 76, 11).fill([stClr[0],stClr[1],stClr[2]]);
+      doc.font("Helvetica-Bold").fontSize(7).fillColor(DARK)
+         .text(ST_LBL[ph.status]??ph.status, cols[3].x+7, y+6, { width:70 });
+      // Task count
+      doc.font("Helvetica").fontSize(8).fillColor(DIM)
+         .text(`${doneC}/${tasks.length} tasks`, cols[4].x+4, y+5, { width:COL.progress-8 });
+
+      doc.rect(L, y+PH_ROW-0.5, W, 0.5).fill(MID);
+      y += PH_ROW;
+
+      // Tasks
+      for (const t of tasks) {
+        if (y > doc.page.height - 40) {
+          doc.addPage();
+          doc.rect(0,0,doc.page.width,doc.page.height).fill(DARK);
+          y = 40;
+        }
+
+        const tStClr = ST_CLR[t.status] ?? DIM;
+        const tFill  = t.status === "completed" ? DIM : ([161,161,170] as [number,number,number]);
+
+        doc.rect(L, y, W, TK_ROW).fill([24,24,27]);
+        doc.circle(L+14, y+7, 2.5).fill(tStClr);
+        doc.font(t.status==="completed"?"Helvetica":"Helvetica").fontSize(8)
+           .fillColor(tFill)
+           .text(t.name, L+22, y+3, { width:COL.phase-26, ellipsis:true });
+        doc.font("Helvetica").fontSize(7.5).fillColor(DIM)
+           .text(fmtDate(t.start_date), cols[1].x+4, y+3, { width:COL.start-6 })
+           .text(fmtDate(t.due_date),   cols[2].x+4, y+3, { width:COL.end-6   });
+        // Mini status
+        doc.font("Helvetica").fontSize(7).fillColor(tStClr)
+           .text(ST_LBL[t.status]??t.status, cols[3].x+4, y+3, { width:COL.status-6 });
+        // Assignee / notes
+        const meta = [t.assignee, t.notes?.slice(0,30)].filter(Boolean).join(" · ");
+        doc.font("Helvetica").fontSize(7).fillColor([63,63,70] as any)
+           .text(meta||"—", cols[4].x+4, y+3, { width:COL.progress-8, ellipsis:true });
+
+        doc.rect(L, y+TK_ROW-0.5, W, 0.5).fill([28,28,31]);
+        y += TK_ROW;
       }
     }
 
-    y += PH_H;
+    // ── Footer ────────────────────────────────────────────────────────────────
+    const footerY = doc.page.height - 32;
+    doc.rect(L, footerY-8, W, 0.5).fill([28,28,31]);
+    doc.font("Helvetica").fontSize(8).fillColor(DIM)
+       .text("Powered by Signal Strike  ·  HillTop Ave", L, footerY, { width:W/2 })
+       .text(exportDate, L, footerY, { width:W, align:"right" });
 
-    // Task rows
-    for (const t of tasks) {
-      svg += `<rect x="${PAD}" y="${y}" width="${TOTAL_W}" height="${TASK_H}" fill="#18181b" stroke="#1c1c1f" stroke-width="0.5"/>`;
-
-      // Status dot
-      const stClr = ST_CLR[t.status] ?? "#52525b";
-      svg += `<circle cx="${PAD+18}" cy="${y+12}" r="4" fill="${stClr}" opacity="0.7"/>`;
-
-      // Task label
-      const tkLabel = t.name.length > 26 ? t.name.slice(0,26)+"…" : t.name;
-      const tkFill  = t.status === "completed" ? "#52525b" : "#a1a1aa";
-      svg += `<text x="${PAD+28}" y="${y+16}" font-size="10" fill="${tkFill}">${escXML(tkLabel)}</text>`;
-
-      // Task bar or milestone
-      if (t.start_date && t.due_date) {
-        const lp = toPct(new Date(t.start_date).getTime());
-        const rp = toPct(new Date(t.due_date).getTime() + 86400000);
-        const bx = PAD + LABEL_W + (lp / 100) * CHART_W;
-        const bw = Math.max(((rp - lp) / 100) * CHART_W, 3);
-        svg += `<rect x="${bx}" y="${y+7}" width="${bw}" height="10" rx="2" fill="${phColor}" opacity="0.5"/>`;
-      } else if (t.due_date) {
-        const lp = toPct(new Date(t.due_date).getTime());
-        const mx = PAD + LABEL_W + (lp / 100) * CHART_W;
-        svg += `<polygon points="${mx},${y+5} ${mx+5},${y+12} ${mx},${y+19} ${mx-5},${y+12}" fill="${phColor}"/>`;
-      }
-
-      y += TASK_H;
-    }
-  }
-
-  svg += `</svg>`;
-  return svg;
+    doc.end();
+  });
 }
 
-function escXML(s: string) {
-  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;");
-}
-
-// ── PDF HTML builder ───────────────────────────────────────────────────────────
-function buildPDFHtml(project: any, phases: any[], taskMap: Record<string,any[]>, dealTitle: string, ganttSvg: string): string {
-  const allTasks   = Object.values(taskMap).flat();
-  const doneTasks  = allTasks.filter((t:any) => t.status === "completed").length;
-  const progPct    = allTasks.length ? Math.round(doneTasks / allTasks.length * 100) : 0;
-  const exportDate = new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
-
-  let listRows = "";
-  for (const ph of phases) {
-    const tasks = taskMap[ph.id] || [];
-    const doneC = tasks.filter((t:any) => t.status==="completed").length;
-    listRows += `
-      <tr style="background:#111113;">
-        <td style="padding:10px 14px;border-bottom:1px solid #1c1c1f;">
-          <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${ph.color};margin-right:8px;vertical-align:middle;"></span>
-          <strong style="color:#fafafa;font-size:13px;">${escXML(ph.name)}</strong>
-        </td>
-        <td style="padding:10px 14px;border-bottom:1px solid #1c1c1f;color:#71717a;font-size:12px;">${fmtDate(ph.start_date)}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #1c1c1f;color:#71717a;font-size:12px;">${fmtDate(ph.end_date)}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #1c1c1f;">
-          <span style="font-size:11px;font-weight:600;color:${ST_CLR[ph.status]??'#71717a'};background:${ST_CLR[ph.status]??'#71717a'}22;padding:2px 8px;border-radius:4px;">${ST_LBL[ph.status]??ph.status}</span>
-        </td>
-        <td style="padding:10px 14px;border-bottom:1px solid #1c1c1f;color:#52525b;font-size:12px;">${doneC}/${tasks.length}</td>
-      </tr>`;
-    for (const t of tasks) {
-      listRows += `
-      <tr style="background:#18181b;">
-        <td style="padding:8px 14px 8px 36px;border-bottom:1px solid #111113;color:${t.status==="completed"?"#52525b":"#a1a1aa"};font-size:12px;text-decoration:${t.status==="completed"?"line-through":"none"};">
-          <span style="color:${ST_CLR[t.status]??'#52525b'};margin-right:6px;">●</span>${escXML(t.name)}${t.assignee?` <span style="color:#52525b;margin-left:8px;">· ${escXML(t.assignee)}</span>`:""}
-        </td>
-        <td style="padding:8px 14px;border-bottom:1px solid #111113;color:#52525b;font-size:11px;">${fmtDate(t.start_date)}</td>
-        <td style="padding:8px 14px;border-bottom:1px solid #111113;color:#52525b;font-size:11px;">${fmtDate(t.due_date)}</td>
-        <td style="padding:8px 14px;border-bottom:1px solid #111113;">
-          <span style="font-size:10px;color:${ST_CLR[t.status]??'#52525b'};background:${ST_CLR[t.status]??'#52525b'}22;padding:2px 6px;border-radius:3px;">${ST_LBL[t.status]??t.status}</span>
-        </td>
-        <td style="padding:8px 14px;border-bottom:1px solid #111113;color:#3f3f46;font-size:11px;">${t.notes?escXML(t.notes.slice(0,40)):"—"}</td>
-      </tr>`;
-    }
-  }
-
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"/>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#0a0a0b; color:#fafafa; font-family:Arial,sans-serif; padding:40px; }
-  h1   { font-size:22px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; }
-  h2   { font-size:14px; font-weight:700; color:#C9A84C; text-transform:uppercase; letter-spacing:0.08em; margin:32px 0 14px; }
-  table { width:100%; border-collapse:collapse; }
-  th { background:#0d0d0f; color:#C9A84C; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; padding:10px 14px; text-align:left; border-bottom:1px solid #C9A84C44; }
-</style>
-</head>
-<body>
-
-<!-- Header -->
-<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid #C9A84C44;">
-  <div>
-    <p style="color:#C9A84C;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">Project Schedule</p>
-    <h1>${escXML(project.name)}</h1>
-    ${dealTitle ? `<p style="color:#C9A84C;font-size:13px;margin-top:6px;">${escXML(dealTitle)}</p>` : ""}
-  </div>
-  <div style="text-align:right;">
-    <p style="color:#52525b;font-size:11px;margin-bottom:4px;">Exported ${exportDate}</p>
-    <p style="font-size:13px;color:#C9A84C;font-weight:700;">${progPct}% Complete</p>
-    <p style="font-size:11px;color:#52525b;">${doneTasks} of ${allTasks.length} tasks done</p>
-  </div>
-</div>
-
-<!-- Progress bar -->
-<div style="height:6px;background:#27272a;border-radius:3px;margin-bottom:32px;">
-  <div style="height:100%;width:${progPct}%;background:${progPct===100?"#34d399":"#C9A84C"};border-radius:3px;"></div>
-</div>
-
-<!-- Gantt chart -->
-${ganttSvg ? `<h2>Gantt Chart</h2><div style="margin-bottom:32px;">${ganttSvg}</div>` : ""}
-
-<!-- Schedule list -->
-<h2>Schedule — List View</h2>
-<table>
-  <thead>
-    <tr>
-      <th>Phase / Task</th>
-      <th>Start</th>
-      <th>End / Due</th>
-      <th>Status</th>
-      <th>Progress / Notes</th>
-    </tr>
-  </thead>
-  <tbody>${listRows}</tbody>
-</table>
-
-<!-- Footer -->
-<div style="margin-top:40px;padding-top:16px;border-top:1px solid #1c1c1f;display:flex;justify-content:space-between;align-items:center;">
-  <p style="color:#3f3f46;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;">Powered by Signal Strike · HillTop Ave</p>
-  <p style="color:#3f3f46;font-size:10px;">${exportDate}</p>
-</div>
-
-</body>
-</html>`;
-}
-
-// ── CSV builder ────────────────────────────────────────────────────────────────
+// ── CSV Builder ───────────────────────────────────────────────────────────────
 function buildCSV(project: any, phases: any[], taskMap: Record<string,any[]>, dealTitle: string): string {
-  const rows: string[][] = [
+  const meta = [
     ["Project", project.name],
-    dealTitle ? ["Deal", dealTitle] : [],
+    ...(dealTitle ? [["Deal", dealTitle]] : []),
     ["Exported", new Date().toLocaleDateString("en-US")],
     [],
-    ["Phase", "Task", "Assignee", "Start Date", "End Date", "Status", "Notes"],
-  ].filter(r => r.length > 0);
-
+    ["Phase","Task","Assignee","Start Date","End Date","Status","Notes"],
+  ];
+  const dataRows: string[][] = [];
   for (const ph of phases) {
-    rows.push([ph.name, "", "", fmtDate(ph.start_date), fmtDate(ph.end_date), ST_LBL[ph.status]??ph.status, ""]);
+    dataRows.push([ph.name,"","",fmtDate(ph.start_date),fmtDate(ph.end_date),ST_LBL[ph.status]??ph.status,""]);
     for (const t of (taskMap[ph.id]||[])) {
-      rows.push([ph.name, t.name, t.assignee??""  , fmtDate(t.start_date), fmtDate(t.due_date), ST_LBL[t.status]??t.status, t.notes??""]);
+      dataRows.push([ph.name,t.name,t.assignee??"",fmtDate(t.start_date),fmtDate(t.due_date),ST_LBL[t.status]??t.status,t.notes??""]);
     }
   }
-
-  return rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  return [...meta,...dataRows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
 }
 
-// ── Route handler ──────────────────────────────────────────────────────────────
+// ── Route ─────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const { projectId, recipientEmail, recipientName } = await req.json();
-
     if (!projectId || !recipientEmail) {
-      return NextResponse.json({ error: "Missing projectId or recipientEmail" }, { status: 400 });
+      return NextResponse.json({ error: "Missing projectId or recipientEmail" }, { status:400 });
     }
 
-    // Load project
-    const { data: project, error: projErr } = await supabaseAdmin
-      .from("projects").select("*").eq("id", projectId).single();
-    if (projErr || !project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    const { data: project } = await supabaseAdmin.from("projects").select("*").eq("id",projectId).single();
+    if (!project) return NextResponse.json({ error:"Project not found" }, { status:404 });
 
-    // Load deal title
     let dealTitle = "";
     if (project.deal_id) {
-      const { data: deal } = await supabaseAdmin.from("deals").select("title").eq("id", project.deal_id).single();
+      const { data: deal } = await supabaseAdmin.from("deals").select("title").eq("id",project.deal_id).single();
       dealTitle = deal?.title ?? "";
     }
 
-    // Load phases + tasks
-    const { data: phases } = await supabaseAdmin
-      .from("project_phases").select("*").eq("project_id", projectId).order("sort_order").order("created_at");
+    const { data: phases } = await supabaseAdmin.from("project_phases").select("*").eq("project_id",projectId).order("sort_order").order("created_at");
     const phList = phases || [];
-
     const taskMap: Record<string,any[]> = {};
     if (phList.length) {
-      const { data: tasks } = await supabaseAdmin
-        .from("project_tasks").select("*").in("phase_id", phList.map((p:any) => p.id)).order("sort_order").order("created_at");
+      const { data: tasks } = await supabaseAdmin.from("project_tasks").select("*").in("phase_id",phList.map((p:any)=>p.id)).order("sort_order").order("created_at");
       for (const t of (tasks||[])) { if (!taskMap[t.phase_id]) taskMap[t.phase_id]=[]; taskMap[t.phase_id].push(t); }
     }
 
-    // Build attachments
-    const ganttSvg = buildGanttSVG(phList, taskMap);
-    const pdfHtml  = buildPDFHtml(project, phList, taskMap, dealTitle, ganttSvg);
-    const csvData  = buildCSV(project, phList, taskMap, dealTitle);
-    const safeName = project.name.replace(/[^a-zA-Z0-9\s-]/g,"").trim().replace(/\s+/g,"-");
+    const pdfBuffer = await buildPDF(project, phList, taskMap, dealTitle);
+    const csvData   = buildCSV(project, phList, taskMap, dealTitle);
+    const safeName  = project.name.replace(/[^a-zA-Z0-9\s-]/g,"").trim().replace(/\s+/g,"-").slice(0,60);
 
-    // Send via Resend
+    const escXML = (s:string) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
     const { error: sendErr } = await resend.emails.send({
       from:    "Signal Strike <onboarding@resend.dev>",
       to:      recipientEmail,
       subject: `📋 Project Schedule — ${project.name}`,
-      html: `
-        <div style="background:#0a0a0b;color:#fafafa;font-family:Arial,sans-serif;padding:40px;max-width:600px;margin:0 auto;">
-          <p style="color:#C9A84C;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Signal Strike · Project Export</p>
-          <h1 style="font-size:20px;font-weight:800;margin:0 0 6px;">${escXML(project.name)}</h1>
-          ${dealTitle ? `<p style="color:#C9A84C;font-size:13px;margin:0 0 20px;">${escXML(dealTitle)}</p>` : `<p style="margin:0 0 20px;"></p>`}
-          <p style="color:#a1a1aa;font-size:14px;line-height:1.6;margin-bottom:24px;">
-            ${recipientName ? `Hi ${escXML(recipientName)},<br/><br/>` : ""}
-            Your project schedule is attached as a PDF (with Gantt chart) and CSV for editing in Excel or Google Sheets.
-          </p>
-          <div style="background:#111113;border:1px solid #27272a;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
-            <p style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Attachments</p>
-            <p style="color:#fafafa;font-size:13px;margin:0 0 4px;">📕 ${safeName}-schedule.pdf</p>
-            <p style="color:#fafafa;font-size:13px;margin:0;">📊 ${safeName}-schedule.csv</p>
-          </div>
-          <p style="color:#3f3f46;font-size:11px;border-top:1px solid #1c1c1f;padding-top:16px;margin:0;">
-            Powered by Signal Strike · HillTop Ave
-          </p>
-        </div>`,
+      html: `<div style="background:#0a0a0b;color:#fafafa;font-family:Arial,sans-serif;padding:40px;max-width:600px;margin:0 auto;">
+        <p style="color:#C9A84C;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Signal Strike · Project Export</p>
+        <h1 style="font-size:20px;font-weight:800;margin:0 0 6px;">${escXML(project.name)}</h1>
+        ${dealTitle?`<p style="color:#C9A84C;font-size:13px;margin:0 0 20px;">${escXML(dealTitle)}</p>`:`<p style="margin-bottom:20px;"></p>`}
+        <p style="color:#a1a1aa;font-size:14px;line-height:1.6;margin-bottom:24px;">
+          ${recipientName?`Hi ${escXML(recipientName)},<br/><br/>`:""}
+          Your project schedule is attached as a PDF (with Gantt chart + list view) and CSV.
+        </p>
+        <div style="background:#111113;border:1px solid #27272a;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+          <p style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Attachments</p>
+          <p style="color:#fafafa;font-size:13px;margin:0 0 4px;">📕 ${safeName}-schedule.pdf</p>
+          <p style="color:#fafafa;font-size:13px;margin:0;">📊 ${safeName}-schedule.csv</p>
+        </div>
+        <p style="color:#3f3f46;font-size:11px;border-top:1px solid #1c1c1f;padding-top:16px;margin:0;">Powered by Signal Strike · HillTop Ave</p>
+      </div>`,
       attachments: [
-        {
-          filename: `${safeName}-schedule.pdf`,
-          content:  Buffer.from(pdfHtml).toString("base64"),
-          content_type: "text/html",
-        },
-        {
-          filename: `${safeName}-schedule.csv`,
-          content:  Buffer.from(csvData).toString("base64"),
-          content_type: "text/csv",
-        },
+        { filename:`${safeName}-schedule.pdf`, content:pdfBuffer.toString("base64"), content_type:"application/pdf" },
+        { filename:`${safeName}-schedule.csv`, content:Buffer.from(csvData).toString("base64"), content_type:"text/csv" },
       ],
     });
 
-    if (sendErr) {
-      console.error("[projects/export] Resend error:", sendErr);
-      return NextResponse.json({ error: sendErr.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    console.error("[projects/export] error:", err);
-    return NextResponse.json({ error: err?.message ?? "Export failed" }, { status: 500 });
+    if (sendErr) return NextResponse.json({ error: sendErr.message }, { status:500 });
+    return NextResponse.json({ ok:true });
+  } catch (err:any) {
+    console.error("[projects/export]", err);
+    return NextResponse.json({ error: err?.message ?? "Export failed" }, { status:500 });
   }
 }
