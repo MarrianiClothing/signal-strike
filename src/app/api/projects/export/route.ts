@@ -325,7 +325,7 @@ export async function POST(req: NextRequest) {
 
     // Send via Resend
     const { error: sendErr } = await resend.emails.send({
-      from:    "Signal Strike <noreply@signal-strike.com>",
+      from:    "Signal Strike <onboarding@resend.dev>",
       to:      recipientEmail,
       subject: `📋 Project Schedule — ${project.name}`,
       html: `
