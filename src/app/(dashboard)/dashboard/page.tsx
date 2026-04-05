@@ -77,7 +77,7 @@ export default function DashboardPage() {
   const totalCommission = tieredDeals.reduce((sum: number, d: any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
 
   const card: React.CSSProperties = {
-    background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: 24,
+    background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: 18,
   };
 
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading...</div>;
@@ -150,10 +150,10 @@ export default function DashboardPage() {
   );
 
   return (
-    <div style={{ zoom: 0.8, padding: isMobile ? "0 16px 24px" : 32, maxWidth: isMobile ? "100%" : 1200, boxSizing: "border-box", width: "100%" }}>
+    <div style={{ padding: isMobile ? "0 16px 24px" : "24px 24px 32px", maxWidth: isMobile ? "100%" : 1100, boxSizing: "border-box", width: "100%" }}>
 
       {/* Header */}
-      <div style={{ marginBottom: isMobile ? 20 : 32, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "center" : "stretch", gap: isMobile ? 12 : 0 }}>
+      <div style={{ marginBottom: isMobile ? 16 : 20, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "center" : "stretch", gap: isMobile ? 12 : 0 }}>
         <div style={{ flexShrink: 0 }}>
           <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.6rem", fontWeight: 800, color: "#fafafa", textAlign: isMobile ? "center" : "left", margin: 0 }}>
             {userName ? `Welcome back, ${userName}` : "Dashboard"}
@@ -234,7 +234,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 12, marginBottom: 20 }}>
         {[
           { label: "Pipeline Value", value: fmt(totalPipeline), sub: `${openDeals} open deals`, color: "#34d399" },
           { label: "Won Revenue", value: fmt(wonRevenue), sub: `${deals.filter(d => d.stage === "closed_won").length} deals closed`, color: "#C9A84C" },
@@ -243,7 +243,7 @@ export default function DashboardPage() {
         ].map(stat => (
           <div key={stat.label} style={card}>
             <p style={{ color: "#fafafa", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>{stat.label}</p>
-            <p style={{ fontSize: isMobile ? "1.3rem" : "1.75rem", fontWeight: 800, color: stat.color, fontFamily: "var(--font-cinzel, serif)" }}>{stat.value}</p>
+            <p style={{ fontSize: isMobile ? "1.3rem" : "1.5rem", fontWeight: 800, color: stat.color, fontFamily: "var(--font-cinzel, serif)" }}>{stat.value}</p>
             <p style={{ color: "#52525b", fontSize: "0.75rem", marginTop: 4 }}>{stat.sub}</p>
           </div>
         ))}
@@ -303,7 +303,7 @@ export default function DashboardPage() {
 
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 16 }}>
           {/* Commission Tracker */}
           <div style={card}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -341,7 +341,7 @@ export default function DashboardPage() {
             )}
           </div>
           {/* Right column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={card}>
               <h2 style={{ color: "#fafafa", fontWeight: 700, marginBottom: 16, fontSize: "0.95rem" }}>Revenue Goals</h2>
               {goals.length === 0 ? <p style={{ color: "#52525b", fontSize: "0.82rem" }}>No goals set.</p> : <GoalsList />}
