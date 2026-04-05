@@ -150,7 +150,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <div style={{ padding: isMobile ? "0 16px 24px" : "24px 24px 32px", maxWidth: isMobile ? "100%" : 1100, boxSizing: "border-box", width: "100%" }}>
+    <div style={{ padding: isMobile ? "0 16px 24px" : "20px 20px 32px", boxSizing: "border-box", width: "100%", minWidth: 0 }}>
 
       {/* Header */}
       <div style={{ marginBottom: isMobile ? 16 : 20, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "center" : "stretch", gap: isMobile ? 12 : 0 }}>
@@ -303,10 +303,10 @@ export default function DashboardPage() {
 
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 16 }}>
-          {/* Commission Tracker */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Commission Tracker — full width */}
           <div style={card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: 0 }}>Commission Tracker</h2>
               <span style={{ color: "#52525b", fontSize: "0.75rem" }}>{tieredDeals.length} deals tracked</span>
             </div>
@@ -314,25 +314,25 @@ export default function DashboardPage() {
               <p style={{ color: "#52525b", fontSize: "0.85rem" }}>No deals with commission tiers yet.</p>
             ) : (
               <>
-                <div style={{ background: "#18181b", borderRadius: 10, padding: "12px 16px", marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ background: "#18181b", borderRadius: 10, padding: "10px 16px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Commission</span>
-                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "1.25rem", fontFamily: "monospace" }}>{fmt(totalCommission)}</span>
+                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: "1.15rem", fontFamily: "monospace" }}>{fmt(totalCommission)}</span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {tieredDeals.map((d: any) => {
                     const commission = (d.value || 0) * (d.commission_tiers.rate / 100);
                     const stageColor = STAGE_COLORS[d.stage] || "#71717a";
                     return (
-                      <div key={d.id} onClick={() => router.push("/deals/" + d.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: "#18181b", borderRadius: 8, borderLeft: `3px solid ${stageColor}`, cursor: "pointer" }} onMouseEnter={e => (e.currentTarget.style.background = "#222225")} onMouseLeave={e => (e.currentTarget.style.background = "#18181b")}>
+                      <div key={d.id} onClick={() => router.push("/deals/" + d.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#18181b", borderRadius: 8, borderLeft: `3px solid ${stageColor}`, cursor: "pointer" }} onMouseEnter={e => (e.currentTarget.style.background = "#222225")} onMouseLeave={e => (e.currentTarget.style.background = "#18181b")}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ color: "#fafafa", fontWeight: 600, fontSize: "0.88rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title}</p>
-                          <p style={{ color: "#71717a", fontSize: "0.75rem", marginTop: 2 }}>{d.company || "—"}</p>
+                          <p style={{ color: "#fafafa", fontWeight: 600, fontSize: "0.85rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title}</p>
+                          <p style={{ color: "#71717a", fontSize: "0.73rem", marginTop: 2 }}>{d.company || "—"}</p>
                         </div>
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <p style={{ color: "#34d399", fontWeight: 700, fontSize: "0.95rem", fontFamily: "monospace" }}>{fmt(commission)}</p>
-                          <p style={{ color: "#52525b", fontSize: "0.7rem", marginTop: 1 }}>{d.commission_tiers.name} · {d.commission_tiers.rate}%</p>
+                          <p style={{ color: "#34d399", fontWeight: 700, fontSize: "0.9rem", fontFamily: "monospace" }}>{fmt(commission)}</p>
+                          <p style={{ color: "#52525b", fontSize: "0.68rem", marginTop: 1 }}>{d.commission_tiers.name} · {d.commission_tiers.rate}%</p>
                         </div>
-                        <span style={{ fontSize: "0.7rem", padding: "3px 8px", borderRadius: 5, background: stageColor + "22", color: stageColor, fontWeight: 600, flexShrink: 0 }}>{STAGE_LABELS[d.stage] || d.stage}</span>
+                        <span style={{ fontSize: "0.68rem", padding: "3px 8px", borderRadius: 5, background: stageColor + "22", color: stageColor, fontWeight: 600, flexShrink: 0 }}>{STAGE_LABELS[d.stage] || d.stage}</span>
                       </div>
                     );
                   })}
@@ -340,14 +340,15 @@ export default function DashboardPage() {
               </>
             )}
           </div>
-          {/* Right column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Bottom row — Revenue Goals + Pipeline by Stage side by side */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div style={card}>
-              <h2 style={{ color: "#fafafa", fontWeight: 700, marginBottom: 16, fontSize: "0.95rem" }}>Revenue Goals</h2>
+              <h2 style={{ color: "#fafafa", fontWeight: 700, marginBottom: 14, fontSize: "0.95rem" }}>Revenue Goals</h2>
               {goals.length === 0 ? <p style={{ color: "#52525b", fontSize: "0.82rem" }}>No goals set.</p> : <GoalsList />}
             </div>
             <div style={card}>
-              <h2 style={{ color: "#fafafa", fontWeight: 700, marginBottom: 16, fontSize: "0.95rem" }}>Pipeline by Stage</h2>
+              <h2 style={{ color: "#fafafa", fontWeight: 700, marginBottom: 14, fontSize: "0.95rem" }}>Pipeline by Stage</h2>
               <StageList />
             </div>
           </div>
