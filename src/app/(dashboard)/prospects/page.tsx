@@ -30,6 +30,20 @@ interface Prospect {
   seniority: string | null;
 }
 
+interface DashJob {
+  job_number: string;
+  title: string;
+  company: string | null;
+  contact_name: string | null;
+  value: number;
+  stage: string;
+  dash_status: string;
+  location: string;
+  received_date: string | null;
+  notes: string | null;
+  description: string | null;
+}
+
 const SENIORITY_OPTS = ["owner","founder","c_suite","partner","vp","head","director","manager","senior","mid","junior","entry"];
 const COMPANY_SIZE_OPTS = [
   { label:"1–10",    value:"1,10"    },
@@ -84,6 +98,15 @@ export default function ProspectsPage() {
   const [enriched,    setEnriched]    = useState<Record<string,any>>({});
   const [addingPipeline, setAddingPipeline] = useState<Record<string,boolean>>({});
   const [addedPipeline,  setAddedPipeline]  = useState<Record<string,string>>({});  // id → deal_id
+
+  // DASH import state
+  const [dashModal,     setDashModal]     = useState(false);
+  const [dashJobs,      setDashJobs]      = useState<DashJob[]>([]);
+  const [dashSelected,  setDashSelected]  = useState<Set<number>>(new Set());
+  const [dashLoading,   setDashLoading]   = useState(false);
+  const [dashImporting, setDashImporting] = useState(false);
+  const [dashError,     setDashError]     = useState("");
+  const [dashImported,  setDashImported]  = useState(0);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data:{ user }}) => { if (user) setUserId(user.id); });
@@ -170,6 +193,83 @@ export default function ProspectsPage() {
     setCompanySizes(prev => prev.includes(s) ? prev.filter(x=>x!==s) : [...prev, s]);
   }
 
+  // DASH import handlers
+  async function handleDashFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDashLoading(true); setDashError(""); setDashJobs([]); setDashSelected(new Set());
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res  = await fetch("/api/dash/import", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok || json.error) { setDashError(json.error ?? "Parse failed"); }
+      else {
+        setDashJobs(json.jobs || []);
+        // Select all by default
+        setDashSelected(new Set((json.jobs || []).map((_: any, i: number) => i)));
+      }
+    } catch (err: any) { setDashError(err?.message ?? "Upload failed"); }
+    setDashLoading(false);
+    e.target.value = "";
+  }
+
+  async function handleDashImport() {
+    if (!userId || dashSelected.size === 0) return;
+    setDashImporting(true);
+    let imported = 0;
+    for (const idx of Array.from(dashSelected)) {
+      const job = dashJobs[idx];
+      if (!job) continue;
+      try {
+        const res = await fetch("/api/apollo/pipeline", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id:       userId,
+            contact_name:  job.contact_name,
+            contact_email: null,
+            contact_phone: null,
+            company:       job.company,
+            title:         job.title,
+            linkedin_url:  null,
+            value:         job.value,
+            stage:         job.stage,
+            notes:         job.notes,
+          }),
+        });
+        if (res.ok) imported++;
+      } catch {}
+    }
+    setDashImported(imported);
+    setDashImporting(false);
+    // Close after short delay
+    setTimeout(() => { setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashImported(0); }, 2000);
+  }
+
+  function toggleDashJob(idx: number) {
+    setDashSelected(prev => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  }
+
+  function fmt(n: number) {
+    if (n >= 1_000_000) return "$" + (n/1_000_000).toFixed(2) + "M";
+    if (n >= 1_000)     return "$" + (n/1_000).toFixed(1) + "K";
+    return n > 0 ? "$" + n.toFixed(0) : "—";
+  }
+
+  const STAGE_CLR: Record<string,string> = {
+    prospecting:"#71717a", qualification:"#60a5fa", proposal:"#a78bfa",
+    negotiation:"#fbbf24", closed_won:"#C9A84C", closed_lost:"#f87171",
+  };
+  const STAGE_LBL: Record<string,string> = {
+    prospecting:"Prospecting", qualification:"Qualified", proposal:"Proposal",
+    negotiation:"Negotiation", closed_won:"Won", closed_lost:"Lost",
+  };
+
   const fullName = (p: Prospect) => p.name || [p.first_name, p.last_name].filter(Boolean).join(" ") || "—";
 
   return (
@@ -183,6 +283,16 @@ export default function ProspectsPage() {
         <p style={{ color:"#52525b", fontSize:"0.82rem", margin:0 }}>
           Powered by Apollo · Search contacts, enrich with email/phone, add to pipeline
         </p>
+      </div>
+
+      {/* DASH Import button */}
+      <div style={{ marginBottom: 16, display:"flex", justifyContent:"flex-end" }}>
+        <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"8px 16px", fontWeight:600, fontSize:"0.82rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8 }}
+          onClick={() => setDashModal(true)}>
+          📂 Import DASH Jobs
+          <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }}
+            onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
+        </label>
       </div>
 
       {/* ── Filter Panel ─────────────────────────────────────────────────────── */}
@@ -356,6 +466,128 @@ export default function ProspectsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── DASH Import Modal ───────────────────────────────────────────────── */}
+      {dashModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:28, width:"100%", maxWidth:700, maxHeight:"85vh", display:"flex", flexDirection:"column" }}>
+
+            {/* Header */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <div>
+                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>📂 Import DASH Jobs</h2>
+                <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Select which jobs to add to your Signal Strike pipeline</p>
+              </div>
+              <button onClick={() => { setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashError(""); }}
+                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+            </div>
+
+            {/* Loading */}
+            {dashLoading && (
+              <div style={{ textAlign:"center", padding:"40px 0", color:"#71717a" }}>
+                <p>Parsing DASH export...</p>
+              </div>
+            )}
+
+            {/* Error */}
+            {dashError && !dashLoading && (
+              <div style={{ background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.2)", borderRadius:8, padding:"12px 16px", marginBottom:16 }}>
+                <p style={{ color:"#f87171", fontSize:"0.85rem", margin:0 }}>{dashError}</p>
+              </div>
+            )}
+
+            {/* No file yet */}
+            {!dashLoading && !dashError && dashJobs.length === 0 && (
+              <div style={{ textAlign:"center", padding:"32px 0", color:"#52525b" }}>
+                <div style={{ fontSize:"2.5rem", marginBottom:12 }}>📊</div>
+                <p style={{ margin:"0 0 8px", fontSize:"0.9rem", color:"#a1a1aa" }}>Upload your DASH Open Jobs export</p>
+                <p style={{ margin:"0 0 16px", fontSize:"0.8rem", lineHeight:1.6 }}>
+                  In DASH: <strong style={{ color:"#71717a" }}>Reports → Open Jobs → Export to Excel</strong>
+                </p>
+                <label style={{ background:"#C9A84C", color:"#000", borderRadius:8, padding:"9px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", display:"inline-block" }}>
+                  Choose File
+                  <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }} onChange={handleDashFile} />
+                </label>
+              </div>
+            )}
+
+            {/* Job list */}
+            {dashJobs.length > 0 && !dashLoading && (
+              <>
+                {/* Select all bar */}
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                  <span style={{ color:"#52525b", fontSize:"0.82rem" }}>
+                    {dashJobs.length} jobs found · {dashSelected.size} selected
+                  </span>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={() => setDashSelected(new Set(dashJobs.map((_,i)=>i)))}
+                      style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>
+                      Select All
+                    </button>
+                    <button onClick={() => setDashSelected(new Set())}
+                      style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                {/* Job rows */}
+                <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:6, marginBottom:16 }}>
+                  {dashJobs.map((job, idx) => {
+                    const selected  = dashSelected.has(idx);
+                    const stageClr  = STAGE_CLR[job.stage] ?? "#71717a";
+                    return (
+                      <div key={idx} onClick={() => toggleDashJob(idx)}
+                        style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background: selected ? "#18181b" : "#0f0f10", border:`1px solid ${selected ? "#27272a" : "#1c1c1f"}`, borderLeft:`3px solid ${selected ? stageClr : "#27272a"}`, borderRadius:8, cursor:"pointer" }}>
+                        {/* Checkbox */}
+                        <div style={{ width:18, height:18, borderRadius:4, border:`2px solid ${selected ? "#C9A84C" : "#27272a"}`, background: selected ? "#C9A84C" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"0.7rem", color:"#000", fontWeight:700 }}>
+                          {selected ? "✓" : ""}
+                        </div>
+                        {/* Info */}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                            <span style={{ color: selected?"#fafafa":"#71717a", fontWeight:700, fontSize:"0.85rem" }}>{job.title}</span>
+                            <span style={{ fontSize:"0.68rem", fontWeight:600, color:stageClr, background:stageClr+"22", padding:"2px 7px", borderRadius:4 }}>
+                              {job.dash_status}
+                            </span>
+                          </div>
+                          {job.company && <p style={{ color:"#52525b", fontSize:"0.75rem", margin:"2px 0 0" }}>{job.company}</p>}
+                        </div>
+                        {/* Value */}
+                        <div style={{ textAlign:"right", flexShrink:0 }}>
+                          <p style={{ color: job.value > 0 ? "#C9A84C" : "#3f3f46", fontWeight:700, fontSize:"0.88rem", margin:0, fontFamily:"monospace" }}>
+                            {fmt(job.value)}
+                          </p>
+                          {job.received_date && <p style={{ color:"#3f3f46", fontSize:"0.7rem", margin:"2px 0 0" }}>{job.received_date}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Success message */}
+                {dashImported > 0 && (
+                  <div style={{ background:"rgba(52,211,153,0.08)", border:"1px solid rgba(52,211,153,0.2)", borderRadius:8, padding:"10px 14px", marginBottom:12 }}>
+                    <p style={{ color:"#34d399", fontSize:"0.85rem", margin:0, fontWeight:600 }}>✓ {dashImported} job{dashImported!==1?"s":""} added to pipeline</p>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div style={{ display:"flex", gap:10, justifyContent:"flex-end", borderTop:"1px solid #1c1c1f", paddingTop:16 }}>
+                  <button onClick={() => { setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashError(""); }}
+                    style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 16px", cursor:"pointer", fontSize:"0.85rem" }}>
+                    Cancel
+                  </button>
+                  <button onClick={handleDashImport} disabled={dashImporting || dashSelected.size === 0}
+                    style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", opacity: dashSelected.size > 0 && !dashImporting ? 1 : 0.5 }}>
+                    {dashImporting ? "Adding to Pipeline..." : `Add ${dashSelected.size} Job${dashSelected.size!==1?"s":""} to Pipeline`}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

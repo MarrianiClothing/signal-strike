@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   try {
     const {
       user_id, contact_name, contact_email, contact_phone,
-      company, title, linkedin_url,
+      company, title, linkedin_url, value, stage, notes,
     } = await req.json();
 
     if (!user_id) return NextResponse.json({ error: "Missing user_id" }, { status: 400 });
@@ -26,9 +26,9 @@ export async function POST(req: NextRequest) {
       contact_name:  contact_name  || null,
       contact_email: contact_email || null,
       contact_phone: contact_phone || null,
-      notes:         linkedin_url  ? `LinkedIn: ${linkedin_url}` : null,
-      stage:         "prospecting",
-      value:         0,
+      notes:         notes || (linkedin_url ? `LinkedIn: ${linkedin_url}` : null),
+      stage:         stage || "prospecting",
+      value:         value || 0,
       probability:   10,
       created_at:    new Date().toISOString(),
       updated_at:    new Date().toISOString(),
