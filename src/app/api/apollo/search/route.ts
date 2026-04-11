@@ -4,6 +4,9 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
+    const key = process.env.APOLLO_API_KEY;
+    if (!key) return NextResponse.json({ error: "APOLLO_API_KEY not configured" }, { status: 500 });
+
     const body = await req.json();
     const {
       titles, keywords, industry, company_size,
@@ -11,24 +14,26 @@ export async function POST(req: NextRequest) {
     } = body;
 
     const payload: any = {
-      api_key:         process.env.APOLLO_API_KEY,
       page,
       per_page,
-      person_titles:   titles?.length   ? titles   : undefined,
-      person_seniorities: seniority?.length ? seniority : undefined,
-      organization_industry_tag_ids: undefined,
+      person_titles:                     titles?.length     ? titles     : undefined,
+      person_seniorities:                seniority?.length  ? seniority  : undefined,
       organization_num_employees_ranges: company_size?.length ? company_size : undefined,
-      person_locations: location?.length ? location : undefined,
-      q_keywords:      keywords || undefined,
+      person_locations:                  location?.length   ? location   : undefined,
+      q_keywords:                        keywords || undefined,
     };
 
-    // Clean undefined keys
+    // Remove undefined keys
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
 
     const res = await fetch("https://api.apollo.io/v1/mixed_people/search", {
       method:  "POST",
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
-      body:    JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        "X-Api-Key":    key,
+      },
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
@@ -37,10 +42,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      people:     data.people      ?? [],
-      total:      data.pagination?.total_entries ?? 0,
-      page:       data.pagination?.page          ?? 1,
-      total_pages:data.pagination?.total_pages   ?? 1,
+      people:      data.people                    ?? [],
+      total:       data.pagination?.total_entries ?? 0,
+      page:        data.pagination?.page          ?? 1,
+      total_pages: data.pagination?.total_pages   ?? 1,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "Search error" }, { status: 500 });
