@@ -46,6 +46,15 @@ export default function PipelinePage() {
   const [filterStage, setFilterStage] = useState("All");
   const isMobile = useIsMobile();
 
+  // DASH import state
+  const [dashModal,     setDashModal]     = useState(false);
+  const [dashJobs,      setDashJobs]      = useState<any[]>([]);
+  const [dashSelected,  setDashSelected]  = useState<Set<number>>(new Set());
+  const [dashLoading,   setDashLoading]   = useState(false);
+  const [dashImporting, setDashImporting] = useState(false);
+  const [dashError,     setDashError]     = useState("");
+  const [dashImported,  setDashImported]  = useState(0);
+
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
