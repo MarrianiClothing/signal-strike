@@ -289,7 +289,7 @@ export default function ProspectsPage() {
       <div style={{ marginBottom: 16, display:"flex", justifyContent:"flex-end" }}>
         <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"8px 16px", fontWeight:600, fontSize:"0.82rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8 }}
           onClick={() => setDashModal(true)}>
-          📂 Import DASH Jobs
+          📂 Import DASH Deals
           <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }}
             onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
         </label>
@@ -477,7 +477,7 @@ export default function ProspectsPage() {
             {/* Header */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
               <div>
-                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>📂 Import DASH Jobs</h2>
+                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>📂 Import DASH Deals</h2>
                 <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Select which jobs to add to your Signal Strike pipeline</p>
               </div>
               <button onClick={() => { setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashError(""); }}
