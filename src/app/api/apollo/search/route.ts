@@ -7,26 +7,20 @@ export async function POST(req: NextRequest) {
     const key = process.env.APOLLO_API_KEY;
     if (!key) return NextResponse.json({ error: "APOLLO_API_KEY not configured" }, { status: 500 });
 
-    const body = await req.json();
-    const {
-      titles, keywords, industry, company_size,
-      location, seniority, page = 1, per_page = 25,
-    } = body;
+    const { titles, keywords, company_size, location, seniority, page = 1, per_page = 25 } = await req.json();
 
     const payload: any = {
       page,
       per_page,
-      person_titles:                     titles?.length     ? titles     : undefined,
-      person_seniorities:                seniority?.length  ? seniority  : undefined,
+      person_titles:                     titles?.length       ? titles       : undefined,
+      person_seniorities:                seniority?.length    ? seniority    : undefined,
       organization_num_employees_ranges: company_size?.length ? company_size : undefined,
-      person_locations:                  location?.length   ? location   : undefined,
+      person_locations:                  location?.length     ? location     : undefined,
       q_keywords:                        keywords || undefined,
     };
-
-    // Remove undefined keys
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
 
-    const res = await fetch("https://api.apollo.io/v1/mixed_people/search", {
+    const res = await fetch("https://api.apollo.io/v1/mixed_people/api_search", {
       method:  "POST",
       headers: {
         "Content-Type": "application/json",
@@ -38,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     const data = await res.json();
     if (!res.ok) {
-      return NextResponse.json({ error: data?.message ?? "Apollo search failed" }, { status: res.status });
+      return NextResponse.json({ error: data?.message ?? data?.error ?? "Apollo search failed" }, { status: res.status });
     }
 
     return NextResponse.json({

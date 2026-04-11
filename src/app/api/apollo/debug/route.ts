@@ -4,12 +4,10 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const key = process.env.APOLLO_API_KEY;
-  if (!key) {
-    return NextResponse.json({ ok: false, error: "APOLLO_API_KEY is not set" });
-  }
+  if (!key) return NextResponse.json({ ok: false, error: "APOLLO_API_KEY is not set" });
 
   try {
-    const res = await fetch("https://api.apollo.io/v1/mixed_people/search", {
+    const res = await fetch("https://api.apollo.io/v1/mixed_people/api_search", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -23,7 +21,9 @@ export async function GET() {
       ok:              res.ok,
       status:          res.status,
       key_prefix:      key.slice(0, 6) + "...",
-      apollo_response: data?.error ?? data?.message ?? (res.ok ? "success" : "failed"),
+      people_count:    data.people?.length ?? 0,
+      total:           data.pagination?.total_entries ?? 0,
+      apollo_error:    data?.message ?? data?.error ?? null,
     });
   } catch (err: any) {
     return NextResponse.json({ ok: false, fetch_error: err?.message });
