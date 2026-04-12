@@ -14,7 +14,6 @@ function useIsMobile() {
   return isMobile;
 }
 
-
 const STAGE_LABELS: Record<string, string> = {
   prospecting: "Prospecting", qualification: "Qualified", proposal: "Proposal",
   negotiation: "Negotiation", closed_won: "Won", closed_lost: "Lost",
@@ -30,6 +29,17 @@ function fmt(n: number) {
   return "$" + n.toFixed(0);
 }
 
+function cleanTitle(title: string, company?: string | null): string {
+  if (!title) return title;
+  const parts = title.split(" \u2014 ");
+  if (parts.length === 2) {
+    const a = parts[0].trim(), b = parts[1].trim();
+    if (a === b) return a;
+    if (company && (a === company.trim() || b === company.trim())) return a;
+  }
+  return title;
+}
+
 export default function DealsPage() {
   const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,8 +52,6 @@ export default function DealsPage() {
   const [dashImporting, setDashImporting] = useState(false);
   const [dashError,     setDashError]     = useState("");
   const [dashImported,  setDashImported]  = useState(0);
-
-  // Generic import state
   const [importModal,    setImportModal]    = useState(false);
   const [importDeals,    setImportDeals]    = useState<any[]>([]);
   const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
@@ -56,16 +64,15 @@ export default function DealsPage() {
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-      setDeals(data || []);
-      setLoading(false);
-    }
-    load();
-  }, []);
+  async function load() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    setDeals(data || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
 
   const filtered = deals.filter(d =>
     !search || d.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -100,7 +107,6 @@ export default function DealsPage() {
     if (!userId || dashSelected.size === 0) return;
     setDashImporting(true);
     let imported = 0;
-    const STAGE_CLR: Record<string,string> = { prospecting:"#71717a", negotiation:"#fbbf24", closed_won:"#C9A84C" };
     for (const idx of Array.from(dashSelected)) {
       const job = dashJobs[idx];
       if (!job) continue;
@@ -108,16 +114,9 @@ export default function DealsPage() {
         const res = await fetch("/api/apollo/pipeline", {
           method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({
-            user_id:       userId,
-            contact_name:  job.contact_name,
-            contact_email: null,
-            contact_phone: null,
-            company:       job.company,
-            title:         job.title,
-            linkedin_url:  null,
-            value:         job.value,
-            stage:         job.stage,
-            notes:         job.notes,
+            user_id: userId, contact_name: job.contact_name, contact_email: null,
+            contact_phone: null, company: job.company, title: job.title,
+            linkedin_url: null, value: job.value, stage: job.stage, notes: job.notes,
           }),
         });
         if (res.ok) imported++;
@@ -179,7 +178,6 @@ export default function DealsPage() {
     setImportSaving(false);
     setTimeout(async () => {
       setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportDone(0);
-      // Reload deals
       const { data: { user } } = await createClient().auth.getUser();
       if (user) {
         const { data } = await createClient().from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
@@ -192,35 +190,60 @@ export default function DealsPage() {
 
   return (
     <div style={{ padding: isMobile ? 16 : 32 }}>
+      {/* Header */}
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 24, gap: 12 }}>
         <div>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fafafa" }}>Deals</h1>
           <p style={{ color: "#71717a", fontSize: "0.82rem", marginTop: 3 }}>{deals.length} total deals</p>
         </div>
-        <div style={{ display: "flex", gap: 10, width: isMobile ? "100%" : "auto" }}>
-          <input
-            style={{ background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 14px", color: "#fafafa", fontSize: "0.85rem", width: isMobile ? "100%" : 220, flex: isMobile ? 1 : undefined }}
-            placeholder="Search deals..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-                    <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 16px", fontWeight:600, fontSize:"0.85rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
-            📂 Import DASH Deals
-            <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }}
-              onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
-          </label>
-          <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 16px", fontWeight:600, fontSize:"0.85rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
-            📥 Import Spreadsheet
-            <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }}
-              onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
-          </label>
-          <button onClick={() => router.push("/pipeline")} style={{
-            background: "#C9A84C", color: "#000", border: "none", borderRadius: 8,
-            padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-          }}>+ Add Deal</button>
-        </div>
+
+        {/* Toolbar — mobile: search full-width + scrollable action row */}
+        {isMobile ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+            <input
+              style={{ background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 14px", color: "#fafafa", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" }}
+              placeholder="Search deals..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+              <label style={{ background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0 }}>
+                &#128194; DASH Import
+                <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display: "none" }}
+                  onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
+              </label>
+              <label style={{ background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0 }}>
+                &#128229; Spreadsheet
+                <input type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }}
+                  onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
+              </label>
+              <button onClick={() => router.push("/pipeline")} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>+ Add Deal</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 10 }}>
+            <input
+              style={{ background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 14px", color: "#fafafa", fontSize: "0.85rem", width: 220 }}
+              placeholder="Search deals..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 16px", fontWeight:600, fontSize:"0.85rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
+              &#128194; Import DASH Deals
+              <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }}
+                onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
+            </label>
+            <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 16px", fontWeight:600, fontSize:"0.85rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
+              &#128229; Import Spreadsheet
+              <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }}
+                onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
+            </label>
+            <button onClick={() => router.push("/pipeline")} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}>+ Add Deal</button>
+          </div>
+        )}
       </div>
 
+      {/* Mobile card list */}
       {isMobile ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filtered.length === 0 ? (
@@ -229,18 +252,21 @@ export default function DealsPage() {
             </div>
           ) : filtered.map(deal => {
             const stageColor = STAGE_COLORS[deal.stage] || "#71717a";
+            const title = cleanTitle(deal.title, deal.company);
+            const showCompany = deal.company && deal.company !== title;
+            const showContact = deal.contact_name && deal.contact_name !== deal.company;
             return (
               <div key={deal.id} onClick={() => router.push("/deals/" + deal.id)}
                 style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, borderLeft: `3px solid ${stageColor}`, padding: "14px 16px", cursor: "pointer" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <div>
-                    <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: "0 0 3px" }}>{deal.title}</p>
-                    <p style={{ color: "#71717a", fontSize: "0.78rem", margin: 0 }}>{deal.company || "—"}</p>
+                  <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
+                    <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</p>
+                    {showCompany && <p style={{ color: "#71717a", fontSize: "0.78rem", margin: 0 }}>{deal.company}</p>}
                   </div>
-                  <span style={{ color: "#C9A84C", fontWeight: 800, fontSize: "1rem", fontFamily: "var(--font-cinzel, serif)" }}>{fmt(deal.value)}</span>
+                  <span style={{ color: "#C9A84C", fontWeight: 800, fontSize: "1rem", fontFamily: "var(--font-cinzel, serif)", flexShrink: 0 }}>{fmt(deal.value)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: "#71717a", fontSize: "0.78rem" }}>{deal.contact_name || "—"}</span>
+                  <span style={{ color: "#71717a", fontSize: "0.78rem" }}>{showContact ? deal.contact_name : (showCompany ? deal.company : "\u2014")}</span>
                   <span style={{ fontSize: "0.72rem", padding: "3px 10px", borderRadius: 20, background: stageColor + "22", color: stageColor, fontWeight: 600 }}>
                     {STAGE_LABELS[deal.stage] || deal.stage}
                   </span>
@@ -250,59 +276,56 @@ export default function DealsPage() {
           })}
         </div>
       ) : (
-      <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid #27272a" }}>
-              {["Deal", "Company", "Contact", "Value", "Stage", "Close Date"].map(h => (
-                <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: "#71717a", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#52525b" }}>
-                {search ? "No deals match your search." : "No deals yet. Add one from the Pipeline view."}
-              </td></tr>
-            ) : filtered.map(deal => (
-              <tr key={deal.id}
-                onClick={() => router.push("/deals/" + deal.id)}
-                style={{ borderBottom: "1px solid #18181b", color: "#fafafa", fontSize: "0.9rem", cursor: "pointer" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#1c1c1f")}
-                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                <td style={{ padding: "13px 16px", fontWeight: 600 }}>{deal.title}</td>
-                <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.company || "—"}</td>
-                <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.contact_name || "—"}</td>
-                <td style={{ padding: "13px 16px", color: "#C9A84C", fontWeight: 700 }}>{fmt(deal.value)}</td>
-
-
-
-                <td style={{ padding:"13px 16px" }}><span style={{ color:"#3f3f46" }}>—</span></td>
-                <td style={{ padding: "13px 16px" }}>
-                  <span style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: 5, background: (STAGE_COLORS[deal.stage] || "#71717a") + "22", color: STAGE_COLORS[deal.stage] || "#71717a", fontWeight: 600 }}>
-                    {STAGE_LABELS[deal.stage] || deal.stage}
-                  </span>
-                </td>
-                <td style={{ padding: "13px 16px", color: "#71717a", fontSize: "0.82rem" }}>
-                  {deal.expected_close_date ? new Date(deal.expected_close_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-                </td>
+        <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #27272a" }}>
+                {["Deal", "Company", "Contact", "Value", "Stage", "Close Date"].map(h => (
+                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: "#71717a", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#52525b" }}>
+                  {search ? "No deals match your search." : "No deals yet. Add one from the Pipeline view."}
+                </td></tr>
+              ) : filtered.map(deal => (
+                <tr key={deal.id}
+                  onClick={() => router.push("/deals/" + deal.id)}
+                  style={{ borderBottom: "1px solid #18181b", color: "#fafafa", fontSize: "0.9rem", cursor: "pointer" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#1c1c1f")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                  <td style={{ padding: "13px 16px", fontWeight: 600 }}>{deal.title}</td>
+                  <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.company || "\u2014"}</td>
+                  <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.contact_name || "\u2014"}</td>
+                  <td style={{ padding: "13px 16px", color: "#C9A84C", fontWeight: 700 }}>{fmt(deal.value)}</td>
+                  <td style={{ padding: "13px 16px" }}>
+                    <span style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: 5, background: (STAGE_COLORS[deal.stage] || "#71717a") + "22", color: STAGE_COLORS[deal.stage] || "#71717a", fontWeight: 600 }}>
+                      {STAGE_LABELS[deal.stage] || deal.stage}
+                    </span>
+                  </td>
+                  <td style={{ padding: "13px 16px", color: "#71717a", fontSize: "0.82rem" }}>
+                    {deal.expected_close_date ? new Date(deal.expected_close_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "\u2014"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-      {/* ── DASH Import Modal ────────────────────────────────────────────────── */}
+
+      {/* DASH Import Modal */}
       {dashModal && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
           <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:28, width:"100%", maxWidth:700, maxHeight:"85vh", display:"flex", flexDirection:"column" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
               <div>
-                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>📂 Import DASH Deals</h2>
+                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>&#128194; Import DASH Deals</h2>
                 <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Select which jobs to add to your Signal Strike pipeline</p>
               </div>
               <button onClick={() => { setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashError(""); }}
-                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>&times;</button>
             </div>
             {dashLoading && <div style={{ textAlign:"center", padding:"40px 0", color:"#71717a" }}><p>Parsing DASH export...</p></div>}
             {dashError && !dashLoading && (
@@ -312,9 +335,9 @@ export default function DealsPage() {
             )}
             {!dashLoading && !dashError && dashJobs.length === 0 && (
               <div style={{ textAlign:"center", padding:"32px 0", color:"#52525b" }}>
-                <div style={{ fontSize:"2.5rem", marginBottom:12 }}>📊</div>
+                <div style={{ fontSize:"2.5rem", marginBottom:12 }}>&#128202;</div>
                 <p style={{ margin:"0 0 8px", fontSize:"0.9rem", color:"#a1a1aa" }}>Upload your DASH Open Jobs export</p>
-                <p style={{ margin:"0 0 16px", fontSize:"0.8rem", lineHeight:1.6 }}>In DASH: <strong style={{ color:"#71717a" }}>Reports → Open Jobs → Export to Excel</strong></p>
+                <p style={{ margin:"0 0 16px", fontSize:"0.8rem", lineHeight:1.6 }}>In DASH: <strong style={{ color:"#71717a" }}>Reports &rarr; Open Jobs &rarr; Export to Excel</strong></p>
                 <label style={{ background:"#C9A84C", color:"#000", borderRadius:8, padding:"9px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", display:"inline-block" }}>
                   Choose File
                   <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }} onChange={handleDashFile} />
@@ -324,7 +347,7 @@ export default function DealsPage() {
             {dashJobs.length > 0 && !dashLoading && (
               <>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-                  <span style={{ color:"#52525b", fontSize:"0.82rem" }}>{dashJobs.length} deals found · {dashSelected.size} selected</span>
+                  <span style={{ color:"#52525b", fontSize:"0.82rem" }}>{dashJobs.length} deals found &middot; {dashSelected.size} selected</span>
                   <div style={{ display:"flex", gap:8 }}>
                     <button onClick={() => setDashSelected(new Set(dashJobs.map((_,i)=>i)))}
                       style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>Select All</button>
@@ -341,7 +364,7 @@ export default function DealsPage() {
                       <div key={idx} onClick={() => toggleDashJob(idx)}
                         style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background:selected?"#18181b":"#0f0f10", border:`1px solid ${selected?"#27272a":"#1c1c1f"}`, borderLeft:`3px solid ${selected?stageClr:"#27272a"}`, borderRadius:8, cursor:"pointer" }}>
                         <div style={{ width:18, height:18, borderRadius:4, border:`2px solid ${selected?"#C9A84C":"#27272a"}`, background:selected?"#C9A84C":"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"0.7rem", color:"#000", fontWeight:700 }}>
-                          {selected?"✓":""}
+                          {selected?"\u2713":""}
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
@@ -352,7 +375,7 @@ export default function DealsPage() {
                         </div>
                         <div style={{ textAlign:"right", flexShrink:0 }}>
                           <p style={{ color:job.value>0?"#C9A84C":"#3f3f46", fontWeight:700, fontSize:"0.88rem", margin:0, fontFamily:"monospace" }}>
-                            {job.value>=1000000?"$"+(job.value/1000000).toFixed(2)+"M":job.value>=1000?"$"+(job.value/1000).toFixed(1)+"K":job.value>0?"$"+job.value:"—"}
+                            {job.value>=1000000?"$"+(job.value/1000000).toFixed(2)+"M":job.value>=1000?"$"+(job.value/1000).toFixed(1)+"K":job.value>0?"$"+job.value:"\u2014"}
                           </p>
                           {job.received_date && <p style={{ color:"#3f3f46", fontSize:"0.7rem", margin:"2px 0 0" }}>{job.received_date}</p>}
                         </div>
@@ -362,7 +385,7 @@ export default function DealsPage() {
                 </div>
                 {dashImported > 0 && (
                   <div style={{ background:"rgba(52,211,153,0.08)", border:"1px solid rgba(52,211,153,0.2)", borderRadius:8, padding:"10px 14px", marginBottom:12 }}>
-                    <p style={{ color:"#34d399", fontSize:"0.85rem", margin:0, fontWeight:600 }}>✓ {dashImported} deal{dashImported!==1?"s":""} added to pipeline</p>
+                    <p style={{ color:"#34d399", fontSize:"0.85rem", margin:0, fontWeight:600 }}>\u2713 {dashImported} deal{dashImported!==1?"s":""} added to pipeline</p>
                   </div>
                 )}
                 <div style={{ display:"flex", gap:10, justifyContent:"flex-end", borderTop:"1px solid #1c1c1f", paddingTop:16 }}>
@@ -379,63 +402,50 @@ export default function DealsPage() {
         </div>
       )}
 
-      {/* ── Generic Import Modal ─────────────────────────────────────────────── */}
+      {/* Generic Import Modal */}
       {importModal && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:700, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
           <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:28, width:"100%", maxWidth:720, maxHeight:"85vh", display:"flex", flexDirection:"column" }}>
-
-            {/* Header */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
               <div>
-                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>📥 Import Deals from Spreadsheet</h2>
-                <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Excel or CSV — columns are detected automatically</p>
+                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>&#128229; Import Deals from Spreadsheet</h2>
+                <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Excel or CSV &mdash; columns are detected automatically</p>
               </div>
               <button onClick={() => { setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportError(""); }}
-                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>&times;</button>
             </div>
-
-            {/* Loading */}
             {importLoading && <div style={{ textAlign:"center", padding:"40px 0", color:"#71717a" }}><p>Parsing file...</p></div>}
-
-            {/* Error */}
             {importError && !importLoading && (
               <div style={{ background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.2)", borderRadius:8, padding:"12px 16px", marginBottom:16 }}>
                 <p style={{ color:"#f87171", fontSize:"0.85rem", margin:"0 0 8px", fontWeight:600 }}>Could not parse file</p>
                 <p style={{ color:"#a1a1aa", fontSize:"0.82rem", margin:0 }}>{importError}</p>
               </div>
             )}
-
-            {/* Empty — instructions */}
             {!importLoading && !importError && importDeals.length === 0 && (
               <div style={{ textAlign:"center", padding:"32px 0", color:"#52525b" }}>
-                <div style={{ fontSize:"2.5rem", marginBottom:12 }}>📊</div>
+                <div style={{ fontSize:"2.5rem", marginBottom:12 }}>&#128202;</div>
                 <p style={{ margin:"0 0 8px", fontSize:"0.9rem", color:"#a1a1aa" }}>Upload an Excel or CSV file</p>
                 <p style={{ margin:"0 0 6px", fontSize:"0.8rem", lineHeight:1.6 }}>
                   Recognized columns: <strong style={{ color:"#71717a" }}>Title, Company, Contact Name, Email, Phone, Value, Stage, Probability, Close Date, Notes</strong>
                 </p>
-                <p style={{ margin:"0 0 20px", fontSize:"0.78rem", color:"#3f3f46" }}>Column names are flexible — "Deal Name", "Opportunity", "Job" all map to Title automatically</p>
+                <p style={{ margin:"0 0 20px", fontSize:"0.78rem", color:"#3f3f46" }}>Column names are flexible &mdash; "Deal Name", "Opportunity", "Job" all map to Title automatically</p>
                 <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap" }}>
                   <label style={{ background:"#C9A84C", color:"#000", borderRadius:8, padding:"9px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", display:"inline-block" }}>
                     Choose File
                     <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }} onChange={handleImportFile} />
                   </label>
                   <a href="/api/deals/template" download style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 20px", fontWeight:600, fontSize:"0.85rem", textDecoration:"none", display:"inline-flex", alignItems:"center", gap:6 }}>
-                    ↓ Download Template
+                    &darr; Download Template
                   </a>
                 </div>
               </div>
             )}
-
-            {/* Preview */}
             {importDeals.length > 0 && !importLoading && (
               <>
-                {/* Detection summary */}
                 <div style={{ background:"rgba(52,211,153,0.06)", border:"1px solid rgba(52,211,153,0.15)", borderRadius:8, padding:"10px 14px", marginBottom:12, display:"flex", gap:16, flexWrap:"wrap", alignItems:"center" }}>
-                  <span style={{ color:"#34d399", fontSize:"0.82rem", fontWeight:600 }}>✓ {importDeals.length} rows detected</span>
+                  <span style={{ color:"#34d399", fontSize:"0.82rem", fontWeight:600 }}>\u2713 {importDeals.length} rows detected</span>
                   <span style={{ color:"#52525b", fontSize:"0.78rem" }}>Columns mapped: {importDetected.join(", ")}</span>
                 </div>
-
-                {/* Select all bar */}
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                   <span style={{ color:"#52525b", fontSize:"0.82rem" }}>{importSelected.size} of {importDeals.length} selected</span>
                   <div style={{ display:"flex", gap:8 }}>
@@ -445,11 +455,9 @@ export default function DealsPage() {
                       style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>Clear</button>
                   </div>
                 </div>
-
-                {/* Deal rows */}
                 <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:5, marginBottom:16 }}>
                   {importDeals.map((d:any, idx:number) => {
-                    const sel      = importSelected.has(idx);
+                    const sel = importSelected.has(idx);
                     const SC: Record<string,string> = { prospecting:"#71717a", qualification:"#60a5fa", proposal:"#a78bfa", negotiation:"#fbbf24", closed_won:"#C9A84C", closed_lost:"#f87171" };
                     const SL: Record<string,string> = { prospecting:"Prospecting", qualification:"Qualified", proposal:"Proposal", negotiation:"Negotiation", closed_won:"Won", closed_lost:"Lost" };
                     const sc = SC[d.stage] ?? "#71717a";
@@ -457,7 +465,7 @@ export default function DealsPage() {
                       <div key={idx} onClick={() => setImportSelected(prev => { const n=new Set(prev); n.has(idx)?n.delete(idx):n.add(idx); return n; })}
                         style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background:sel?"#18181b":"#0f0f10", border:`1px solid ${sel?"#27272a":"#1c1c1f"}`, borderLeft:`3px solid ${sel?sc:"#27272a"}`, borderRadius:8, cursor:"pointer" }}>
                         <div style={{ width:18, height:18, borderRadius:4, border:`2px solid ${sel?"#C9A84C":"#27272a"}`, background:sel?"#C9A84C":"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"0.7rem", color:"#000", fontWeight:700 }}>
-                          {sel?"✓":""}
+                          {sel?"\u2713":""}
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
@@ -466,12 +474,12 @@ export default function DealsPage() {
                           </div>
                           <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:2 }}>
                             {d.company     && <span style={{ color:"#52525b", fontSize:"0.73rem" }}>{d.company}</span>}
-                            {d.contact_name && <span style={{ color:"#52525b", fontSize:"0.73rem" }}>· {d.contact_name}</span>}
+                            {d.contact_name && <span style={{ color:"#52525b", fontSize:"0.73rem" }}>&middot; {d.contact_name}</span>}
                           </div>
                         </div>
                         <div style={{ textAlign:"right", flexShrink:0 }}>
                           <p style={{ color:d.value>0?"#C9A84C":"#3f3f46", fontWeight:700, fontSize:"0.88rem", margin:0, fontFamily:"monospace" }}>
-                            {d.value>=1000000?"$"+(d.value/1000000).toFixed(2)+"M":d.value>=1000?"$"+(d.value/1000).toFixed(1)+"K":d.value>0?"$"+d.value.toFixed(0):"—"}
+                            {d.value>=1000000?"$"+(d.value/1000000).toFixed(2)+"M":d.value>=1000?"$"+(d.value/1000).toFixed(1)+"K":d.value>0?"$"+d.value.toFixed(0):"\u2014"}
                           </p>
                           {d.expected_close_date && <p style={{ color:"#3f3f46", fontSize:"0.7rem", margin:"2px 0 0" }}>{d.expected_close_date}</p>}
                         </div>
@@ -479,18 +487,14 @@ export default function DealsPage() {
                     );
                   })}
                 </div>
-
-                {/* Success */}
                 {importDone > 0 && (
                   <div style={{ background:"rgba(52,211,153,0.08)", border:"1px solid rgba(52,211,153,0.2)", borderRadius:8, padding:"10px 14px", marginBottom:12 }}>
-                    <p style={{ color:"#34d399", fontSize:"0.85rem", margin:0, fontWeight:600 }}>✓ {importDone} deal{importDone!==1?"s":""} imported successfully</p>
+                    <p style={{ color:"#34d399", fontSize:"0.85rem", margin:0, fontWeight:600 }}>\u2713 {importDone} deal{importDone!==1?"s":""} imported successfully</p>
                   </div>
                 )}
-
-                {/* Footer */}
                 <div style={{ display:"flex", gap:10, justifyContent:"flex-end", borderTop:"1px solid #1c1c1f", paddingTop:16 }}>
                   <a href="/api/deals/template" download style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 14px", fontSize:"0.82rem", textDecoration:"none", display:"flex", alignItems:"center", gap:5 }}>
-                    ↓ Template
+                    &darr; Template
                   </a>
                   <button onClick={() => { setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportError(""); }}
                     style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 16px", cursor:"pointer", fontSize:"0.85rem" }}>Cancel</button>

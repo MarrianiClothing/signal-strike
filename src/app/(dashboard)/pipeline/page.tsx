@@ -24,6 +24,17 @@ const STAGES = [
   { id: "closed_lost", label: "Lost", color: "#f87171" },
 ];
 
+function cleanTitle(title: string, company?: string | null): string {
+  if (!title) return title;
+  const parts = title.split(" — ");
+  if (parts.length === 2) {
+    const a = parts[0].trim(), b = parts[1].trim();
+    if (a === b) return a;
+    if (company && (a === company.trim() || b === company.trim())) return a;
+  }
+  return title;
+}
+
 function fmt(n: number) {
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
   if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "K";
@@ -239,7 +250,31 @@ export default function PipelinePage() {
           <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fafafa" }}>Pipeline</h1>
           <p style={{ color: "#71717a", fontSize: "0.82rem", marginTop: 3 }}>{deals.length} deals</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, width: isMobile ? "100%" : "auto" }}>
+        {isMobile ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+            <input
+              type="text"
+              placeholder="Search pipeline..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 8, color: "#fafafa", padding: "8px 14px", fontSize: "0.875rem", outline: "none", width: "100%", boxSizing: "border-box" as const }}
+            />
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+              <label style={{ background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0 }}>
+                &#128194; DASH Import
+                <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display: "none" }}
+                  onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
+              </label>
+              <label style={{ background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0 }}>
+                &#128229; Spreadsheet
+                <input type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }}
+                  onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
+              </label>
+              <button onClick={() => setShowAdd(true)} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>+ Add Deal</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <input
             type="text"
             placeholder="Search pipeline..."
@@ -261,11 +296,9 @@ export default function PipelinePage() {
             <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }}
               onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
           </label>
-          <button onClick={() => setShowAdd(true)} style={{
-            background: "#C9A84C", color: "#000", border: "none", borderRadius: 8,
-            padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-          }}>+ Add Deal</button>
-        </div>
+            <button onClick={() => setShowAdd(true)} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}>+ Add Deal</button>
+          </div>
+        )}
       </div>
 
       {/* Add Deal Modal */}
@@ -366,10 +399,10 @@ export default function PipelinePage() {
                     onMouseEnter={e => (e.currentTarget.style.background = "#222225")}
                     onMouseLeave={e => (e.currentTarget.style.background = "#18181b")}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deal.title}</p>
+                      <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cleanTitle(deal.title, deal.company)}</p>
                       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                         {deal.company && <p style={{ color: "#71717a", fontSize: "0.78rem", margin: 0 }}>{deal.company}</p>}
-                        {deal.contact_name && <p style={{ color: "#52525b", fontSize: "0.75rem", margin: 0 }}>{deal.contact_name}</p>}
+                        {deal.contact_name && deal.contact_name !== deal.company && <p style={{ color: "#52525b", fontSize: "0.75rem", margin: 0 }}>{deal.contact_name}</p>}
                         {deal.expected_close_date && <p style={{ color: "#52525b", fontSize: "0.75rem", margin: 0 }}>Closes {new Date(deal.expected_close_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>}
                       </div>
                     </div>
