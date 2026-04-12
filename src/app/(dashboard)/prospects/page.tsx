@@ -81,6 +81,13 @@ export default function ProspectsPage() {
   const [userId,   setUserId]   = useState("");
   const [loading,  setLoading]  = useState(false);
   const [prospects,setProspects]= useState<Prospect[]>([]);
+
+  // Credit wallet state
+  const [credits,       setCredits]       = useState<number | null>(null);
+  const [isInternal,    setIsInternal]    = useState(false);
+  const [buyModal,      setBuyModal]      = useState(false);
+  const [purchasing,    setPurchasing]    = useState<string | null>(null);
+  const [creditMsg,     setCreditMsg]     = useState("");
   const [total,    setTotal]    = useState(0);
   const [page,     setPage]     = useState(1);
   const [totalPages,setTotalPages] = useState(1);
@@ -109,7 +116,28 @@ export default function ProspectsPage() {
   const [dashImported,  setDashImported]  = useState(0);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data:{ user }}) => { if (user) setUserId(user.id); });
+    supabase.auth.getUser().then(async ({ data:{ user }}) => {
+      if (!user) return;
+      setUserId(user.id);
+      // Load credit balance
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const res = await fetch("/api/credits/balance", {
+          headers: { "Authorization": `Bearer ${session.access_token}` },
+        });
+        const json = await res.json();
+        if (!json.error) {
+          setIsInternal(json.is_internal);
+          setCredits(json.is_internal ? null : json.balance);
+        }
+      }
+      // Check for post-purchase redirect
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("credits") === "success") {
+        setCreditMsg("Credits added to your account!");
+        window.history.replaceState({}, "", "/prospects");
+      }
+    });
   }, []);
 
   async function handleSearch(p = 1) {
@@ -139,11 +167,20 @@ export default function ProspectsPage() {
   }
 
   async function handleEnrich(p: Prospect) {
+    // Check credits before attempting (commercial users only)
+    if (!isInternal && credits !== null && credits <= 0) {
+      setBuyModal(true);
+      return;
+    }
     setEnriching(prev => ({ ...prev, [p.id]: true }));
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res  = await fetch("/api/apollo/enrich", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token ?? ""}`,
+        },
         body: JSON.stringify({
           person_id:         p.id,
           first_name:        p.first_name,
@@ -153,11 +190,38 @@ export default function ProspectsPage() {
         }),
       });
       const json = await res.json();
-      if (res.ok && !json.error) {
+      if (res.status === 402) {
+        // Insufficient credits
+        setBuyModal(true);
+      } else if (res.ok && !json.error) {
         setEnriched(prev => ({ ...prev, [p.id]: json }));
+        // Deduct from local balance display
+        if (!isInternal && credits !== null) {
+          setCredits(prev => Math.max((prev ?? 1) - 1, 0));
+        }
       }
     } catch {}
     setEnriching(prev => ({ ...prev, [p.id]: false }));
+  }
+
+  async function handleBuyCredits(bundleId: string) {
+    setPurchasing(bundleId);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch("/api/credits/purchase", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session?.access_token ?? ""}`,
+      },
+      body: JSON.stringify({ bundle_id: bundleId }),
+    });
+    const json = await res.json();
+    if (json.url) {
+      window.location.href = json.url;
+    } else {
+      setPurchasing(null);
+      alert("Checkout failed. Please try again.");
+    }
   }
 
   async function handleAddPipeline(p: Prospect) {
@@ -284,6 +348,28 @@ export default function ProspectsPage() {
           Powered by Apollo · Search contacts, enrich with email/phone, add to pipeline
         </p>
       </div>
+
+      {/* Credit balance bar */}
+      {!isInternal && (
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"#111113", border:"1px solid #27272a", borderRadius:10, padding:"10px 16px", marginBottom:16 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:"0.82rem", color:"#71717a" }}>Enrichment Credits</span>
+            <span style={{ fontSize:"1rem", fontWeight:700, color: credits === 0 ? "#f87171" : "#C9A84C" }}>
+              {credits ?? 0}
+            </span>
+            {credits === 0 && <span style={{ fontSize:"0.72rem", color:"#f87171" }}>— out of credits</span>}
+          </div>
+          <button onClick={() => setBuyModal(true)}
+            style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:7, padding:"6px 16px", fontWeight:700, fontSize:"0.78rem", cursor:"pointer" }}>
+            + Buy Credits
+          </button>
+        </div>
+      )}
+      {creditMsg && (
+        <div style={{ background:"rgba(52,211,153,0.08)", border:"1px solid rgba(52,211,153,0.2)", borderRadius:8, padding:"10px 16px", marginBottom:12 }}>
+          <p style={{ color:"#34d399", fontSize:"0.85rem", margin:0, fontWeight:600 }}>✓ {creditMsg}</p>
+        </div>
+      )}
 
       {/* DASH Import button */}
       <div style={{ marginBottom: 16, display:"flex", justifyContent:"flex-end" }}>
@@ -587,6 +673,49 @@ export default function ProspectsPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Buy Credits Modal ────────────────────────────────────────────────── */}
+      {buyModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:800, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:32, width:"100%", maxWidth:480 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <div>
+                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.1rem", margin:"0 0 4px" }}>Buy Enrichment Credits</h2>
+                <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Reveal direct email & phone for any prospect</p>
+              </div>
+              <button onClick={() => setBuyModal(false)} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+            </div>
+
+            {[
+              { id:"starter",  credits:25,  price:"$4.99",  per:"$0.20/credit", popular:false },
+              { id:"standard", credits:100, price:"$14.99", per:"$0.15/credit", popular:true  },
+              { id:"pro",      credits:500, price:"$49.99", per:"$0.10/credit", popular:false },
+            ].map(b => (
+              <div key={b.id} onClick={() => !purchasing && handleBuyCredits(b.id)}
+                style={{ background: b.popular ? "rgba(201,168,76,0.08)" : "#18181b", border:`1px solid ${b.popular ? "rgba(201,168,76,0.4)" : "#27272a"}`, borderRadius:10, padding:"14px 18px", marginBottom:10, cursor:purchasing ? "not-allowed" : "pointer", display:"flex", justifyContent:"space-between", alignItems:"center", opacity: purchasing && purchasing !== b.id ? 0.5 : 1 }}>
+                <div>
+                  <p style={{ color:"#fafafa", fontWeight:700, fontSize:"0.95rem", margin:"0 0 2px" }}>
+                    {b.credits} Credits
+                    {b.popular && <span style={{ marginLeft:8, fontSize:"0.65rem", fontWeight:700, color:"#C9A84C", background:"rgba(201,168,76,0.15)", padding:"2px 8px", borderRadius:10 }}>BEST VALUE</span>}
+                  </p>
+                  <p style={{ color:"#71717a", fontSize:"0.75rem", margin:0 }}>{b.per}</p>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <p style={{ color:"#C9A84C", fontWeight:800, fontSize:"1.1rem", margin:"0 0 2px" }}>{b.price}</p>
+                  <p style={{ color:"#52525b", fontSize:"0.68rem", margin:0 }}>one-time</p>
+                </div>
+              </div>
+            ))}
+
+            {purchasing && (
+              <p style={{ color:"#71717a", fontSize:"0.82rem", textAlign:"center", marginTop:12 }}>Redirecting to checkout...</p>
+            )}
+            <p style={{ color:"#3f3f46", fontSize:"0.72rem", textAlign:"center", marginTop:16 }}>
+              Secured by Stripe · No subscription · Credits never expire
+            </p>
           </div>
         </div>
       )}
