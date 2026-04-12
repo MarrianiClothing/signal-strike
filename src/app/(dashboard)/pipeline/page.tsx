@@ -193,6 +193,11 @@ export default function PipelinePage() {
               outline: "none", flex: isMobile ? 1 : undefined, width: isMobile ? undefined : 220,
             }}
           />
+          <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 16px", fontWeight:600, fontSize:"0.85rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
+            📂 Import DASH Deals
+            <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }}
+              onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
+          </label>
           <button onClick={() => setShowAdd(true)} style={{
             background: "#C9A84C", color: "#000", border: "none", borderRadius: 8,
             padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
