@@ -96,12 +96,7 @@ export default function AskSignalPage() {
       {/* Header */}
       <div style={{ padding: "24px 24px 0", borderBottom: "1px solid #18181b", paddingBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 42, height: 42, borderRadius: "50%",
-            background: "rgba(201,168,76,0.12)", border: "1px solid #C9A84C",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "1.1rem", flexShrink: 0,
-          }}>⚡</div>
+          
           <div>
             <h1 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#fafafa", fontFamily: "var(--font-cinzel, serif)" }}>Ask Signal</h1>
             <p style={{ margin: 0, fontSize: "0.75rem", color: "#52525b" }}>Your AI revenue assistant — ask anything about your deals, pipeline, or expenses</p>
