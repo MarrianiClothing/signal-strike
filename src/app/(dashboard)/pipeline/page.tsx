@@ -55,6 +55,16 @@ export default function PipelinePage() {
   const [dashError,     setDashError]     = useState("");
   const [dashImported,  setDashImported]  = useState(0);
 
+  // Generic spreadsheet import state
+  const [importModal,    setImportModal]    = useState(false);
+  const [importDeals,    setImportDeals]    = useState<any[]>([]);
+  const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
+  const [importLoading,  setImportLoading]  = useState(false);
+  const [importSaving,   setImportSaving]   = useState(false);
+  const [importError,    setImportError]    = useState("");
+  const [importDone,     setImportDone]     = useState(0);
+  const [importDetected, setImportDetected] = useState<string[]>([]);
+
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -171,6 +181,54 @@ export default function PipelinePage() {
     setDashSelected(prev => { const n = new Set(prev); n.has(idx)?n.delete(idx):n.add(idx); return n; });
   }
 
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportLoading(true); setImportError(""); setImportDeals([]); setImportSelected(new Set());
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res  = await fetch("/api/deals/import", { method:"POST", body:fd });
+      const json = await res.json();
+      if (!res.ok || json.error) { setImportError(json.error ?? "Parse failed"); }
+      else {
+        setImportDeals(json.deals || []);
+        setImportDetected(json.detected || []);
+        setImportSelected(new Set((json.deals||[]).map((_:any,i:number)=>i)));
+      }
+    } catch(err:any) { setImportError(err?.message ?? "Upload failed"); }
+    setImportLoading(false);
+    e.target.value = "";
+  }
+
+  async function handleImportSave() {
+    if (!userId || importSelected.size === 0) return;
+    setImportSaving(true);
+    let done = 0;
+    for (const idx of Array.from(importSelected)) {
+      const d = importDeals[idx];
+      if (!d) continue;
+      try {
+        const res = await fetch("/api/apollo/pipeline", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({
+            user_id: userId, title: d.title, company: d.company,
+            contact_name: d.contact_name, contact_email: d.contact_email,
+            contact_phone: d.contact_phone, value: d.value,
+            stage: d.stage, notes: d.notes,
+          }),
+        });
+        if (res.ok) done++;
+      } catch {}
+    }
+    setImportDone(done);
+    setImportSaving(false);
+    setTimeout(() => {
+      setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportDone(0);
+      load();
+    }, 1800);
+  }
+
   if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading pipeline...</div>;
 
   return (
@@ -197,6 +255,11 @@ export default function PipelinePage() {
             📂 Import DASH Deals
             <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }}
               onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
+          </label>
+          <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 16px", fontWeight:600, fontSize:"0.85rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
+            📥 Import Spreadsheet
+            <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }}
+              onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
           </label>
           <button onClick={() => setShowAdd(true)} style={{
             background: "#C9A84C", color: "#000", border: "none", borderRadius: 8,
@@ -400,6 +463,113 @@ export default function PipelinePage() {
                   <button onClick={handleDashImport} disabled={dashImporting||dashSelected.size===0}
                     style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", opacity:dashSelected.size>0&&!dashImporting?1:0.5 }}>
                     {dashImporting?"Adding...": `Add ${dashSelected.size} Deal${dashSelected.size!==1?"s":""} to Pipeline`}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Import Spreadsheet Modal ─────────────────────────────────────────── */}
+      {importModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:700, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:28, width:"100%", maxWidth:720, maxHeight:"85vh", display:"flex", flexDirection:"column" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <div>
+                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>📥 Import Deals from Spreadsheet</h2>
+                <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Excel or CSV — columns detected automatically</p>
+              </div>
+              <button onClick={() => { setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportError(""); }}
+                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+            </div>
+
+            {importLoading && <div style={{ textAlign:"center", padding:"40px 0", color:"#71717a" }}><p>Parsing file...</p></div>}
+
+            {importError && !importLoading && (
+              <div style={{ background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.2)", borderRadius:8, padding:"12px 16px", marginBottom:16 }}>
+                <p style={{ color:"#f87171", fontSize:"0.85rem", margin:"0 0 4px", fontWeight:600 }}>Could not parse file</p>
+                <p style={{ color:"#a1a1aa", fontSize:"0.82rem", margin:0 }}>{importError}</p>
+              </div>
+            )}
+
+            {!importLoading && !importError && importDeals.length === 0 && (
+              <div style={{ textAlign:"center", padding:"32px 0", color:"#52525b" }}>
+                <div style={{ fontSize:"2.5rem", marginBottom:12 }}>📊</div>
+                <p style={{ margin:"0 0 8px", fontSize:"0.9rem", color:"#a1a1aa" }}>Upload an Excel or CSV file</p>
+                <p style={{ margin:"0 0 6px", fontSize:"0.8rem", lineHeight:1.6 }}>Recognized columns: <strong style={{ color:"#71717a" }}>Title, Company, Contact Name, Email, Phone, Value, Stage, Probability, Close Date, Notes</strong></p>
+                <p style={{ margin:"0 0 20px", fontSize:"0.78rem", color:"#3f3f46" }}>Column names are flexible — "Deal Name", "Opportunity", "Job" all map to Title</p>
+                <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap" }}>
+                  <label style={{ background:"#C9A84C", color:"#000", borderRadius:8, padding:"9px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer" }}>
+                    Choose File
+                    <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }} onChange={handleImportFile} />
+                  </label>
+                  <a href="/api/deals/template" download style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 20px", fontWeight:600, fontSize:"0.85rem", textDecoration:"none", display:"inline-flex", alignItems:"center", gap:6 }}>
+                    ↓ Download Template
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {importDeals.length > 0 && !importLoading && (
+              <>
+                <div style={{ background:"rgba(52,211,153,0.06)", border:"1px solid rgba(52,211,153,0.15)", borderRadius:8, padding:"10px 14px", marginBottom:12, display:"flex", gap:16, flexWrap:"wrap", alignItems:"center" }}>
+                  <span style={{ color:"#34d399", fontSize:"0.82rem", fontWeight:600 }}>✓ {importDeals.length} rows detected</span>
+                  <span style={{ color:"#52525b", fontSize:"0.78rem" }}>Columns mapped: {importDetected.join(", ")}</span>
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <span style={{ color:"#52525b", fontSize:"0.82rem" }}>{importSelected.size} of {importDeals.length} selected</span>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={() => setImportSelected(new Set(importDeals.map((_,i)=>i)))}
+                      style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>Select All</button>
+                    <button onClick={() => setImportSelected(new Set())}
+                      style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>Clear</button>
+                  </div>
+                </div>
+                <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:5, marginBottom:16 }}>
+                  {importDeals.map((d:any, idx:number) => {
+                    const sel = importSelected.has(idx);
+                    const SC: Record<string,string> = { prospecting:"#71717a", qualification:"#60a5fa", proposal:"#a78bfa", negotiation:"#fbbf24", closed_won:"#C9A84C", closed_lost:"#f87171" };
+                    const SL: Record<string,string> = { prospecting:"Prospecting", qualification:"Qualified", proposal:"Proposal", negotiation:"Negotiation", closed_won:"Won", closed_lost:"Lost" };
+                    const sc = SC[d.stage] ?? "#71717a";
+                    return (
+                      <div key={idx} onClick={() => setImportSelected(prev => { const n=new Set(prev); n.has(idx)?n.delete(idx):n.add(idx); return n; })}
+                        style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background:sel?"#18181b":"#0f0f10", border:`1px solid ${sel?"#27272a":"#1c1c1f"}`, borderLeft:`3px solid ${sel?sc:"#27272a"}`, borderRadius:8, cursor:"pointer" }}>
+                        <div style={{ width:18, height:18, borderRadius:4, border:`2px solid ${sel?"#C9A84C":"#27272a"}`, background:sel?"#C9A84C":"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"0.7rem", color:"#000", fontWeight:700 }}>
+                          {sel?"✓":""}
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                            <span style={{ color:sel?"#fafafa":"#71717a", fontWeight:700, fontSize:"0.85rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:280 }}>{d.title}</span>
+                            <span style={{ fontSize:"0.68rem", fontWeight:600, color:sc, background:sc+"22", padding:"2px 7px", borderRadius:4 }}>{SL[d.stage]??d.stage}</span>
+                          </div>
+                          <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:2 }}>
+                            {d.company      && <span style={{ color:"#52525b", fontSize:"0.73rem" }}>{d.company}</span>}
+                            {d.contact_name && <span style={{ color:"#52525b", fontSize:"0.73rem" }}>· {d.contact_name}</span>}
+                          </div>
+                        </div>
+                        <div style={{ textAlign:"right", flexShrink:0 }}>
+                          <p style={{ color:d.value>0?"#C9A84C":"#3f3f46", fontWeight:700, fontSize:"0.88rem", margin:0, fontFamily:"monospace" }}>
+                            {d.value>=1000000?"$"+(d.value/1000000).toFixed(2)+"M":d.value>=1000?"$"+(d.value/1000).toFixed(1)+"K":d.value>0?"$"+d.value.toFixed(0):"—"}
+                          </p>
+                          {d.expected_close_date && <p style={{ color:"#3f3f46", fontSize:"0.7rem", margin:"2px 0 0" }}>{d.expected_close_date}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {importDone > 0 && (
+                  <div style={{ background:"rgba(52,211,153,0.08)", border:"1px solid rgba(52,211,153,0.2)", borderRadius:8, padding:"10px 14px", marginBottom:12 }}>
+                    <p style={{ color:"#34d399", fontSize:"0.85rem", margin:0, fontWeight:600 }}>✓ {importDone} deal{importDone!==1?"s":""} imported</p>
+                  </div>
+                )}
+                <div style={{ display:"flex", gap:10, justifyContent:"flex-end", borderTop:"1px solid #1c1c1f", paddingTop:16 }}>
+                  <a href="/api/deals/template" download style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 14px", fontSize:"0.82rem", textDecoration:"none", display:"flex", alignItems:"center", gap:5 }}>↓ Template</a>
+                  <button onClick={() => { setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportError(""); }}
+                    style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 16px", cursor:"pointer", fontSize:"0.85rem" }}>Cancel</button>
+                  <button onClick={handleImportSave} disabled={importSaving||importSelected.size===0}
+                    style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", opacity:importSelected.size>0&&!importSaving?1:0.5 }}>
+                    {importSaving?"Importing...":`Import ${importSelected.size} Deal${importSelected.size!==1?"s":""}`}
                   </button>
                 </div>
               </>
