@@ -85,6 +85,7 @@ export default function ProspectsPage() {
   // Credit wallet state
   const [credits,       setCredits]       = useState<number | null>(null);
   const [isInternal,    setIsInternal]    = useState(false);
+  const [creditsLoading,setCreditsLoading] = useState(true);
   const [buyModal,      setBuyModal]      = useState(false);
   const [purchasing,    setPurchasing]    = useState<string | null>(null);
   const [creditMsg,     setCreditMsg]     = useState("");
@@ -130,6 +131,7 @@ export default function ProspectsPage() {
           setIsInternal(json.is_internal);
           setCredits(json.is_internal ? null : json.balance);
         }
+        setCreditsLoading(false);
       }
       // Check for post-purchase redirect
       const params = new URLSearchParams(window.location.search);
@@ -350,7 +352,7 @@ export default function ProspectsPage() {
       </div>
 
       {/* Credit balance bar */}
-      {!isInternal && (
+      {!isInternal && !creditsLoading && (
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"#111113", border:"1px solid #27272a", borderRadius:10, padding:"10px 16px", marginBottom:16 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <span style={{ fontSize:"0.82rem", color:"#71717a" }}>Enrichment Credits</span>
