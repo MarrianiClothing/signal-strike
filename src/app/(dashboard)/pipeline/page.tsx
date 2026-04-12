@@ -259,19 +259,19 @@ export default function PipelinePage() {
               onChange={e => setSearch(e.target.value)}
               style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 8, color: "#fafafa", padding: "8px 14px", fontSize: "0.875rem", outline: "none", width: "100%", boxSizing: "border-box" as const }}
             />
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
-              <label style={{ background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <label style={{ flex: 1, background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 10px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap" }}>
                 &#128194; DASH Import
                 <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display: "none" }}
                   onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
               </label>
-              <label style={{ background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0 }}>
+              <label style={{ flex: 1, background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 10px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap" }}>
                 &#128229; Spreadsheet
                 <input type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }}
                   onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
               </label>
-              <button onClick={() => setShowAdd(true)} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>+ Add Deal</button>
             </div>
+            <button onClick={() => setShowAdd(true)} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", width: "100%" }}>+ Add Deal</button>
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
