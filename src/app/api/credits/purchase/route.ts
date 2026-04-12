@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
 
 export const runtime = "nodejs";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" });
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Credit bundle definitions
 const BUNDLES: Record<string, { credits: number; price_cents: number; label: string }> = {
   starter:  { credits: 25,  price_cents: 499,  label: "25 Enrichment Credits" },
   standard: { credits: 100, price_cents: 1499, label: "100 Enrichment Credits" },
@@ -20,6 +16,9 @@ const BUNDLES: Record<string, { credits: number; price_cents: number; label: str
 
 export async function POST(req: NextRequest) {
   try {
+    const Stripe = (await import("stripe")).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" });
+
     const authHeader = req.headers.get("authorization");
     if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -43,7 +42,7 @@ export async function POST(req: NextRequest) {
           unit_amount: bundle.price_cents,
           product_data: {
             name: bundle.label,
-            description: `Signal Strike enrichment credits — reveal direct email & phone for any prospect`,
+            description: "Signal Strike enrichment credits — reveal direct email & phone for any prospect",
           },
         },
         quantity: 1,
