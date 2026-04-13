@@ -221,9 +221,9 @@ export default function DealsPage() {
             <button onClick={() => router.push("/pipeline")} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", width: "100%" }}>+ Add Deal</button>
           </div>
         ) : (
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <input
-              style={{ background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 14px", color: "#fafafa", fontSize: "0.85rem", width: 220 }}
+              style={{ background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 14px", color: "#fafafa", fontSize: "0.85rem", flex: "1 1 180px", minWidth: 120, maxWidth: 220 }}
               placeholder="Search deals..."
               value={search}
               onChange={e => setSearch(e.target.value)}

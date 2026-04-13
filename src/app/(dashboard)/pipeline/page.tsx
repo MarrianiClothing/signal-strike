@@ -274,7 +274,7 @@ export default function PipelinePage() {
             <button onClick={() => setShowAdd(true)} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", width: "100%" }}>+ Add Deal</button>
           </div>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <input
             type="text"
             placeholder="Search pipeline..."
@@ -283,7 +283,7 @@ export default function PipelinePage() {
             style={{
               background: "#111113", border: "1px solid #27272a", borderRadius: 8,
               color: "#fafafa", padding: "8px 14px", fontSize: "0.875rem",
-              outline: "none", flex: isMobile ? 1 : undefined, width: isMobile ? undefined : 220,
+              outline: "none", flex: isMobile ? 1 : "1 1 180px", minWidth: 120, maxWidth: 220,
             }}
           />
           <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 16px", fontWeight:600, fontSize:"0.85rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
