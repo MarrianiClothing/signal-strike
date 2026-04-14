@@ -122,15 +122,18 @@ export default function ProspectsPage() {
       setUserId(user.id);
       // Load credit balance
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const res = await fetch("/api/credits/balance", {
-          headers: { "Authorization": `Bearer ${session.access_token}` },
-        });
-        const json = await res.json();
-        if (!json.error) {
-          setIsInternal(json.is_internal);
-          setCredits(json.is_internal ? null : json.balance);
+      try {
+        if (session) {
+          const res = await fetch("/api/credits/balance", {
+            headers: { "Authorization": `Bearer ${session.access_token}` },
+          });
+          const json = await res.json();
+          if (!json.error) {
+            setIsInternal(json.is_internal);
+            setCredits(json.is_internal ? null : json.balance);
+          }
         }
+      } finally {
         setCreditsLoading(false);
       }
       // Check for post-purchase redirect

@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Validate JWT using user's own token — no service role key needed
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,32 +26,16 @@ export async function POST(req: NextRequest) {
     if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const bundle_id = body?.bundle_id;
-    const bundle = BUNDLES[bundle_id];
+    const bundle = BUNDLES[body?.bundle_id];
     if (!bundle) return NextResponse.json({ error: "Invalid bundle" }, { status: 400 });
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://strike.hilltopave.com";
-
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      line_items: [{
-        price_data: {
-          currency: "usd",
-          unit_amount: bundle.price_cents,
-          product_data: {
-            name: bundle.label,
-            description: "Signal Strike enrichment credits — reveal direct email & phone for any prospect",
-          },
-        },
-        quantity: 1,
-      }],
-      metadata: {
-        user_id: user.id,
-        bundle_id,
-        credits: bundle.credits.toString(),
-      },
-      success_url: `${appUrl}/prospects?credits=success&bundle=${bundle_id}`,
+      line_items: [{ price_data: { currency: "usd", unit_amount: bundle.price_cents, product_data: { name: bundle.label, description: "Signal Strike enrichment credits" } }, quantity: 1 }],
+      metadata: { user_id: user.id, bundle_id: body.bundle_id, credits: bundle.credits.toString() },
+      success_url: `${appUrl}/prospects?credits=success&bundle=${body.bundle_id}`,
       cancel_url:  `${appUrl}/prospects?credits=cancelled`,
       customer_email: user.email,
     });
