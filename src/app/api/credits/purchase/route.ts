@@ -10,43 +10,28 @@ const BUNDLES: Record<string, { credits: number; price_cents: number; label: str
 };
 
 export async function POST(req: NextRequest) {
-  const debug: Record<string, any> = {};
   try {
-    debug.step = "loading stripe";
     const Stripe = (await import("stripe")).default;
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" });
-    debug.stripe_key_prefix = process.env.STRIPE_SECRET_KEY?.slice(0, 7) ?? "MISSING";
 
-    debug.step = "auth header";
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) return NextResponse.json({ error: "Unauthorized - no auth header", debug }, { status: 401 });
-    debug.has_auth_header = true;
+    if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    debug.step = "supabase getUser";
-    debug.supabase_url = process.env.NEXT_PUBLIC_SUPABASE_URL ? "present" : "MISSING";
-    debug.anon_key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "present" : "MISSING";
-
+    // Validate JWT using user's own token — no service role key needed
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { global: { headers: { Authorization: authHeader } } }
     );
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized - getUser failed", auth_error: authError?.message, debug }, { status: 401 });
-    }
-    debug.user_id = user.id;
+    if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    debug.step = "parse body";
     const body = await req.json();
     const bundle_id = body?.bundle_id;
-    debug.bundle_id = bundle_id;
     const bundle = BUNDLES[bundle_id];
-    if (!bundle) return NextResponse.json({ error: "Invalid bundle", debug }, { status: 400 });
+    if (!bundle) return NextResponse.json({ error: "Invalid bundle" }, { status: 400 });
 
-    debug.step = "create stripe session";
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://strike.hilltopave.com";
-    debug.app_url = appUrl;
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -74,6 +59,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? "Checkout error", debug, stack: err?.stack?.slice(0,500) }, { status: 500 });
+    console.error("Credits purchase error:", err);
+    return NextResponse.json({ error: err?.message ?? "Checkout error" }, { status: 500 });
   }
 }
