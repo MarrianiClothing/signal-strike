@@ -1,12 +1,8 @@
+"use server";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const BUNDLES: Record<string, { credits: number; price_cents: number; label: string }> = {
   starter:  { credits: 25,  price_cents: 499,  label: "25 Enrichment Credits" },
@@ -22,12 +18,17 @@ export async function POST(req: NextRequest) {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
-      authHeader.replace("Bearer ", "")
+    // Use user's own token to get their identity — no service role key needed
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { Authorization: authHeader } } }
     );
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { bundle_id } = await req.json();
+    const body = await req.json();
+    const bundle_id = body?.bundle_id;
     const bundle = BUNDLES[bundle_id];
     if (!bundle) return NextResponse.json({ error: "Invalid bundle" }, { status: 400 });
 
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
+    console.error("Credits purchase error:", err);
     return NextResponse.json({ error: err?.message ?? "Checkout error" }, { status: 500 });
   }
 }
