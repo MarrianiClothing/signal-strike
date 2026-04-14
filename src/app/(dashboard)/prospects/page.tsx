@@ -225,7 +225,7 @@ export default function ProspectsPage() {
       window.location.href = json.url;
     } else {
       setPurchasing(null);
-      alert("Checkout failed. Please try again.");
+      alert("Checkout failed: " + (json.error ?? JSON.stringify(json)));
     }
   }
 
