@@ -347,7 +347,7 @@ export default function ProspectsPage() {
           Prospect Finder
         </h1>
         <p style={{ color:"#52525b", fontSize:"0.82rem", margin:0 }}>
-          Powered by Apollo · Search contacts, enrich with email/phone, add to pipeline
+          Powered by Hilltop Ave · Search contacts, enrich with email/phone, add to pipeline
         </p>
       </div>
 
