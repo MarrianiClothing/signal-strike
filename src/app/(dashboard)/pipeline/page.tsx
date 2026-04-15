@@ -2,6 +2,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCache, setCache } from "@/lib/cache";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -44,8 +46,9 @@ function fmt(n: number) {
 export default function PipelinePage() {
   const router = useRouter();
   const supabase = createClient();
-  const [deals, setDeals] = useState<any[]>([]);
-  const [userId, setUserId] = useState("");
+  const { userId: authUserId, ready: authReady } = useAuth();
+  const [deals, setDeals] = useState<any[]>(() => getCache<any[]>("deals") ?? []);
+  const [userId, setUserId] = useState(authUserId);
   const [loading, setLoading] = useState(true);
   const [dragging, setDragging] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -81,12 +84,17 @@ export default function PipelinePage() {
     if (!user) return;
     setUserId(user.id);
     const { data } = await supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-    setDeals(data || []);
+    const freshDeals = data || [];
+    setDeals(freshDeals);
+    setCache("deals", freshDeals);
     const { data: tiersData } = await supabase.from("commission_tiers").select("*").eq("user_id", user.id).order("rate", { ascending: false });
     setCommissionTiers(tiersData || []);
     setLoading(false);
   }, [supabase]);
 
+  useEffect(() => {
+    if (authReady && authUserId && !userId) setUserId(authUserId);
+  }, [authReady, authUserId]);
   useEffect(() => { load(); }, [load]);
 
   async function handleDrop(stage: string) {

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -26,33 +27,15 @@ const NAV = [
   { href: "/ask-signal", label: "Ask Signal" },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function SidebarInner() {
   const pathname  = usePathname();
   const router    = useRouter();
   const supabase  = createClient();
-  const [initials,     setInitials]     = useState("?");
-  const [fullName,     setFullName]     = useState("");
+  const { initials, fullName } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isMobile    = useIsMobile();
-
-  useEffect(() => {
-    async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles").select("full_name").eq("id", user.id).single();
-      if (profile?.full_name) {
-        setFullName(profile.full_name);
-        const parts = profile.full_name.trim().split(" ");
-        setInitials(parts.length >= 2
-          ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-          : parts[0].slice(0, 2).toUpperCase());
-      }
-    }
-    loadProfile();
-  }, []);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -63,7 +46,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // Auto-close sidebar on navigation
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   async function handleSignOut() {
@@ -77,8 +59,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0a0a0b" }}>
-
-      {/* ── Mobile top bar ── */}
       {isMobile && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
@@ -86,7 +66,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "0 16px",
         }}>
-          {/* Hamburger */}
           <button onClick={() => setSidebarOpen(o => !o)} style={{
             width: 36, height: 36, borderRadius: 8, background: "transparent",
             border: "none", cursor: "pointer",
@@ -102,37 +81,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </>
             }
           </button>
-
-          {/* Page title */}
           <span style={{
             color: "#C9A84C", fontSize: "1rem", fontWeight: 700,
             fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.08em",
             textTransform: "uppercase",
-          }}>
-            {pageTitle}
-          </span>
-
-          {/* Avatar */}
+          }}>{pageTitle}</span>
           <div style={{
             width: 36, height: 36, borderRadius: "50%",
             background: "rgba(201,168,76,0.15)", border: "1px solid #C9A84C",
             color: "#C9A84C", fontSize: "0.72rem", fontWeight: 700,
             fontFamily: "var(--font-montserrat, sans-serif)",
             display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            {initials}
-          </div>
+          }}>{initials}</div>
         </div>
       )}
 
-      {/* ── Mobile backdrop ── */}
       {isMobile && sidebarOpen && (
         <div onClick={() => setSidebarOpen(false)} style={{
           position: "fixed", inset: 0, zIndex: 149, background: "rgba(0,0,0,0.6)",
         }} />
       )}
 
-      {/* ── Sidebar ── */}
       <aside style={{
         width: 220, background: "#000000", borderRight: "1px solid #18181b",
         display: "flex", flexDirection: "column", padding: "24px 0", flexShrink: 0,
@@ -145,7 +114,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           position: "sticky", top: 0, height: "100vh",
         }),
       }}>
-        {/* Logo */}
         <div style={{ padding: "0 20px 28px", textAlign: "center" }}>
           <img src="/logo-white.png" alt="Signal Strike Logo"
             style={{ width: "90px", display: "block", margin: "0 auto 12px auto", opacity: 0.9 }} />
@@ -157,7 +125,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </p>
         </div>
 
-        {/* Avatar / user */}
         <div ref={dropdownRef} style={{ padding: "0 10px 16px", position: "relative" }}>
           <button onClick={() => setDropdownOpen(p => !p)} style={{
             width: "100%", display: "flex", alignItems: "center", gap: 10,
@@ -210,7 +177,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
         </div>
 
-        {/* Nav links */}
         <nav style={{ flex: 1, padding: "0 10px" }}>
           {NAV.map(item => {
             const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -226,31 +192,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 letterSpacing: active ? "0.08em" : "0.05em",
                 textTransform: "uppercase", transition: "all 0.15s",
                 borderLeft: active ? "2px solid #ffffff" : "2px solid transparent",
-              }}>
-                {item.label}
-              </a>
+              }}>{item.label}</a>
             );
           })}
         </nav>
 
-        {/* Powered by */}
         <div style={{ padding: "12px 10px", borderTop: "1px solid #18181b" }}>
           <a href="https://hilltopave.com" target="_blank" rel="noopener noreferrer" style={{
             color: "#fafafa", display: "block", textAlign: "center", textDecoration: "none",
             fontSize: "0.6rem", fontFamily: "var(--font-cinzel, serif)",
             letterSpacing: "0.12em", textTransform: "uppercase", transition: "color 0.15s",
-          }}>
-            Powered By HillTop Ave
-          </a>
+          }}>Powered By HillTop Ave</a>
         </div>
       </aside>
 
-      {/* ── Main content ── */}
       <main style={{ flex: 1, overflowY: "auto", position: "relative", minWidth: 0 }}>
-        {/* Spacer for mobile top bar */}
         {isMobile && <div style={{ height: 56 }} />}
-        {children}
+        <SidebarChildren />
       </main>
     </div>
+  );
+}
+
+// Workaround to pass children through context-aware component
+let _children: React.ReactNode = null;
+function SidebarChildren() { return <>{_children}</>; }
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  _children = children;
+  return (
+    <AuthProvider>
+      <SidebarInner />
+    </AuthProvider>
   );
 }

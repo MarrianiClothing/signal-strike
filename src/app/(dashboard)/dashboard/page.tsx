@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCache, setCache } from "@/lib/cache";
 import DailySignalCountdown from "@/components/DailySignalCountdown";
 import DailyQuote from "@/components/DailyQuote";
 
@@ -34,9 +36,10 @@ const STAGE_LABELS: Record<string, string> = {
 export default function DashboardPage() {
   const supabase = createClient();
   const router = useRouter();
-  const [userName, setUserName] = useState("");
-  const [userId, setUserId] = useState("");
-  const [deals, setDeals] = useState<any[]>([]);
+  const { userId: authUserId, fullName: authFullName, ready: authReady } = useAuth();
+  const [userName, setUserName] = useState(() => authFullName?.split(" ")[0] || "");
+  const [userId, setUserId] = useState(authUserId);
+  const [deals, setDeals] = useState<any[]>(() => getCache<any[]>("deals") ?? []);
   const [goals, setGoals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDealsGoal, setOpenDealsGoal] = useState<number | null>(null);
@@ -44,11 +47,18 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
 
+  // Sync userId from auth context when ready
+  useEffect(() => {
+    if (authReady && authUserId) {
+      setUserId(authUserId);
+      setUserName(authFullName?.split(" ")[0] || "");
+    }
+  }, [authReady, authUserId, authFullName]);
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      setUserName(user.user_metadata?.full_name?.split(" ")[0] || "");
       setUserId(user.id);
       const [dealsRes, goalRes, tiersRes] = await Promise.all([
         supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
@@ -62,6 +72,7 @@ export default function DashboardPage() {
         commission_tiers: d.commission_tier_id ? tiersMap[d.commission_tier_id] || null : null
       }));
       setDeals(dealsWithTiers);
+      setCache("deals", dealsWithTiers);
       setGoals(goalRes.data || []);
       const { data: profileData } = await supabase.from("profiles").select("open_deals_goal").eq("id", user.id).maybeSingle();
       if (profileData?.open_deals_goal) setOpenDealsGoal(profileData.open_deals_goal);

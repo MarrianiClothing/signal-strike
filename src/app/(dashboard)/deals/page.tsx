@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getCache, setCache } from "@/lib/cache";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -41,8 +42,8 @@ function cleanTitle(title: string, company?: string | null): string {
 }
 
 export default function DealsPage() {
-  const [deals, setDeals] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [deals, setDeals] = useState<any[]>(() => getCache<any[]>("deals") ?? []);
+  const [loading, setLoading] = useState(!getCache<any[]>("deals"));
   const [search, setSearch] = useState("");
   const [userId,        setUserId]        = useState("");
   const [dashModal,     setDashModal]     = useState(false);
@@ -68,7 +69,9 @@ export default function DealsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data } = await supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-    setDeals(data || []);
+    const fresh = data || [];
+    setDeals(fresh);
+    setCache("deals", fresh);
     setLoading(false);
   }
 
