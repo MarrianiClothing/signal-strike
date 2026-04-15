@@ -116,13 +116,11 @@ export default function ProspectsPage() {
   const [dashError,     setDashError]     = useState("");
   const [dashImported,  setDashImported]  = useState(0);
 
+  // Load credit balance immediately on mount — don't wait for getUser
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data:{ user }}) => {
-      if (!user) return;
-      setUserId(user.id);
-      // Load credit balance
-      const { data: { session } } = await supabase.auth.getSession();
+    (async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const res = await fetch("/api/credits/balance", {
             headers: { "Authorization": `Bearer ${session.access_token}` },
@@ -136,6 +134,13 @@ export default function ProspectsPage() {
       } finally {
         setCreditsLoading(false);
       }
+    })();
+  }, []);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data:{ user }}) => {
+      if (!user) return;
+      setUserId(user.id);
       // Check for post-purchase redirect
       const params = new URLSearchParams(window.location.search);
       if (params.get("credits") === "success") {
