@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCache, setCache } from "@/lib/cache";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -31,13 +33,18 @@ export default function ProjectsPage() {
   const supabase = createClient();
   const isMobile = useIsMobile();
 
-  const [projects,  setProjects]  = useState<Project[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [userId,    setUserId]    = useState("");
+  const { userId: authUserId, ready: authReady } = useAuth();
+  const [projects,  setProjects]  = useState<Project[]>(() => getCache<Project[]>("projects") ?? []);
+  const [loading,   setLoading]   = useState(!getCache<Project[]>("projects"));
+  const [userId,    setUserId]    = useState(authUserId);
   const [showModal, setShowModal] = useState(false);
   const [wonDeals,  setWonDeals]  = useState<WonDeal[]>([]);
   const [form,      setForm]      = useState({ name:"", deal_id:"" });
   const [saving,    setSaving]    = useState(false);
+
+  useEffect(() => {
+    if (authReady && authUserId) setUserId(authUserId);
+  }, [authReady, authUserId]);
 
   useEffect(() => {
     async function load() {
@@ -59,6 +66,7 @@ export default function ProjectsPage() {
         return { ...p, phaseCount: ids.length, taskTotal, taskDone };
       }));
       setProjects(enriched);
+      setCache("projects", enriched);
       setLoading(false);
     }
     load();
