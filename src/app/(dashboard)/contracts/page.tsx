@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCache, setCache } from "@/lib/cache";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -63,12 +65,20 @@ export default function ContractsPage() {
   const supabase = createClient();
   const isMobile = useIsMobile();
 
-  const [userId,   setUserId]   = useState("");
-  const [folders,  setFolders]  = useState<DealFolder[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const { userId: authUserId, ready: authReady } = useAuth();
+  const [userId,   setUserId]   = useState(authUserId);
+  const [folders,  setFolders]  = useState<DealFolder[]>(() => getCache<DealFolder[]>("contracts_folders") ?? []);
+  const [loading,  setLoading]  = useState(!getCache<DealFolder[]>("contracts_folders"));
   const [search,   setSearch]   = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [totalFiles, setTotalFiles] = useState(0);
+  const [totalFiles, setTotalFiles] = useState(() => {
+    const cached = getCache<DealFolder[]>("contracts_folders");
+    return cached ? cached.reduce((sum, f) => sum + f.files.length, 0) : 0;
+  });
+
+  useEffect(() => {
+    if (authReady && authUserId) setUserId(authUserId);
+  }, [authReady, authUserId]);
 
   useEffect(() => {
     async function load() {
@@ -102,6 +112,7 @@ export default function ContractsPage() {
       enriched.sort((a, b) => a.dealTitle.localeCompare(b.dealTitle));
       setFolders(enriched);
       setTotalFiles(enriched.reduce((sum, f) => sum + f.files.length, 0));
+      setCache("contracts_folders", enriched);
 
       // Auto-expand if only one deal
       if (enriched.length === 1) {
