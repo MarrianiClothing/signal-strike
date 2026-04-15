@@ -34,7 +34,7 @@ export default function TeamPage() {
   const [userName,  setUserName]  = useState(authFullName);
   const [team,      setTeam]      = useState<any>(() => getCache<any>("team") ?? null);
   const [members,   setMembers]   = useState<any[]>(() => getCache<any[]>("team_members") ?? []);
-  const [pending,   setPending]   = useState<any[]>([]);
+  const [pending,   setPending]   = useState<any[]>(() => getCache<any[]>("team_pending") ?? []);
   const [loading,   setLoading]   = useState(!getCache<any>("team"));
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting,    setInviting]   = useState(false);
@@ -52,6 +52,7 @@ export default function TeamPage() {
     // Cache for instant next load
     setCache("team", json.team);
     setCache("team_members", json.members || []);
+    setCache("team_pending", json.pending_invites || []);
     setLoading(false);
   }
 
