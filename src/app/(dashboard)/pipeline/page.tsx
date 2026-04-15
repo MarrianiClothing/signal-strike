@@ -49,7 +49,7 @@ export default function PipelinePage() {
   const { userId: authUserId, ready: authReady } = useAuth();
   const [deals, setDeals] = useState<any[]>(() => getCache<any[]>("deals") ?? []);
   const [userId, setUserId] = useState(authUserId);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!getCache<any[]>("deals"));
   const [dragging, setDragging] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newDeal, setNewDeal] = useState({ title: "", company: "", contact_name: "", contact_email: "", contact_phone: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
@@ -80,15 +80,25 @@ export default function PipelinePage() {
   const [importDetected, setImportDetected] = useState<string[]>([]);
 
   const load = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    setUserId(user.id);
-    const { data } = await supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    // Use getSession (local) instead of getUser (network round-trip)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    const uid = session.user.id;
+    setUserId(uid);
+
+    // Load cached tiers instantly
+    const cachedTiers = getCache<any[]>("commission_tiers");
+    if (cachedTiers) setCommissionTiers(cachedTiers);
+
+    const [{ data }, { data: tiersData }] = await Promise.all([
+      supabase.from("deals").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
+      supabase.from("commission_tiers").select("*").eq("user_id", uid).order("rate", { ascending: false }),
+    ]);
     const freshDeals = data || [];
     setDeals(freshDeals);
     setCache("deals", freshDeals);
-    const { data: tiersData } = await supabase.from("commission_tiers").select("*").eq("user_id", user.id).order("rate", { ascending: false });
     setCommissionTiers(tiersData || []);
+    setCache("commission_tiers", tiersData || []);
     setLoading(false);
   }, [supabase]);
 
