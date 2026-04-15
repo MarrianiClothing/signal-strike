@@ -116,8 +116,20 @@ export default function ProspectsPage() {
   const [dashError,     setDashError]     = useState("");
   const [dashImported,  setDashImported]  = useState(0);
 
-  // Load credit balance immediately on mount — don't wait for getUser
+  // Load credit balance — show cached value instantly, refresh in background
   useEffect(() => {
+    // Step 1: Show cached value immediately (zero network delay)
+    const cached = localStorage.getItem("ss_credits_cache");
+    if (cached) {
+      try {
+        const { balance, is_internal } = JSON.parse(cached);
+        setIsInternal(is_internal);
+        setCredits(is_internal ? null : balance);
+      } catch {}
+    }
+    setCreditsLoading(false);
+
+    // Step 2: Fetch fresh value in background, update silently
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -129,11 +141,14 @@ export default function ProspectsPage() {
           if (!json.error) {
             setIsInternal(json.is_internal);
             setCredits(json.is_internal ? null : json.balance);
+            // Update cache for next visit
+            localStorage.setItem("ss_credits_cache", JSON.stringify({
+              balance: json.balance,
+              is_internal: json.is_internal,
+            }));
           }
         }
-      } finally {
-        setCreditsLoading(false);
-      }
+      } catch {}
     })();
   }, []);
 
