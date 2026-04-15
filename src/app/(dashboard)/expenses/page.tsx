@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCache, setCache } from "@/lib/cache";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -75,10 +77,11 @@ const EMPTY_FORM = {
 export default function ExpensesPage() {
   const supabase = createClient();
   const isMobile = useIsMobile();
-  const [userId, setUserId] = useState("");
-  const [expenses, setExpenses] = useState<any[]>([]);
-  const [deals, setDeals] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { userId: authUserId, ready: authReady } = useAuth();
+  const [userId, setUserId] = useState(authUserId);
+  const [expenses, setExpenses] = useState<any[]>(() => getCache<any[]>("expenses") ?? []);
+  const [deals, setDeals] = useState<any[]>(() => getCache<any[]>("deals") ?? []);
+  const [loading, setLoading] = useState(!getCache<any[]>("expenses"));
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -98,16 +101,25 @@ export default function ExpensesPage() {
   const [reportMsg, setReportMsg] = useState("");
 
   useEffect(() => {
+    if (authReady && authUserId) setUserId(authUserId);
+  }, [authReady, authUserId]);
+
+  useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const uid = session.user.id;
+      setUserId(uid);
       const [expRes, dealRes] = await Promise.all([
-        supabase.from("expenses").select("*").eq("user_id", user.id).order("expense_date", { ascending: false }),
-        supabase.from("deals").select("id, title, company").eq("user_id", user.id).not("stage", "in", '("closed_lost")'),
+        supabase.from("expenses").select("*").eq("user_id", uid).order("expense_date", { ascending: false }),
+        supabase.from("deals").select("id, title, company").eq("user_id", uid).not("stage", "in", '("closed_lost")'),
       ]);
-      setExpenses(expRes.data || []);
-      setDeals(dealRes.data || []);
+      const freshExp = expRes.data || [];
+      const freshDeals = dealRes.data || [];
+      setExpenses(freshExp);
+      setDeals(freshDeals);
+      setCache("expenses", freshExp);
+      setCache("deals", freshDeals);
       setLoading(false);
     }
     load();
