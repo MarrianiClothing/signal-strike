@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCache, setCache } from "@/lib/cache";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -27,12 +29,13 @@ export default function TeamPage() {
   const supabase = createClient();
   const isMobile = useIsMobile();
 
-  const [userId,    setUserId]    = useState("");
-  const [userName,  setUserName]  = useState("");
-  const [team,      setTeam]      = useState<any>(null);
-  const [members,   setMembers]   = useState<any[]>([]);
+  const { userId: authUserId, fullName: authFullName, ready: authReady } = useAuth();
+  const [userId,    setUserId]    = useState(authUserId);
+  const [userName,  setUserName]  = useState(authFullName);
+  const [team,      setTeam]      = useState<any>(() => getCache<any>("team") ?? null);
+  const [members,   setMembers]   = useState<any[]>(() => getCache<any[]>("team_members") ?? []);
   const [pending,   setPending]   = useState<any[]>([]);
-  const [loading,   setLoading]   = useState(true);
+  const [loading,   setLoading]   = useState(!getCache<any>("team"));
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting,    setInviting]   = useState(false);
   const [inviteMsg,   setInviteMsg]  = useState<{ok:boolean;text:string}|null>(null);
@@ -46,21 +49,40 @@ export default function TeamPage() {
     setMembers(json.members || []);
     setPending(json.pending_invites || []);
     if (json.team?.name) setTeamName(json.team.name);
+    // Cache for instant next load
+    setCache("team", json.team);
+    setCache("team_members", json.members || []);
     setLoading(false);
   }
+
+  // Sync from auth context immediately
+  useEffect(() => {
+    if (authReady && authUserId) {
+      setUserId(authUserId);
+      setUserName(authFullName);
+    }
+  }, [authReady, authUserId, authFullName]);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       setUserId(user.id);
-      const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
-      setUserName(profile?.full_name ?? "");
+      setUserName(authFullName || "");
 
-      // Ensure team exists
-      await fetch("/api/team/setup", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id, name: "My Team" }),
-      });
+      // Only run team setup if no cached team (avoids blocking load)
+      const cachedTeam = getCache<any>("team");
+      if (!cachedTeam) {
+        await fetch("/api/team/setup", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: user.id, name: "My Team" }),
+        });
+      } else {
+        // Run setup in background without blocking
+        fetch("/api/team/setup", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: user.id, name: "My Team" }),
+        });
+      }
       await load(user.id);
     });
   }, []);
