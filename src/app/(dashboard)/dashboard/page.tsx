@@ -40,9 +40,9 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState(() => authFullName?.split(" ")[0] || "");
   const [userId, setUserId] = useState(authUserId);
   const [deals, setDeals] = useState<any[]>(() => getCache<any[]>("deals") ?? []);
-  const [goals, setGoals] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [openDealsGoal, setOpenDealsGoal] = useState<number | null>(null);
+  const [goals, setGoals] = useState<any[]>(() => getCache<any[]>("goals") ?? []);
+  const [loading, setLoading] = useState(!getCache<any[]>("deals"));
+  const [openDealsGoal, setOpenDealsGoal] = useState<number | null>(() => getCache<number>("open_deals_goal") ?? null);
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -57,14 +57,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-      const [dealsRes, goalRes, tiersRes] = await Promise.all([
-        supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-        supabase.from("goals").select("*").eq("user_id", user.id).order("period_start", { ascending: false }),
-        supabase.from("commission_tiers").select("*").eq("user_id", user.id),
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const uid = session.user.id;
+      setUserId(uid);
+
+      const [dealsRes, goalRes, tiersRes, profileRes] = await Promise.all([
+        supabase.from("deals").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
+        supabase.from("goals").select("*").eq("user_id", uid).order("period_start", { ascending: false }),
+        supabase.from("commission_tiers").select("*").eq("user_id", uid),
+        supabase.from("profiles").select("open_deals_goal").eq("id", uid).maybeSingle(),
       ]);
+
       const tiersMap: Record<string,any> = {};
       for (const t of (tiersRes.data || [])) tiersMap[t.id] = t;
       const dealsWithTiers = (dealsRes.data || []).map((d:any) => ({
@@ -73,9 +77,15 @@ export default function DashboardPage() {
       }));
       setDeals(dealsWithTiers);
       setCache("deals", dealsWithTiers);
-      setGoals(goalRes.data || []);
-      const { data: profileData } = await supabase.from("profiles").select("open_deals_goal").eq("id", user.id).maybeSingle();
-      if (profileData?.open_deals_goal) setOpenDealsGoal(profileData.open_deals_goal);
+
+      const freshGoals = goalRes.data || [];
+      setGoals(freshGoals);
+      setCache("goals", freshGoals);
+
+      if (profileRes.data?.open_deals_goal) {
+        setOpenDealsGoal(profileRes.data.open_deals_goal);
+        setCache("open_deals_goal", profileRes.data.open_deals_goal);
+      }
       setLoading(false);
     }
     load();
