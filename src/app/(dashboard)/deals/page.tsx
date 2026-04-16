@@ -24,7 +24,8 @@ const STAGE_COLORS: Record<string, string> = {
   negotiation: "#fbbf24", closed_won: "#C9A84C", closed_lost: "#f87171",
 };
 
-function fmt(n: number) {
+function fmt(n: number | null | undefined) {
+  if (!n || isNaN(n)) return "$0";
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
   if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "K";
   return "$" + n.toFixed(0);
