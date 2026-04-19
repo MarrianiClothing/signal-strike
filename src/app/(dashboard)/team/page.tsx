@@ -232,7 +232,12 @@ export default function TeamPage() {
 
                 {/* Info */}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ color:"#fafafa", fontWeight:700, fontSize:"0.95rem", margin:"0 0 2px" }}>{m.full_name}</p>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <p style={{ color:"#fafafa", fontWeight:700, fontSize:"0.95rem", margin:"0 0 2px" }}>{m.full_name}</p>
+                    {m.role === "manager" && (
+                      <span style={{ fontSize:"0.62rem", fontWeight:700, color:"#C9A84C", background:"rgba(201,168,76,0.12)", border:"1px solid rgba(201,168,76,0.25)", padding:"2px 7px", borderRadius:4, letterSpacing:"0.06em", textTransform:"uppercase" }}>Manager</span>
+                    )}
+                  </div>
                   <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>{m.email}</p>
                 </div>
 
@@ -262,7 +267,18 @@ export default function TeamPage() {
                     style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"7px 16px", fontWeight:700, fontSize:"0.78rem", cursor:"pointer" }}>
                     View →
                   </button>
-                  <button onClick={() => handleRemoveMember(m.user_id, m.full_name)}
+                  <button
+                  onClick={() => handleSetManager(m.user_id, m.role !== "manager")}
+                  style={{
+                    background: m.role === "manager" ? "rgba(201,168,76,0.12)" : "none",
+                    border: `1px solid ${m.role === "manager" ? "#C9A84C" : "#27272a"}`,
+                    color: m.role === "manager" ? "#C9A84C" : "#71717a",
+                    borderRadius: 7, padding: "5px 12px", fontSize: "0.75rem",
+                    fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+                  }}>
+                  {m.role === "manager" ? "★ Manager" : "Set Manager"}
+                </button>
+                <button onClick={() => handleRemoveMember(m.user_id, m.full_name)}
                     style={{ background:"none", border:"1px solid #27272a", color:"#f87171", borderRadius:8, padding:"7px 12px", fontSize:"0.78rem", cursor:"pointer" }}>
                     Remove
                   </button>
