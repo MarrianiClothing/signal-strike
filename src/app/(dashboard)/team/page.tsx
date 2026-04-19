@@ -88,6 +88,21 @@ export default function TeamPage() {
     });
   }, []);
 
+  async function handleSetManager(memberId: string, makeManager: boolean) {
+    if (!team) return;
+    const res = await fetch("/api/team/member", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: memberId,
+        team_id: team.id,
+        role: makeManager ? "manager" : "member",
+        manager_id: makeManager ? userId : null,
+      }),
+    });
+    if (res.ok) await load(userId);
+  }
+
   async function handleInvite() {
     if (!inviteEmail.trim() || !team) return;
     setInviting(true); setInviteMsg(null);
