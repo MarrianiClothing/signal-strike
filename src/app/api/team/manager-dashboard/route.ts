@@ -9,11 +9,12 @@ export async function GET(req: NextRequest) {
     const manager_id = searchParams.get("manager_id");
     if (!manager_id) return NextResponse.json({ error: "Missing manager_id" }, { status: 400 });
 
-    // Use anon key — no service role key required
+    // Service role required to query across users (bypasses RLS)
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { db: { schema: "public" } }
+      serviceKey ?? anonKey
     );
 
     // Get all direct reports by manager_id
@@ -23,7 +24,6 @@ export async function GET(req: NextRequest) {
       .eq("manager_id", manager_id);
 
     if (reportsError) {
-      console.error("Reports query error:", reportsError);
       return NextResponse.json({ error: reportsError.message }, { status: 500 });
     }
 
@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ reports: [], totals: { pipeline: 0, won: 0, open_deals: 0, total_deals: 0 } });
     }
 
-    // For each report, load their deals + projects in parallel
     const enriched = await Promise.all(reports.map(async (r: any) => {
       const [{ data: deals }, { data: projects }] = await Promise.all([
         admin.from("deals").select("id,title,value,stage,company,updated_at").eq("user_id", r.id),
