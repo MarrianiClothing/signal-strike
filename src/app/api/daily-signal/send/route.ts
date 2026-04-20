@@ -29,7 +29,7 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 
-async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buffer> {
+async function buildPDF(deals: any[], tiers: any[], today: string, teamReports: any[] = []): Promise<Buffer> {
   const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
 
   const tiersMap: Record<string, any> = {};
@@ -229,6 +229,52 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
     y += cardH + 12;
   }
 
+  // ── TEAM SUMMARY (managers only) ───────────────────────────────────────────
+  if (teamReports.length > 0) {
+    ensureSpace(40 + teamReports.length * 28 + 40);
+    y += 10;
+    drawText("TEAM SUMMARY", M, y, { font: fontBold, size: 8, color: MUTED, bold: true });
+    y += 12;
+    hline(y);
+    y += 10;
+
+    // Header row
+    const colW = (PW - M * 2) / 4;
+    fillRect(M, y, PW - M * 2, 20, rgb(0.07, 0.07, 0.08));
+    drawText("REP",      M + 8,           y + 6, { font: fontBold, size: 8, color: MUTED, bold: true });
+    drawText("PIPELINE", M + colW * 1 + 8, y + 6, { font: fontBold, size: 8, color: MUTED, bold: true });
+    drawText("WON",      M + colW * 2 + 8, y + 6, { font: fontBold, size: 8, color: MUTED, bold: true });
+    drawText("OPEN",     M + colW * 3 + 8, y + 6, { font: fontBold, size: 8, color: MUTED, bold: true });
+    y += 20;
+
+    let teamPipeline = 0, teamWon = 0, teamOpen = 0;
+    for (let i = 0; i < teamReports.length; i++) {
+      const r = teamReports[i];
+      teamPipeline += r.pipeline;
+      teamWon      += r.won_revenue;
+      teamOpen     += r.open_deals;
+      const rowBg = i % 2 === 0 ? rgb(0.10, 0.10, 0.11) : rgb(0.09, 0.09, 0.10);
+      fillRect(M, y, PW - M * 2, 24, rowBg);
+      strokeRect(M, y, PW - M * 2, 24, BORDER);
+
+      const nameText = r.full_name?.length > 28 ? r.full_name.slice(0, 26) + "…" : r.full_name;
+      drawText(nameText,         M + 8,            y + 7, { font: fontBold, size: 9, color: WHITE, bold: true });
+      drawText(fmt(r.pipeline),  M + colW * 1 + 8, y + 7, { font: fontBold, size: 9, color: rgb(0.65, 0.54, 0.98), bold: true });
+      drawText(fmt(r.won_revenue), M + colW * 2 + 8, y + 7, { font: fontBold, size: 9, color: GOLD, bold: true });
+      drawText(String(r.open_deals), M + colW * 3 + 8, y + 7, { font: fontBold, size: 9, color: rgb(0.38, 0.64, 0.98), bold: true });
+      y += 24;
+    }
+
+    // Totals row
+    fillRect(M, y, PW - M * 2, 26, rgb(0.05, 0.05, 0.06));
+    strokeRect(M, y, PW - M * 2, 26, BORDER);
+    drawText("TEAM TOTAL",     M + 8,            y + 8, { font: fontBold, size: 9, color: MUTED, bold: true });
+    drawText(fmt(teamPipeline), M + colW * 1 + 8, y + 8, { font: fontBold, size: 10, color: rgb(0.65, 0.54, 0.98), bold: true });
+    drawText(fmt(teamWon),      M + colW * 2 + 8, y + 8, { font: fontBold, size: 10, color: GOLD, bold: true });
+    drawText(String(teamOpen),  M + colW * 3 + 8, y + 8, { font: fontBold, size: 10, color: rgb(0.38, 0.64, 0.98), bold: true });
+    y += 30;
+  }
+
   // ── FOOTER ─────────────────────────────────────────────────────────────────
   ensureSpace(30);
   hline(y + 8);
@@ -242,7 +288,7 @@ async function buildPDF(deals: any[], tiers: any[], today: string): Promise<Buff
 
 
 
-async function buildExcel(deals: any[], tiers: any[], today: string): Promise<Buffer> {
+async function buildExcel(deals: any[], tiers: any[], today: string, teamReports: any[] = []): Promise<Buffer> {
   const tiersMap: Record<string, any> = {};
   for (const t of tiers) tiersMap[t.id] = t;
 
@@ -364,6 +410,63 @@ async function buildExcel(deals: any[], tiers: any[], today: string): Promise<Bu
       d.next_task || "",
       d.notes || "",
     ]);
+  }
+
+  // ── TEAM SUMMARY SHEET (managers only) ───────────────────────────────────
+  if (teamReports.length > 0) {
+    const ts = wb.addWorksheet("Team Summary");
+    ts.columns = [{ width: 28 }, { width: 18 }, { width: 18 }, { width: 14 }, { width: 14 }];
+
+    const tsTitleRow = ts.addRow(["SIGNAL STRIKE — Team Summary", "", "", "", ""]);
+    tsTitleRow.height = 26;
+    tsTitleRow.eachCell(cell => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+      cell.font = { bold: true, size: 13, color: { argb: "FFFFFFFF" } };
+      cell.alignment = { vertical: "middle" };
+    });
+
+    const tsDateRow = ts.addRow([today, "", "", "", ""]);
+    tsDateRow.eachCell(cell => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+      cell.font = { size: 10, color: { argb: "FF71717A" } };
+    });
+
+    ts.addRow([]);
+
+    const tsHeaderRow = ts.addRow(["Rep", "Pipeline", "Won Revenue", "Open Deals", "Total Deals"]);
+    tsHeaderRow.height = 22;
+    tsHeaderRow.eachCell(cell => {
+      cell.fill   = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111113" } };
+      cell.font   = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+      cell.border = { bottom: { style: "thin", color: { argb: "FF333333" } } };
+      cell.alignment = { vertical: "middle" };
+    });
+
+    let totPipeline = 0, totWon = 0, totOpen = 0, totDeals = 0;
+    for (const r of teamReports) {
+      totPipeline += r.pipeline;
+      totWon      += r.won_revenue;
+      totOpen     += r.open_deals;
+      totDeals    += r.total_deals;
+      const row = ts.addRow([
+        r.full_name,
+        fmtUSD(r.pipeline),
+        fmtUSD(r.won_revenue),
+        r.open_deals,
+        r.total_deals,
+      ]);
+      row.getCell(2).font = { color: { argb: "FFA78BFA" }, bold: true };
+      row.getCell(3).font = { color: { argb: "FFC9A84C" }, bold: true };
+    }
+
+    ts.addRow([]);
+    const totRow = ts.addRow(["TEAM TOTAL", fmtUSD(totPipeline), fmtUSD(totWon), totOpen, totDeals]);
+    totRow.height = 22;
+    totRow.eachCell((cell, col) => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A0A0B" } };
+      cell.font = { bold: true, size: 11, color: { argb: col === 2 ? "FFA78BFA" : col === 3 ? "FFC9A84C" : "FFFFFFFF" } };
+      cell.border = { top: { style: "thin", color: { argb: "FF333333" } } };
+    });
   }
 
   const buf = await wb.xlsx.writeBuffer();
@@ -680,9 +783,9 @@ export async function GET(req: NextRequest) {
       const today2 = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
       const teamReports = await getTeamReports(supabase, profile.id);
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || [], teamReports);
-      const pdfBuffer = await buildPDF(deals || [], tiers || [], today2);
+      const pdfBuffer = await buildPDF(deals || [], tiers || [], today2, teamReports);
       const dateStr = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-      const xlsxBuffer = await buildExcel(deals || [], tiers || [], today2);
+      const xlsxBuffer = await buildExcel(deals || [], tiers || [], today2, teamReports);
       await resend.emails.send({
         from:    "Signal Strike <noreply@hilltopave.com>",
         to:      email,
@@ -765,9 +868,9 @@ export async function GET(req: NextRequest) {
       const todayCron = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
       const teamReports = await getTeamReports(supabase, profile.id);
       const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || [], teamReports);
-      const pdfBuf = await buildPDF(deals || [], tiers || [], todayCron);
+      const pdfBuf = await buildPDF(deals || [], tiers || [], todayCron, teamReports);
       const dateStrCron = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-      const xlsxBuf = await buildExcel(deals || [], tiers || [], todayCron);
+      const xlsxBuf = await buildExcel(deals || [], tiers || [], todayCron, teamReports);
       await resend.emails.send({
         from:    "Signal Strike <noreply@hilltopave.com>",
         to:      userEmail,
