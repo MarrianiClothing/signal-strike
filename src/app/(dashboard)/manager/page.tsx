@@ -38,10 +38,18 @@ export default function ManagerDashboard() {
   const isMobile = useIsMobile();
   const { userId: authUserId, ready: authReady } = useAuth();
 
-  const [reports,  setReports]  = useState<any[]>(() => getCache<any[]>("manager_reports") ?? []);
-  const [totals,   setTotals]   = useState<any>(() => getCache<any>("manager_totals") ?? {});
-  const [loading,  setLoading]  = useState(!getCache<any[]>("manager_reports"));
+  const [reports,  setReports]  = useState<any[]>([]);
+  const [totals,   setTotals]   = useState<any>({});
+  const [loading,  setLoading]  = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Load cache on client only — avoids SSR hydration mismatch
+    const cachedReports = getCache<any[]>("manager_reports");
+    const cachedTotals  = getCache<any>("manager_totals");
+    if (cachedReports) { setReports(cachedReports); setLoading(false); }
+    if (cachedTotals)  { setTotals(cachedTotals); }
+  }, []);
 
   useEffect(() => {
     if (!authReady) return;
