@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     // Get all direct reports by manager_id
     const { data: reports, error: reportsError } = await admin
       .from("profiles")
-      .select("id, full_name, email")
+      .select("id, full_name")
       .eq("manager_id", manager_id);
 
     if (reportsError) {
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
       return {
         user_id:     r.id,
         full_name:   r.full_name ?? "Unnamed",
-        email:       r.email ?? "",
+        email:       "",
         open_deals:  open.length,
         total_deals: dealList.length,
         pipeline,
