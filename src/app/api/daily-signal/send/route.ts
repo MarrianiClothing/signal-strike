@@ -372,7 +372,33 @@ async function buildExcel(deals: any[], tiers: any[], today: string): Promise<Bu
 
 
 
-function buildEmailHtml(userName: string, deals: any[], tiers: any[]) {
+
+async function getTeamReports(supabaseClient: any, manager_id: string): Promise<any[]> {
+  const { data: reports } = await supabaseClient
+    .from("profiles")
+    .select("id, full_name")
+    .eq("manager_id", manager_id);
+
+  if (!reports?.length) return [];
+
+  const enriched = await Promise.all(reports.map(async (r: any) => {
+    const { data: deals } = await supabaseClient
+      .from("deals").select("id,value,stage").eq("user_id", r.id);
+    const dealList  = deals || [];
+    const open      = dealList.filter((d: any) => !["closed_won","closed_lost"].includes(d.stage));
+    const won       = dealList.filter((d: any) => d.stage === "closed_won");
+    return {
+      full_name:   r.full_name ?? "Unnamed",
+      open_deals:  open.length,
+      total_deals: dealList.length,
+      pipeline:    open.reduce((s: number, d: any) => s + (d.value || 0), 0),
+      won_revenue: won.reduce((s: number, d: any) => s + (d.value || 0), 0),
+    };
+  }));
+  return enriched;
+}
+
+function buildEmailHtml(userName: string, deals: any[], tiers: any[], teamReports: any[] = []) {
   const tiersMap: Record<string, any> = {};
   for (const t of tiers) tiersMap[t.id] = t;
 
@@ -538,6 +564,52 @@ function buildEmailHtml(userName: string, deals: any[], tiers: any[]) {
     </td>
   </tr>
 
+  <!-- ── TEAM SUMMARY (managers only) ── -->
+  ${teamReports.length > 0 ? `
+  <tr>
+    <td style="padding-bottom:12px;padding-top:8px;">
+      <p style="margin:0 0 12px 0;font-size:11px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:0.12em;">Team Summary</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px;overflow:hidden;border:1px solid #27272a;">
+        <tr style="background:#0f0f10;">
+          <td style="padding:10px 14px;font-size:11px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #27272a;">Rep</td>
+          <td style="padding:10px 14px;font-size:11px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #27272a;" align="right">Pipeline</td>
+          <td style="padding:10px 14px;font-size:11px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #27272a;" align="right">Won</td>
+          <td style="padding:10px 14px;font-size:11px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #27272a;" align="right">Open</td>
+        </tr>
+        ${teamReports.map((r: any, i: number) => `
+        <tr style="background:${i % 2 === 0 ? '#111113' : '#0f0f10'};">
+          <td style="padding:12px 14px;">
+            <p style="margin:0;font-size:13px;font-weight:700;color:#fafafa;">${r.full_name}</p>
+          </td>
+          <td style="padding:12px 14px;" align="right">
+            <p style="margin:0;font-size:13px;font-weight:700;color:#a78bfa;font-family:Georgia,serif;">${fmt(r.pipeline)}</p>
+          </td>
+          <td style="padding:12px 14px;" align="right">
+            <p style="margin:0;font-size:13px;font-weight:700;color:#C9A84C;font-family:Georgia,serif;">${fmt(r.won_revenue)}</p>
+          </td>
+          <td style="padding:12px 14px;" align="right">
+            <p style="margin:0;font-size:13px;font-weight:700;color:#60a5fa;">${r.open_deals}</p>
+          </td>
+        </tr>`).join('')}
+        <!-- Team totals row -->
+        <tr style="background:#0a0a0b;border-top:1px solid #27272a;">
+          <td style="padding:12px 14px;">
+            <p style="margin:0;font-size:12px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:0.06em;">Team Total</p>
+          </td>
+          <td style="padding:12px 14px;" align="right">
+            <p style="margin:0;font-size:14px;font-weight:800;color:#a78bfa;font-family:Georgia,serif;">${fmt(teamReports.reduce((s: number, r: any) => s + r.pipeline, 0))}</p>
+          </td>
+          <td style="padding:12px 14px;" align="right">
+            <p style="margin:0;font-size:14px;font-weight:800;color:#C9A84C;font-family:Georgia,serif;">${fmt(teamReports.reduce((s: number, r: any) => s + r.won_revenue, 0))}</p>
+          </td>
+          <td style="padding:12px 14px;" align="right">
+            <p style="margin:0;font-size:14px;font-weight:800;color:#60a5fa;">${teamReports.reduce((s: number, r: any) => s + r.open_deals, 0)}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>` : ''}
+
   <!-- ── FOOTER ── -->
   <tr>
     <td align="center" style="padding-top:32px;border-top:1px solid #18181b;margin-top:8px;">
@@ -606,12 +678,13 @@ export async function GET(req: NextRequest) {
         .from("commission_tiers").select("*").eq("user_id", profile.id);
 
       const today2 = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-      const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
+      const teamReports = await getTeamReports(supabase, profile.id);
+      const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || [], teamReports);
       const pdfBuffer = await buildPDF(deals || [], tiers || [], today2);
       const dateStr = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
       const xlsxBuffer = await buildExcel(deals || [], tiers || [], today2);
       await resend.emails.send({
-        from:    "Signal Strike <onboarding@resend.dev>",
+        from:    "Signal Strike <noreply@hilltopave.com>",
         to:      email,
         subject: `Daily Signal · ${dateStr}`,
         html,
@@ -690,12 +763,13 @@ export async function GET(req: NextRequest) {
         .from("commission_tiers").select("*").eq("user_id", profile.id);
 
       const todayCron = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-      const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || []);
+      const teamReports = await getTeamReports(supabase, profile.id);
+      const html = buildEmailHtml(profile.full_name || "there", deals || [], tiers || [], teamReports);
       const pdfBuf = await buildPDF(deals || [], tiers || [], todayCron);
       const dateStrCron = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
       const xlsxBuf = await buildExcel(deals || [], tiers || [], todayCron);
       await resend.emails.send({
-        from:    "Signal Strike <onboarding@resend.dev>",
+        from:    "Signal Strike <noreply@hilltopave.com>",
         to:      userEmail,
         subject: `Daily Signal · ${dateStrCron}`,
         html,
