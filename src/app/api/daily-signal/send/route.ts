@@ -621,6 +621,7 @@ async function getTeamReports(supabaseClient: any, manager_id: string): Promise<
       total_deals: dealList.length,
       pipeline:    open.reduce((s: number, d: any) => s + (d.value || 0), 0),
       won_revenue: won.reduce((s: number, d: any) => s + (d.value || 0), 0),
+      deals:       dealList,
     };
   }));
   return enriched;
