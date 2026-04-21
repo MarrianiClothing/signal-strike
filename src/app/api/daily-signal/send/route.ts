@@ -275,6 +275,65 @@ async function buildPDF(deals: any[], tiers: any[], today: string, teamReports: 
     y += 30;
   }
 
+  // ── TEAM DEALS (managers only) ──────────────────────────────────────────────
+  if (teamReports.length > 0) {
+    const allTeamDeals: Array<{ rep: string; deal: any }> = [];
+    for (const r of teamReports) {
+      for (const d of (r.deals || [])) {
+        if (d.stage !== "closed_lost") allTeamDeals.push({ rep: r.full_name, deal: d });
+      }
+    }
+
+    if (allTeamDeals.length > 0) {
+      y += 10;
+      drawText("TEAM DEALS", M, y, { font: fontBold, size: 8, color: MUTED, bold: true });
+      y += 12;
+      hline(y);
+      y += 10;
+
+      for (const { rep, deal: d } of allTeamDeals) {
+        const stageRgb   = STAGE_RGB[d.stage] || [0.44, 0.44, 0.48];
+        const stageColor = rgb(stageRgb[0], stageRgb[1], stageRgb[2]);
+        const stageLabel = (STAGE_LABELS[d.stage] || d.stage).toUpperCase();
+        const cardH = 80;
+        ensureSpace(cardH + 12);
+
+        const cW = PW - M * 2;
+        fillRect(M, y, cW, cardH, CARD);
+        strokeRect(M, y, cW, cardH, BORDER);
+        fillRect(M, y, 5, cardH, stageColor);
+
+        // Rep name tag
+        drawText(rep.toUpperCase(), M + 12, y + 10, { font: fontBold, size: 7.5, color: GOLD, bold: true });
+
+        // Title
+        const titleText = clampText(d.title || "", fontBold, 12, 280);
+        drawText(titleText, M + 12, y + 22, { font: fontBold, size: 12, color: WHITE, bold: true });
+
+        // Company
+        const compText = clampText(d.company || "", fontReg, 9, 280);
+        drawText(compText, M + 12, y + 37, { font: fontReg, size: 9, color: MUTED });
+
+        // Value
+        const valStr = fmt(d.value || 0);
+        const valW = fontBold.widthOfTextAtSize(valStr, 14);
+        drawText(valStr, M + cW - valW - 10, y + 18, { font: fontBold, size: 14, color: GOLD, bold: true });
+
+        // Stage badge
+        const badgeW = fontBold.widthOfTextAtSize(stageLabel, 8);
+        drawText(stageLabel, M + cW - badgeW - 10, y + 36, { font: fontBold, size: 8, color: stageColor, bold: true });
+
+        // Close date
+        if (d.expected_close_date) {
+          const closeStr = "Close: " + new Date(d.expected_close_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+          drawText(closeStr, M + 12, y + 55, { font: fontReg, size: 9, color: MUTED });
+        }
+
+        y += cardH + 10;
+      }
+    }
+  }
+
   // ── FOOTER ─────────────────────────────────────────────────────────────────
   ensureSpace(30);
   hline(y + 8);
@@ -467,6 +526,72 @@ async function buildExcel(deals: any[], tiers: any[], today: string, teamReports
       cell.font = { bold: true, size: 11, color: { argb: col === 2 ? "FFA78BFA" : col === 3 ? "FFC9A84C" : "FFFFFFFF" } };
       cell.border = { top: { style: "thin", color: { argb: "FF333333" } } };
     });
+  }
+
+  // ── TEAM DEALS SHEET (managers only) ────────────────────────────────────
+  if (teamReports.length > 0) {
+    const td = wb.addWorksheet("Team Deals");
+    td.columns = [
+      { key: "rep",          width: 22 },
+      { key: "title",        width: 30 },
+      { key: "company",      width: 22 },
+      { key: "contact_name", width: 20 },
+      { key: "stage",        width: 14 },
+      { key: "value",        width: 16 },
+      { key: "probability",  width: 14 },
+      { key: "close_date",   width: 16 },
+      { key: "notes",        width: 40 },
+    ];
+
+    const tdTitleRow = td.addRow(["SIGNAL STRIKE — Team Deals", "", "", "", "", "", "", "", ""]);
+    tdTitleRow.height = 26;
+    tdTitleRow.eachCell(cell => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+      cell.font = { bold: true, size: 13, color: { argb: "FFFFFFFF" } };
+      cell.alignment = { vertical: "middle" };
+    });
+    const tdDateRow = td.addRow([today, "", "", "", "", "", "", "", ""]);
+    tdDateRow.eachCell(cell => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+      cell.font = { size: 10, color: { argb: "FF71717A" } };
+    });
+    td.addRow([]);
+
+    const tdHeaders = ["Rep", "Deal Title", "Company", "Contact", "Stage", "Value ($)", "Probability (%)", "Expected Close", "Notes"];
+    const tdHeaderRow = td.addRow(tdHeaders);
+    tdHeaderRow.height = 22;
+    tdHeaderRow.eachCell(cell => {
+      cell.fill   = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111113" } };
+      cell.font   = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+      cell.border = { bottom: { style: "thin", color: { argb: "FF333333" } } };
+      cell.alignment = { vertical: "middle" };
+    });
+
+    const STAGE_LABELS_TD: Record<string, string> = {
+      prospecting: "Prospecting", qualification: "Qualified", proposal: "Proposal",
+      negotiation: "Negotiation", closed_won: "Won", closed_lost: "Lost",
+    };
+
+    for (const r of teamReports) {
+      const repDeals = (r.deals || []).filter((d: any) => d.stage !== "closed_lost");
+      for (const d of repDeals) {
+        const row = td.addRow([
+          r.full_name,
+          d.title || "",
+          d.company || "",
+          d.contact_name || "",
+          STAGE_LABELS_TD[d.stage] || d.stage || "",
+          d.value ? fmtUSD(d.value) : "",
+          d.probability ? d.probability + "%" : "",
+          d.expected_close_date
+            ? new Date(d.expected_close_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : "",
+          d.notes || "",
+        ]);
+        row.getCell(1).font = { bold: true, color: { argb: "FFC9A84C" } };
+        row.getCell(6).font = { bold: true, color: { argb: "FFC9A84C" } };
+      }
+    }
   }
 
   const buf = await wb.xlsx.writeBuffer();
