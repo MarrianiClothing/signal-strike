@@ -611,7 +611,7 @@ async function getTeamReports(supabaseClient: any, manager_id: string): Promise<
 
   const enriched = await Promise.all(reports.map(async (r: any) => {
     const { data: deals } = await supabaseClient
-      .from("deals").select("id,value,stage").eq("user_id", r.id);
+      .from("deals").select("id,title,company,contact_name,value,stage,probability,expected_close_date,notes,updated_at").eq("user_id", r.id);
     const dealList  = deals || [];
     const open      = dealList.filter((d: any) => !["closed_won","closed_lost"].includes(d.stage));
     const won       = dealList.filter((d: any) => d.stage === "closed_won");
