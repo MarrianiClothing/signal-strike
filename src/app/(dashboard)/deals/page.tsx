@@ -296,7 +296,7 @@ export default function DealsPage() {
               <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }}
                 onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
             </label>
-            <button onClick={() => router.push("/pipeline")} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}>+ Add Deal</button>
+            <button onClick={() => setShowAdd(true)} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}>+ Add Deal</button>
           </div>
         )}
       </div>
