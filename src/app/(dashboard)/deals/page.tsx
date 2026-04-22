@@ -46,6 +46,11 @@ export default function DealsPage() {
   const [deals, setDeals] = useState<any[]>(() => getCache<any[]>("deals") ?? []);
   const [loading, setLoading] = useState(!getCache<any[]>("deals"));
   const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [newDeal, setNewDeal] = useState({ title: "", company: "", contact_name: "", contact_email: "", contact_phone: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [commissionTiers, setCommissionTiers] = useState<any[]>(() => getCache<any[]>("commission_tiers") ?? []);
   const [userId,        setUserId]        = useState("");
   const [dashModal,     setDashModal]     = useState(false);
   const [dashJobs,      setDashJobs]      = useState<any[]>([]);
@@ -66,13 +71,62 @@ export default function DealsPage() {
   const router = useRouter();
   const isMobile = useIsMobile();
 
+  const STAGES = [
+    { id: "prospecting", label: "Prospecting" },
+    { id: "qualification", label: "Qualified" },
+    { id: "proposal", label: "Proposal" },
+    { id: "negotiation", label: "Negotiation" },
+    { id: "closed_won", label: "Won" },
+    { id: "closed_lost", label: "Lost" },
+  ];
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", background: "#1c1c1f", border: "1px solid #27272a",
+    borderRadius: 8, padding: "9px 12px", color: "#fafafa", fontSize: "0.875rem",
+    boxSizing: "border-box" as const,
+  };
+
+  async function handleAddDeal(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setMsg("");
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    const { error } = await supabase.from("deals").insert({
+      user_id: session.user.id,
+      title: newDeal.title,
+      company: newDeal.company,
+      contact_name: newDeal.contact_name,
+      contact_email: newDeal.contact_email,
+      contact_phone: newDeal.contact_phone || null,
+      value: parseFloat(newDeal.value) || 0,
+      stage: newDeal.stage,
+      probability: parseInt(newDeal.probability) || 20,
+      expected_close_date: newDeal.expected_close_date || null,
+      notes: newDeal.notes || null,
+      commission_tier_id: newDeal.commission_tier_id || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (!error) {
+      setNewDeal({ title: "", company: "", contact_name: "", contact_email: "", contact_phone: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
+      setShowAdd(false);
+      await load();
+    } else setMsg(error.message);
+    setSaving(false);
+  }
+
   async function load() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    const [{ data }, { data: tiersData }] = await Promise.all([
+      supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("commission_tiers").select("*").eq("user_id", user.id).order("rate", { ascending: false }),
+    ]);
     const fresh = data || [];
     setDeals(fresh);
     setCache("deals", fresh);
+    setCommissionTiers(tiersData || []);
+    setCache("commission_tiers", tiersData || []);
     setLoading(false);
   }
 
@@ -222,7 +276,7 @@ export default function DealsPage() {
                   onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
               </label>
             </div>
-            <button onClick={() => router.push("/pipeline")} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", width: "100%" }}>+ Add Deal</button>
+            <button onClick={() => setShowAdd(true)} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", width: "100%" }}>+ Add Deal</button>
           </div>
         ) : (
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -509,6 +563,65 @@ export default function DealsPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {/* Add Deal Modal */}
+      {showAdd && (
+        <div style={{ position: "fixed", inset: 0, background: "#000000bb", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 14, padding: 28, width: 520, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto" }}>
+            <h2 style={{ color: "#fafafa", fontWeight: 700, marginBottom: 20 }}>New Deal</h2>
+            <form onSubmit={handleAddDeal} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              {[
+                { label: "Deal Title *", key: "title", full: true },
+                { label: "Company", key: "company" },
+                { label: "Contact Name", key: "contact_name" },
+                { label: "Contact Email", key: "contact_email", type: "email" },
+                { label: "Contact Phone", key: "contact_phone", type: "tel" },
+                { label: "Value ($) *", key: "value", type: "number" },
+                { label: "Probability (%)", key: "probability", type: "number" },
+                { label: "Expected Close", key: "expected_close_date", type: "date" },
+              ].map(f => (
+                <div key={f.key} style={{ gridColumn: (f as any).full ? "1/-1" : undefined }}>
+                  <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>{f.label}</label>
+                  <input style={inputStyle} type={(f as any).type || "text"} required={f.label.includes("*")}
+                    value={(newDeal as any)[f.key]} onChange={e => setNewDeal(p => ({ ...p, [f.key]: e.target.value }))} />
+                </div>
+              ))}
+              <div>
+                <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>Stage</label>
+                <select style={inputStyle} value={newDeal.stage} onChange={e => setNewDeal(p => ({ ...p, stage: e.target.value }))}>
+                  {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </div>
+              {commissionTiers.length > 0 && (
+                <div>
+                  <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>Commission Tier</label>
+                  <select style={inputStyle} value={newDeal.commission_tier_id} onChange={e => setNewDeal(p => ({ ...p, commission_tier_id: e.target.value }))}>
+                    <option value="">— Select tier —</option>
+                    {commissionTiers.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>Notes</label>
+                <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
+                  value={newDeal.notes} onChange={e => setNewDeal(p => ({ ...p, notes: e.target.value }))} />
+              </div>
+              {msg && <p style={{ gridColumn: "1/-1", color: "#f87171", fontSize: "0.82rem", margin: 0 }}>{msg}</p>}
+              <div style={{ gridColumn: "1/-1", display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+                <button type="button" onClick={() => setShowAdd(false)}
+                  style={{ background: "none", border: "1px solid #27272a", color: "#71717a", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: "0.85rem" }}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving}
+                  style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "8px 22px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
+                  {saving ? "Saving..." : "Save Deal"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
