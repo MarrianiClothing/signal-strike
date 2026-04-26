@@ -128,7 +128,7 @@ export default function LoginPage() {
 
           <p style={{ textAlign: "center", marginTop: 28, color: "#52525b", fontSize: "0.83rem" }}>
             Don&apos;t have an account?{" "}
-            <a href="/signup" style={{ color: "#C9A84C", textDecoration: "none", fontWeight: 600 }}>Sign up</a>
+            <a href="/landing#pricing" style={{ color: "#C9A84C", textDecoration: "none", fontWeight: 600 }}>Sign up</a>
           </p>
         </div>
       </div>

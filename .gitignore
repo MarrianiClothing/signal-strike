@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Backup files from patch scripts
+*.bak
+*.bak_*
+.env.local.bak*
+
+# Backup files from patch scripts
+*.bak
+*.bak_*
+.env.local.bak*
