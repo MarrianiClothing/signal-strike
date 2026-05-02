@@ -40,10 +40,10 @@ export default function DashboardPage() {
   const { userId: authUserId, fullName: authFullName, ready: authReady } = useAuth();
   const [userName, setUserName] = useState(() => authFullName?.split(" ")[0] || "");
   const [userId, setUserId] = useState(authUserId);
-  const [deals, setDeals] = useState<any[]>(() => getCache<any[]>("deals") ?? []);
-  const [goals, setGoals] = useState<any[]>(() => getCache<any[]>("goals") ?? []);
-  const [loading, setLoading] = useState(!getCache<any[]>("deals"));
-  const [openDealsGoal, setOpenDealsGoal] = useState<number | null>(() => getCache<number>("open_deals_goal") ?? null);
+  const [deals, setDeals] = useState<any[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openDealsGoal, setOpenDealsGoal] = useState<number | null>(null);
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -55,6 +55,16 @@ export default function DashboardPage() {
       setUserName(authFullName?.split(" ")[0] || "");
     }
   }, [authReady, authUserId, authFullName]);
+
+  useEffect(() => {
+    // [hydration-fix] populate from cache after mount
+    const cachedDeals = getCache<any[]>("deals");
+    const cachedGoals = getCache<any[]>("goals");
+    const cachedGoal  = getCache<number>("open_deals_goal");
+    if (cachedDeals) { setDeals(cachedDeals); setLoading(false); }
+    if (cachedGoals) setGoals(cachedGoals);
+    if (cachedGoal != null) setOpenDealsGoal(cachedGoal);
+  }, []);
 
   useEffect(() => {
     async function load() {

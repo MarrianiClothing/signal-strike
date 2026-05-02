@@ -35,6 +35,9 @@ function SidebarInner() {
   const { initials, fullName } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
+  // [hydration-fix] flip after first client render so SSR and client agree on first paint
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isMobile    = useIsMobile();
 
@@ -134,14 +137,14 @@ function SidebarInner() {
           }}>
             <div style={{
               width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
-              background: dropdownOpen ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)",
-              border: `1px solid ${dropdownOpen ? "#ffffff" : "rgba(255,255,255,0.2)"}`,
+              background: hydrated && dropdownOpen ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)",
+              border: `1px solid ${hydrated && dropdownOpen ? "#ffffff" : "rgba(255,255,255,0.2)"}`,
               color: "#ffffff", fontSize: "0.75rem", fontWeight: 700,
               fontFamily: "var(--font-montserrat, sans-serif)",
               display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s",
-            }}>{initials}</div>
+            }}>{hydrated ? initials : "?"}</div>
             <div style={{ textAlign: "left", minWidth: 0 }}>
-              <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#fafafa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fullName || "User"}</p>
+              <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#fafafa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hydrated ? (fullName || "User") : "User"}</p>
               <p style={{ fontSize: "0.65rem", color: "#52525b", letterSpacing: "0.08em", textTransform: "uppercase" }}>HillTop Ave</p>
             </div>
             <span style={{ marginLeft: "auto", color: "#52525b", fontSize: "0.7rem" }}>▾</span>
