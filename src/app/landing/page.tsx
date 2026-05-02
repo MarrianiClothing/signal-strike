@@ -1196,7 +1196,7 @@ function PricingCard({
       </ul>
 
       <a
-        href="/signup"
+        href="/trial"
         className={featured ? "ss-btn-primary" : "ss-btn-secondary"}
         style={{
           display: "block",
