@@ -996,7 +996,7 @@ export default function LandingPage() {
                 title="Company"
                 links={[
                   { label: "About", href: "#" },
-                  { label: "Contact", href: "mailto:hello@hilltopave.com" },
+                  { label: "Contact", href: "mailto:consulting@hilltopave.com" },
                   { label: "Hilltop Ave", href: "https://hilltopave.com" },
                 ]}
               />
@@ -1005,7 +1005,6 @@ export default function LandingPage() {
                 links={[
                   { label: "Privacy", href: "/privacy" },
                   { label: "Terms", href: "/terms" },
-                  { label: "Security", href: "/security" },
                 ]}
               />
             </div>

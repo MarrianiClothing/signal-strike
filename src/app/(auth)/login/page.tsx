@@ -1,18 +1,27 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [isMobile, setIsMobile] = useState(false);
 
+  // Mode: "signin" (default) or "recovery" (set new password)
+  const [mode, setMode] = useState<"signin" | "recovery">("signin");
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // Mobile breakpoint
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -20,14 +29,87 @@ export default function LoginPage() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  async function handleLogin(e: React.FormEvent) {
+  // Detect ?welcome=1
+  useEffect(() => {
+    if (searchParams.get("welcome") === "1") {
+      setShowWelcome(true);
+    }
+  }, [searchParams]);
+
+  // Detect URL fragment for recovery flow + handle already-authed users
+  useEffect(() => {
+    let cancelled = false;
+
+    async function init() {
+      // Check URL fragment for recovery token
+      // Supabase puts it in #access_token=...&type=recovery&...
+      const hash = typeof window !== "undefined" ? window.location.hash : "";
+      const isRecovery = hash.includes("type=recovery");
+
+      if (isRecovery) {
+        if (!cancelled) {
+          setMode("recovery");
+          setInfo("Set a new password to continue.");
+          // Clean the fragment from the URL bar without triggering a reload
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+        return;
+      }
+
+      // Not a recovery flow — check if user is already signed in
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && !cancelled) {
+        router.push("/account");
+      }
+    }
+
+    init();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setInfo("");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError(error.message); setLoading(false); return; }
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
     router.push("/dashboard");
   }
+
+  async function handleSetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setInfo("");
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+    // Password set. User is now fully authenticated. Off to /account.
+    router.push("/account");
+  }
+
+  const isRecovery = mode === "recovery";
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: isMobile ? "column" : "row", fontFamily: "inherit", background: "#0a0a0b" }}>
@@ -78,57 +160,136 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Welcome banner (only when ?welcome=1 and NOT recovery mode) */}
+          {showWelcome && !isRecovery && (
+            <div style={{
+              marginBottom: 24,
+              padding: "14px 16px",
+              background: "rgba(34, 197, 94, 0.08)",
+              border: "1px solid rgba(34, 197, 94, 0.25)",
+              borderRadius: 8,
+              color: "#86efac",
+              fontSize: "0.85rem",
+              lineHeight: 1.5,
+            }}>
+              👋 <strong>Welcome to Signal Strike.</strong> Sign in to access your account.
+            </div>
+          )}
+
           {/* Heading */}
           <div style={{ marginBottom: 32 }}>
             <h2 style={{ fontSize: isMobile ? "1.5rem" : "1.9rem", fontWeight: 700, color: "#fafafa", marginBottom: 8, fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
-              Welcome Back
+              {isRecovery ? "Set Your Password" : "Welcome Back"}
             </h2>
-            <p style={{ color: "#71717a", fontSize: "0.88rem" }}>Sign in to your account</p>
+            <p style={{ color: "#71717a", fontSize: "0.88rem" }}>
+              {isRecovery ? "Choose a password to access your account." : "Sign in to your account"}
+            </p>
           </div>
 
+          {/* Info message */}
+          {info && (
+            <p style={{
+              color: "#86efac",
+              fontSize: "0.85rem",
+              marginBottom: 16,
+              padding: "10px 12px",
+              background: "rgba(34, 197, 94, 0.08)",
+              border: "1px solid rgba(34, 197, 94, 0.25)",
+              borderRadius: 8,
+            }}>
+              {info}
+            </p>
+          )}
+
           {/* Form */}
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div>
-              <label style={{ color: "#a1a1aa", fontSize: "0.78rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>Email</label>
-              <input
-                type="email" required value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                style={{ width: "100%", background: "#0a0a0b", border: "1px solid #27272a", borderRadius: 10, padding: "13px 14px", color: "#fafafa", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
-                onFocus={e => e.target.style.borderColor = "#C9A84C"}
-                onBlur={e => e.target.style.borderColor = "#27272a"}
-              />
-            </div>
-
-            <div>
-              <label style={{ color: "#a1a1aa", fontSize: "0.78rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>Password</label>
-              <input
-                type="password" required value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••••"
-                style={{ width: "100%", background: "#0a0a0b", border: "1px solid #27272a", borderRadius: 10, padding: "13px 14px", color: "#fafafa", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
-                onFocus={e => e.target.style.borderColor = "#C9A84C"}
-                onBlur={e => e.target.style.borderColor = "#27272a"}
-              />
-            </div>
-
-            {error && <p style={{ color: "#f87171", fontSize: "0.82rem", marginTop: -8 }}>{error}</p>}
-
-            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
-              <div onClick={() => setRememberMe(p => !p)} style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, background: rememberMe ? "#C9A84C" : "transparent", border: `2px solid ${rememberMe ? "#C9A84C" : "#3f3f46"}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", cursor: "pointer" }}>
-                {rememberMe && <span style={{ color: "#000", fontSize: "0.7rem", fontWeight: 900, lineHeight: 1 }}>✓</span>}
+          {isRecovery ? (
+            // ─── Recovery / Set Password form ───
+            <form onSubmit={handleSetPassword} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <label style={{ color: "#a1a1aa", fontSize: "0.78rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>New Password</label>
+                <input
+                  type="password" required value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  minLength={8}
+                  style={{ width: "100%", background: "#0a0a0b", border: "1px solid #27272a", borderRadius: 10, padding: "13px 14px", color: "#fafafa", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                  onFocus={e => e.target.style.borderColor = "#C9A84C"}
+                  onBlur={e => e.target.style.borderColor = "#27272a"}
+                />
               </div>
-              <span style={{ color: "#a1a1aa", fontSize: "0.83rem" }}>Remember me</span>
-            </label>
 
-            <button type="submit" disabled={loading} style={{ marginTop: 4, background: "#C9A84C", color: "#000", border: "none", borderRadius: 10, padding: "14px", fontWeight: 700, fontSize: "0.95rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, letterSpacing: "0.03em" }}>
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
+              <div>
+                <label style={{ color: "#a1a1aa", fontSize: "0.78rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>Confirm Password</label>
+                <input
+                  type="password" required value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Type it again"
+                  minLength={8}
+                  style={{ width: "100%", background: "#0a0a0b", border: "1px solid #27272a", borderRadius: 10, padding: "13px 14px", color: "#fafafa", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                  onFocus={e => e.target.style.borderColor = "#C9A84C"}
+                  onBlur={e => e.target.style.borderColor = "#27272a"}
+                />
+              </div>
 
-          <p style={{ textAlign: "center", marginTop: 28, color: "#52525b", fontSize: "0.83rem" }}>
-            Don&apos;t have an account?{" "}
-            <a href="/landing#pricing" style={{ color: "#C9A84C", textDecoration: "none", fontWeight: 600 }}>Sign up</a>
+              {error && <p style={{ color: "#f87171", fontSize: "0.82rem", marginTop: -8 }}>{error}</p>}
+
+              <button type="submit" disabled={loading} style={{ marginTop: 4, background: "#C9A84C", color: "#000", border: "none", borderRadius: 10, padding: "14px", fontWeight: 700, fontSize: "0.95rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, letterSpacing: "0.03em" }}>
+                {loading ? "Setting password..." : "Set Password & Continue"}
+              </button>
+            </form>
+          ) : (
+            // ─── Normal sign-in form ───
+            <form onSubmit={handleSignIn} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <label style={{ color: "#a1a1aa", fontSize: "0.78rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>Email</label>
+                <input
+                  type="email" required value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  style={{ width: "100%", background: "#0a0a0b", border: "1px solid #27272a", borderRadius: 10, padding: "13px 14px", color: "#fafafa", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                  onFocus={e => e.target.style.borderColor = "#C9A84C"}
+                  onBlur={e => e.target.style.borderColor = "#27272a"}
+                />
+              </div>
+
+              <div>
+                <label style={{ color: "#a1a1aa", fontSize: "0.78rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>Password</label>
+                <input
+                  type="password" required value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••••"
+                  style={{ width: "100%", background: "#0a0a0b", border: "1px solid #27272a", borderRadius: 10, padding: "13px 14px", color: "#fafafa", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                  onFocus={e => e.target.style.borderColor = "#C9A84C"}
+                  onBlur={e => e.target.style.borderColor = "#27272a"}
+                />
+              </div>
+
+              {error && <p style={{ color: "#f87171", fontSize: "0.82rem", marginTop: -8 }}>{error}</p>}
+
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
+                <div onClick={() => setRememberMe(p => !p)} style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, background: rememberMe ? "#C9A84C" : "transparent", border: `2px solid ${rememberMe ? "#C9A84C" : "#3f3f46"}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", cursor: "pointer" }}>
+                  {rememberMe && <span style={{ color: "#000", fontSize: "0.7rem", fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                </div>
+                <span style={{ color: "#a1a1aa", fontSize: "0.83rem" }}>Remember me</span>
+              </label>
+
+              <button type="submit" disabled={loading} style={{ marginTop: 4, background: "#C9A84C", color: "#000", border: "none", borderRadius: 10, padding: "14px", fontWeight: 700, fontSize: "0.95rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, letterSpacing: "0.03em" }}>
+                {loading ? "Signing in..." : "Sign In"}
+              </button>
+            </form>
+          )}
+
+          {!isRecovery && (
+            <p style={{ textAlign: "center", marginTop: 28, color: "#52525b", fontSize: "0.83rem" }}>
+              Don&apos;t have an account?{" "}
+              <a href="/landing#pricing" style={{ color: "#C9A84C", textDecoration: "none", fontWeight: 600 }}>Sign up</a>
+            </p>
+          )}
+
+          <p style={{ textAlign: "center", marginTop: 16, color: "#52525b", fontSize: "0.75rem" }}>
+            <a href="/terms" style={{ color: "#71717a", textDecoration: "none" }}>Terms</a>
+            <span style={{ margin: "0 8px", color: "#3f3f46" }}>·</span>
+            <a href="/privacy" style={{ color: "#71717a", textDecoration: "none" }}>Privacy</a>
           </p>
         </div>
       </div>

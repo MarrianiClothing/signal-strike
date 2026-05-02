@@ -352,6 +352,19 @@ export default function TrialPage() {
             your account settings before day 15 and you will not be charged
             beyond the initial $1.
           </p>
+
+          <p
+            style={{
+              textAlign: "center",
+              fontSize: 12,
+              color: MUTED_2,
+              marginTop: 16,
+            }}
+          >
+            <a href="/terms" style={{ color: MUTED_2, textDecoration: "none" }}>Terms</a>
+            <span style={{ margin: "0 8px" }}>·</span>
+            <a href="/privacy" style={{ color: MUTED_2, textDecoration: "none" }}>Privacy</a>
+          </p>
         </section>
       </div>
     </>
