@@ -173,13 +173,6 @@ export default function LandingPage() {
               Features
             </a>
             <a
-              href="#pricing"
-              className="ss-nav-link ss-hide-mobile"
-              style={{ color: MUTED, fontSize: 14, fontWeight: 500 }}
-            >
-              Pricing
-            </a>
-            <a
               href="#teams"
               className="ss-nav-link ss-hide-mobile"
               style={{ color: MUTED, fontSize: 14, fontWeight: 500 }}
@@ -198,7 +191,7 @@ export default function LandingPage() {
               Sign In
             </a>
             <a
-              href="#pricing"
+              href="/trial"
               className="ss-btn-primary"
               style={{
                 background: GOLD,
@@ -536,7 +529,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <a
-                href="#pricing"
+                href="/trial"
                 className="ss-btn-primary"
                 style={{
                   display: "inline-block",
@@ -660,164 +653,6 @@ export default function LandingPage() {
         </section>
 
         <div className="ss-divider" />
-
-        {/* ═══════════════════════════ PRICING ═══════════════════════════ */}
-        <section
-          id="pricing"
-          className="ss-section"
-          style={{
-            padding: "120px 48px",
-            maxWidth: 1200,
-            margin: "0 auto",
-          }}
-        >
-          <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                letterSpacing: "0.18em",
-                color: GOLD,
-                textTransform: "uppercase",
-                marginBottom: 16,
-              }}
-            >
-              Pricing
-            </div>
-            <h2
-              className="ss-heading ss-section-title"
-              style={{
-                fontSize: "2.75rem",
-                fontWeight: 600,
-                lineHeight: 1.15,
-                margin: "0 0 20px",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Simple, transparent pricing.
-            </h2>
-            <p
-              style={{
-                fontSize: "1.1rem",
-                color: MUTED,
-                maxWidth: 600,
-                margin: "0 auto",
-                lineHeight: 1.6,
-              }}
-            >
-              Billed monthly. Cancel anytime. No per-feature paywalls.
-            </p>
-          </div>
-
-          <div
-            className="ss-grid-3"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 24,
-              marginBottom: 32,
-            }}
-          >
-            <PricingCard
-              name="Scout"
-              price="29"
-              tagline="For individual reps getting started."
-              features={[
-                "Visual pipeline & deals",
-                "Up to 500 prospects",
-                "Daily Signal email",
-                "Apollo prospect finder",
-                "Email support",
-              ]}
-              cta="Start with Scout"
-            />
-            <PricingCard
-              name="Strike"
-              price="79"
-              tagline="For serious closers who want every edge."
-              featured
-              features={[
-                "Everything in Scout",
-                "Unlimited prospects",
-                "Ask Signal AI chat",
-                "Advanced analytics",
-                "PDF + Excel exports",
-                "Priority support",
-              ]}
-              cta="Start with Strike"
-            />
-            <PricingCard
-              name="Command"
-              price="129"
-              tagline="For revenue leaders running the show."
-              features={[
-                "Everything in Strike",
-                "Unlimited AI credits",
-                "Custom reports",
-                "API access",
-                "Dedicated success manager",
-                "SSO & advanced security",
-              ]}
-              cta="Start with Command"
-            />
-          </div>
-
-          {/* Team Add-on */}
-          <div
-            style={{
-              background: CARD,
-              border: `1px solid ${BORDER}`,
-              borderRadius: 16,
-              padding: "28px 32px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 20,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 10,
-                  background: "rgba(201, 168, 76, 0.1)",
-                  border: `1px solid ${GOLD}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: GOLD,
-                  fontSize: 20,
-                  fontWeight: 600,
-                }}
-              >
-                ◉
-              </div>
-              <div>
-                <div
-                  className="ss-heading"
-                  style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 4 }}
-                >
-                  Team Management Add-on
-                </div>
-                <div style={{ fontSize: 14, color: MUTED }}>
-                  Manager dashboards, team rollups, manager_id visibility.
-                  Required for any team deployment.
-                </div>
-              </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div
-                className="ss-heading"
-                style={{ fontSize: "1.5rem", fontWeight: 600, color: GOLD }}
-              >
-                $25
-              </div>
-              <div style={{ fontSize: 12, color: MUTED }}>per managed seat / month</div>
-            </div>
-          </div>
-        </section>
 
         {/* ═══════════════════════════ CTA BANNER ═══════════════════════════ */}
         <section
@@ -987,7 +822,6 @@ export default function LandingPage() {
                 title="Product"
                 links={[
                   { label: "Features", href: "#features" },
-                  { label: "Pricing", href: "#pricing" },
                   { label: "For Teams", href: "#teams" },
                   { label: "Demo", href: "#demo" },
                 ]}
@@ -1094,124 +928,6 @@ function FeatureCard({
       >
         {body}
       </p>
-    </div>
-  );
-}
-
-function PricingCard({
-  name,
-  price,
-  tagline,
-  features,
-  cta,
-  featured,
-}: {
-  name: string;
-  price: string;
-  tagline: string;
-  features: string[];
-  cta: string;
-  featured?: boolean;
-}) {
-  return (
-    <div
-      className="ss-pricing-card"
-      style={{
-        background: CARD,
-        border: featured ? `1px solid ${GOLD}` : `1px solid ${BORDER}`,
-        borderRadius: 16,
-        padding: 36,
-        position: "relative",
-        boxShadow: featured ? "0 16px 48px rgba(201, 168, 76, 0.12)" : "none",
-      }}
-    >
-      {featured && (
-        <div
-          style={{
-            position: "absolute",
-            top: -12,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: GOLD,
-            color: BG,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            padding: "5px 14px",
-            borderRadius: 999,
-          }}
-        >
-          Most Popular
-        </div>
-      )}
-      <div
-        className="ss-heading"
-        style={{
-          fontSize: "1.4rem",
-          fontWeight: 600,
-          margin: "0 0 8px",
-          color: featured ? GOLD : TEXT,
-          letterSpacing: "0.02em",
-        }}
-      >
-        {name}
-      </div>
-      <p style={{ fontSize: 13, color: MUTED, margin: "0 0 24px", lineHeight: 1.5 }}>
-        {tagline}
-      </p>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 28 }}>
-        <span
-          className="ss-heading"
-          style={{
-            fontSize: "3rem",
-            fontWeight: 600,
-            lineHeight: 1,
-            color: TEXT,
-          }}
-        >
-          ${price}
-        </span>
-        <span style={{ fontSize: 14, color: MUTED }}>/user/mo</span>
-      </div>
-
-      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px" }}>
-        {features.map((f) => (
-          <li
-            key={f}
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 10,
-              padding: "8px 0",
-              fontSize: 14,
-              color: TEXT,
-              lineHeight: 1.5,
-            }}
-          >
-            <span style={{ color: GOLD, fontWeight: 700, marginTop: 1 }}>✓</span>
-            {f}
-          </li>
-        ))}
-      </ul>
-
-      <a
-        href="/trial"
-        className={featured ? "ss-btn-primary" : "ss-btn-secondary"}
-        style={{
-          display: "block",
-          textAlign: "center",
-          background: featured ? GOLD : "transparent",
-          color: featured ? BG : TEXT,
-          padding: "14px 24px",
-          borderRadius: 10,
-          fontSize: 14,
-          fontWeight: 600,
-          border: featured ? "none" : `1px solid ${BORDER}`,
-        }}
-      >
-        {cta}
-      </a>
     </div>
   );
 }
