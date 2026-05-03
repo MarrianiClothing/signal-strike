@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     // Send invite email
     await resend.emails.send({
-      from:    "Signal Strike <noreply@hilltopave.com>",
+      from:    "Signal Strike <hello@hilltopave.com>",
       to:      email,
       subject: `${inviter_name || "Someone"} invited you to Signal Strike`,
       html: `

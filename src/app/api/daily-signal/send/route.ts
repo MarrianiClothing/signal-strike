@@ -913,7 +913,7 @@ export async function GET(req: NextRequest) {
       const dateStr = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
       const xlsxBuffer = await buildExcel(deals || [], tiers || [], today2, teamReports);
       await resend.emails.send({
-        from:    "Signal Strike <noreply@hilltopave.com>",
+        from:    "Signal Strike <hello@hilltopave.com>",
         to:      email,
         subject: `Daily Signal · ${dateStr}`,
         html,
@@ -998,7 +998,7 @@ export async function GET(req: NextRequest) {
       const dateStrCron = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
       const xlsxBuf = await buildExcel(deals || [], tiers || [], todayCron, teamReports);
       await resend.emails.send({
-        from:    "Signal Strike <noreply@hilltopave.com>",
+        from:    "Signal Strike <hello@hilltopave.com>",
         to:      userEmail,
         subject: `Daily Signal · ${dateStrCron}`,
         html,
