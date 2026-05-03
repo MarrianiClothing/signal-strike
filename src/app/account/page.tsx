@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { ManageBillingButton } from "./manage-billing-button";
+import { TimezoneSelector } from "./timezone-selector";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,13 @@ export default async function AccountPage() {
     .eq("user_id", user.id)
     .maybeSingle<Subscription>();
 
+  // Load profile for timezone
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", user.id)
+    .maybeSingle<{ timezone: string | null }>();
+
   return (
     <main
       style={{
@@ -125,6 +133,11 @@ export default async function AccountPage() {
         ) : (
           <NoSubscriptionCard />
         )}
+
+        <TimezoneSelector
+          userId={user.id}
+          initialTimezone={profile?.timezone ?? null}
+        />
       </div>
     </main>
   );
