@@ -338,14 +338,14 @@ export default function DealsPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #27272a" }}>
-                {["Deal", "Company", "Contact", "Value", "Stage", "Close Date"].map(h => (
+                {["Job #", "Deal", "Company", "Contact", "Value", "Stage", "Close Date"].map(h => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: "#71717a", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#52525b" }}>
+                <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#52525b" }}>
                   {search ? "No deals match your search." : "No deals yet. Add one from the Pipeline view."}
                 </td></tr>
               ) : filtered.map(deal => (
@@ -354,6 +354,7 @@ export default function DealsPage() {
                   style={{ borderBottom: "1px solid #18181b", color: "#fafafa", fontSize: "0.9rem", cursor: "pointer" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#1c1c1f")}
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                  <td style={{ padding: "13px 16px", color: "#C9A84C", fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}>{deal.job_number || "\u2014"}</td>
                   <td style={{ padding: "13px 16px", fontWeight: 600 }}>{deal.title}</td>
                   <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.company || "\u2014"}</td>
                   <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.contact_name || "\u2014"}</td>

@@ -271,6 +271,17 @@ export default function DealDetailPage() {
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, gap: 16 }}>
         <div>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fafafa", marginBottom: 4 }}>{deal.title}</h1>
+          {deal?.job_number && (
+            <div style={{
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+              fontSize: "0.875rem",
+              color: "#C9A84C",
+              marginBottom: 8,
+              letterSpacing: "0.05em",
+            }}>
+              Job #{deal.job_number}
+            </div>
+          )}
           <span style={{ fontSize: "0.8rem", color: stageColor, background: stageColor + "22",
             padding: "3px 10px", borderRadius: 6, fontWeight: 600 }}>
             {STAGE_LABELS[deal.stage]}

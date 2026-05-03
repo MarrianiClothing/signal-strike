@@ -418,6 +418,17 @@ export default function PipelinePage() {
                     onMouseEnter={e => (e.currentTarget.style.background = "#222225")}
                     onMouseLeave={e => (e.currentTarget.style.background = "#18181b")}>
                     <div style={{ minWidth: 0, flex: 1 }}>
+                      {deal.job_number && (
+                        <div style={{
+                          fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                          fontSize: "0.7rem",
+                          color: "#C9A84C",
+                          letterSpacing: "0.04em",
+                          marginBottom: 3,
+                        }}>
+                          #{deal.job_number}
+                        </div>
+                      )}
                       <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cleanTitle(deal.title, deal.company)}</p>
                       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                         {deal.company && <p style={{ color: "#71717a", fontSize: "0.78rem", margin: 0 }}>{deal.company}</p>}
