@@ -4,9 +4,9 @@ import { Resend } from "resend";
 
 export const runtime = "nodejs";
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export async function POST(req: NextRequest) {
+  const resend = new Resend(process.env.RESEND_API_KEY!);
   try {
     const { team_id, email, inviter_name } = await req.json();
     if (!team_id || !email) return NextResponse.json({ error: "Missing team_id or email" }, { status: 400 });

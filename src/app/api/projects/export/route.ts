@@ -9,7 +9,6 @@ const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const ST_LBL: Record<string,string> = {
@@ -319,6 +318,7 @@ function buildCSV(project: any, phases: any[], taskMap: Record<string,any[]>, de
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const resend = new Resend(process.env.RESEND_API_KEY!);
   try {
     const { projectId, recipientEmail, recipientName } = await req.json();
     if (!projectId || !recipientEmail) {

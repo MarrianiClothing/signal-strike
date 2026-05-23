@@ -9,7 +9,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 function fmt(n: number) {
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
@@ -855,6 +854,7 @@ function buildEmailHtml(userName: string, deals: any[], tiers: any[], teamReport
 }
 
 export async function GET(req: NextRequest) {
+  const resend = new Resend(process.env.RESEND_API_KEY!);
   const preview = req.nextUrl.searchParams.get("preview") === "true";
 
   // Auth: Vercel cron sends "Authorization: Bearer <CRON_SECRET>" header

@@ -9,7 +9,6 @@ const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 type RGB3 = [number,number,number];
@@ -290,6 +289,7 @@ async function buildDealPDF(deal: any, tier: any|null, activities: any[]): Promi
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const resend = new Resend(process.env.RESEND_API_KEY!);
   try {
     const { dealId, mode, recipientEmail, recipientName } = await req.json();
     if (!dealId || !mode) {
