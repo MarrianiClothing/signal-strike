@@ -286,6 +286,33 @@ export default function DealDetailPage() {
             padding: "3px 10px", borderRadius: 6, fontWeight: 600 }}>
             {STAGE_LABELS[deal.stage]}
           </span>
+
+          {/* Contact action strip */}
+          {(deal.contact_email || deal.contact_phone || deal.contact_name) && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+              {deal.contact_name && !deal.contact_email && !deal.contact_phone && (
+                <span style={{ color: "#a1a1aa", fontSize: "0.82rem" }}>{deal.contact_name}</span>
+              )}
+              {deal.contact_email && (
+                <a href={`mailto:${deal.contact_email}?subject=${encodeURIComponent(`Following up — ${deal.company || deal.title}`)}`}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#60a5fa", fontSize: "0.82rem",
+                    textDecoration: "none", borderBottom: "1px dashed rgba(96,165,250,0.4)", paddingBottom: 1 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "#C9A84C")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "#60a5fa")}>
+                  ✉ {deal.contact_name ? `${deal.contact_name} (${deal.contact_email})` : deal.contact_email}
+                </a>
+              )}
+              {deal.contact_phone && (
+                <a href={`tel:${deal.contact_phone.replace(/\D/g, "").replace(/^(\d{10})$/, "+1$1")}`}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#34d399", fontSize: "0.82rem",
+                    textDecoration: "none", borderBottom: "1px dashed rgba(52,211,153,0.4)", paddingBottom: 1 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "#C9A84C")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "#34d399")}>
+                  📞 {deal.contact_phone}
+                </a>
+              )}
+            </div>
+          )}
         </div>
         <div style={{ textAlign: "right" }}>
           <p style={{ fontSize: "2rem", fontWeight: 800, color: "#C9A84C", fontFamily: "monospace" }}>{fmt(deal.value)}</p>

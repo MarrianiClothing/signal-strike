@@ -65,7 +65,17 @@ export default function MemberDetailPage() {
         </div>
         <div>
           <h1 style={{ fontSize:"1.5rem", fontWeight:800, color:"#fafafa", margin:"0 0 4px" }}>{profile?.full_name ?? "Unnamed"}</h1>
-          <p style={{ color:"#52525b", fontSize:"0.82rem", margin:0 }}>{profile?.email ?? ""}</p>
+          {profile?.email ? (
+            <a href={`mailto:${profile.email}`}
+              style={{ color:"#60a5fa", fontSize:"0.82rem", margin:0, textDecoration:"none",
+                borderBottom:"1px dashed rgba(96,165,250,0.4)", paddingBottom:1, display:"inline-block" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "#C9A84C")}
+              onMouseLeave={e => (e.currentTarget.style.color = "#60a5fa")}>
+              {profile.email}
+            </a>
+          ) : (
+            <p style={{ color:"#52525b", fontSize:"0.82rem", margin:0 }}>—</p>
+          )}
         </div>
       </div>
 

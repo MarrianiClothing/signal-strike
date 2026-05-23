@@ -324,7 +324,21 @@ export default function DealsPage() {
                   <span style={{ color: "#C9A84C", fontWeight: 800, fontSize: "1rem", fontFamily: "var(--font-cinzel, serif)", flexShrink: 0 }}>{fmt(deal.value)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: "#71717a", fontSize: "0.78rem" }}>{showContact ? deal.contact_name : (showCompany ? deal.company : "\u2014")}</span>
+                  {showContact && deal.contact_phone ? (
+                    <a href={`tel:${deal.contact_phone.replace(/\D/g,"").replace(/^(\d{10})$/,"+1$1")}`}
+                      onClick={e => e.stopPropagation()}
+                      style={{ color:"#34d399", fontSize:"0.78rem", textDecoration:"none", borderBottom:"1px dashed rgba(52,211,153,0.35)", paddingBottom:1 }}>
+                      {deal.contact_name || deal.contact_phone}
+                    </a>
+                  ) : showContact && deal.contact_email ? (
+                    <a href={`mailto:${deal.contact_email}`}
+                      onClick={e => e.stopPropagation()}
+                      style={{ color:"#60a5fa", fontSize:"0.78rem", textDecoration:"none", borderBottom:"1px dashed rgba(96,165,250,0.35)", paddingBottom:1 }}>
+                      {deal.contact_name || deal.contact_email}
+                    </a>
+                  ) : (
+                    <span style={{ color: "#71717a", fontSize: "0.78rem" }}>{showContact ? deal.contact_name : (showCompany ? deal.company : "—")}</span>
+                  )}
                   <span style={{ fontSize: "0.72rem", padding: "3px 10px", borderRadius: 20, background: stageColor + "22", color: stageColor, fontWeight: 600 }}>
                     {STAGE_LABELS[deal.stage] || deal.stage}
                   </span>
