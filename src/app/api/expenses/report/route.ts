@@ -3,11 +3,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-const resend = new Resend(process.env.RESEND_API_KEY!);
+
 
 function fmt(n: number) {
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
@@ -359,6 +355,11 @@ async function buildExpenseReportPDF(
 }
 
 export async function GET(req: NextRequest) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const resend = new Resend(process.env.RESEND_API_KEY!);
   const { searchParams } = req.nextUrl;
   const mode    = searchParams.get("mode") || "download";
   const month   = searchParams.get("month");
