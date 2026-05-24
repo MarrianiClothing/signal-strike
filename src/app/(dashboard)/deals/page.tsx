@@ -1,6 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getCache, setCache } from "@/lib/cache";
 
@@ -8,50 +7,92 @@ function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
+    check(); window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
   return isMobile;
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  prospecting: "Prospecting", qualification: "Qualified", proposal: "Proposal",
-  negotiation: "Negotiation", closed_won: "Won", closed_lost: "Lost",
+const STAGES = ["prospecting","qualification","proposal","negotiation","closed_won","closed_lost"];
+const STAGE_LABELS: Record<string,string> = {
+  prospecting:"Lead", qualification:"Qualified", proposal:"Proposal",
+  negotiation:"Negotiation", closed_won:"Won", closed_lost:"Lost",
 };
-const STAGE_COLORS: Record<string, string> = {
-  prospecting: "#71717a", qualification: "#60a5fa", proposal: "#a78bfa",
-  negotiation: "#fbbf24", closed_won: "#C9A84C", closed_lost: "#f87171",
+const STAGE_COLORS: Record<string,string> = {
+  prospecting:"#71717a", qualification:"#60a5fa", proposal:"#a78bfa",
+  negotiation:"#fbbf24", closed_won:"#C9A84C", closed_lost:"#f87171",
 };
 
 function fmt(n: number | null | undefined) {
   if (!n || isNaN(n)) return "$0";
-  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
-  if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "K";
+  if (n >= 1_000_000) return "$" + (n/1_000_000).toFixed(2) + "M";
+  if (n >= 1_000)     return "$" + (n/1_000).toFixed(1) + "K";
   return "$" + n.toFixed(0);
 }
 
-function cleanTitle(title: string, company?: string | null): string {
-  if (!title) return title;
-  const parts = title.split(" \u2014 ");
-  if (parts.length === 2) {
-    const a = parts[0].trim(), b = parts[1].trim();
-    if (a === b) return a;
-    if (company && (a === company.trim() || b === company.trim())) return a;
-  }
-  return title;
+function initials(name?: string | null, company?: string | null) {
+  const src = name || company || "??";
+  return src.split(" ").map((w:string) => w[0]).join("").slice(0,2).toUpperCase();
 }
 
+function timeAgo(ts?: string | null) {
+  if (!ts) return "—";
+  const d = new Date(ts), now = new Date();
+  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (diff < 60)   return "just now";
+  if (diff < 3600) return Math.floor(diff/60) + "m ago";
+  if (diff < 86400)return Math.floor(diff/3600) + "h ago";
+  return d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+}
+
+function canDelete(deal: any, userId: string) {
+  if (!deal) return false;
+  const created = new Date(deal.created_at).getTime();
+  const now     = new Date().getTime();
+  return deal.user_id === userId && (now - created) < 24 * 60 * 60 * 1000;
+}
+
+const inp: React.CSSProperties = {
+  width:"100%", background:"#1c1c1f", border:"1px solid #27272a",
+  borderRadius:8, padding:"9px 12px", color:"#fafafa", fontSize:"0.875rem",
+  boxSizing:"border-box",
+};
+const lbl: React.CSSProperties = {
+  color:"#71717a", fontSize:"0.72rem", textTransform:"uppercase",
+  letterSpacing:"0.05em", marginBottom:5, display:"block",
+};
+
 export default function DealsPage() {
-  const [deals, setDeals] = useState<any[]>(() => getCache<any[]>("deals") ?? []);
-  const [loading, setLoading] = useState(!getCache<any[]>("deals"));
-  const [search, setSearch] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
-  const [newDeal, setNewDeal] = useState({ title: "", company: "", contact_name: "", contact_email: "", contact_phone: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const supabase = createClient();
+  const isMobile = useIsMobile();
+
+  // List state
+  const [deals,           setDeals]           = useState<any[]>(() => getCache<any[]>("deals") ?? []);
+  const [loading,         setLoading]         = useState(!getCache<any[]>("deals"));
+  const [search,          setSearch]          = useState("");
+  const [stageFilter,     setStageFilter]     = useState("all");
+  const [userId,          setUserId]          = useState("");
+  const [userName,        setUserName]        = useState("");
   const [commissionTiers, setCommissionTiers] = useState<any[]>(() => getCache<any[]>("commission_tiers") ?? []);
-  const [userId,        setUserId]        = useState("");
+
+  // Add deal modal
+  const [showAdd, setShowAdd] = useState(false);
+  const [newDeal, setNewDeal] = useState({ title:"", company:"", contact_name:"", contact_email:"", contact_phone:"", value:"", stage:"prospecting", probability:"20", expected_close_date:"", notes:"" });
+  const [saving,  setSaving]  = useState(false);
+  const [addMsg,  setAddMsg]  = useState("");
+
+  // Detail modal
+  const [selected,         setSelected]         = useState<any>(null);
+  const [detailEdit,       setDetailEdit]       = useState<any>(null);
+  const [activities,       setActivities]       = useState<any[]>([]);
+  const [detailSaving,     setDetailSaving]     = useState(false);
+  const [detailMsg,        setDetailMsg]        = useState<{ok:boolean;text:string}|null>(null);
+  const [rollbackConfirm,  setRollbackConfirm]  = useState(false);
+  const [advanceConfirm,   setAdvanceConfirm]   = useState(false);
+  const [deleteConfirm,    setDeleteConfirm]    = useState(false);
+  const [actLoading,       setActLoading]       = useState(false);
+
+  // DASH import state
   const [dashModal,     setDashModal]     = useState(false);
   const [dashJobs,      setDashJobs]      = useState<any[]>([]);
   const [dashSelected,  setDashSelected]  = useState<Set<number>>(new Set());
@@ -59,6 +100,8 @@ export default function DealsPage() {
   const [dashImporting, setDashImporting] = useState(false);
   const [dashError,     setDashError]     = useState("");
   const [dashImported,  setDashImported]  = useState(0);
+
+  // Spreadsheet import state
   const [importModal,    setImportModal]    = useState(false);
   const [importDeals,    setImportDeals]    = useState<any[]>([]);
   const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
@@ -67,407 +110,678 @@ export default function DealsPage() {
   const [importError,    setImportError]    = useState("");
   const [importDone,     setImportDone]     = useState(0);
   const [importDetected, setImportDetected] = useState<string[]>([]);
-  const supabase = createClient();
-  const router = useRouter();
-  const isMobile = useIsMobile();
 
-  const STAGES = [
-    { id: "prospecting", label: "Prospecting" },
-    { id: "qualification", label: "Qualified" },
-    { id: "proposal", label: "Proposal" },
-    { id: "negotiation", label: "Negotiation" },
-    { id: "closed_won", label: "Won" },
-    { id: "closed_lost", label: "Lost" },
-  ];
+  const load = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setUserId(user.id);
+    const [{ data }, { data: tiersData }, { data: profile }] = await Promise.all([
+      supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("commission_tiers").select("*").eq("user_id", user.id),
+      supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+    ]);
+    const fresh = data || [];
+    setDeals(fresh); setCache("deals", fresh);
+    setCommissionTiers(tiersData || []); setCache("commission_tiers", tiersData || []);
+    setUserName(profile?.full_name ?? "");
+    setLoading(false);
+  }, [supabase]);
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", background: "#1c1c1f", border: "1px solid #27272a",
-    borderRadius: 8, padding: "9px 12px", color: "#fafafa", fontSize: "0.875rem",
-    boxSizing: "border-box" as const,
-  };
+  useEffect(() => { load(); }, [load]);
+
+  async function loadActivities(dealId: string) {
+    setActLoading(true);
+    const { data } = await supabase.from("activities").select("*").eq("deal_id", dealId).order("occurred_at", { ascending: false });
+    setActivities(data || []);
+    setActLoading(false);
+  }
+
+  function openDetail(deal: any) {
+    setSelected(deal);
+    setDetailEdit({ ...deal });
+    setDetailMsg(null);
+    setRollbackConfirm(false);
+    setAdvanceConfirm(false);
+    setDeleteConfirm(false);
+    loadActivities(deal.id);
+  }
+
+  function closeDetail() {
+    setSelected(null);
+    setDetailEdit(null);
+    setActivities([]);
+    setDetailMsg(null);
+  }
+
+  async function handleDetailSave() {
+    if (!selected) return;
+    setDetailSaving(true);
+    const { error } = await supabase.from("deals").update({
+      title:               detailEdit.title,
+      company:             detailEdit.company,
+      contact_name:        detailEdit.contact_name,
+      contact_email:       detailEdit.contact_email,
+      contact_phone:       detailEdit.contact_phone || null,
+      value:               parseFloat(detailEdit.value) || 0,
+      notes:               detailEdit.notes || null,
+      updated_at:          new Date().toISOString(),
+    }).eq("id", selected.id);
+    if (!error) {
+      setDetailMsg({ ok:true, text:"Saved!" });
+      await load();
+      const updated = deals.find(d => d.id === selected.id);
+      if (updated) setSelected({ ...updated, ...detailEdit });
+      setTimeout(() => setDetailMsg(null), 2000);
+    } else {
+      setDetailMsg({ ok:false, text: error.message });
+    }
+    setDetailSaving(false);
+  }
+
+  async function handleAdvanceStage() {
+    if (!selected) return;
+    const currentIdx = STAGES.indexOf(detailEdit.stage);
+    if (currentIdx >= STAGES.length - 1) return;
+    const nextStage = STAGES[currentIdx + 1];
+    const { error } = await supabase.from("deals").update({ stage: nextStage, updated_at: new Date().toISOString() }).eq("id", selected.id);
+    if (!error) {
+      await supabase.from("activities").insert({ user_id: userId, deal_id: selected.id, type:"stage_change", title:`${STAGE_LABELS[detailEdit.stage]} → ${STAGE_LABELS[nextStage]}`, occurred_at: new Date().toISOString() });
+      setDetailEdit((p:any) => ({ ...p, stage: nextStage }));
+      setSelected((p:any) => ({ ...p, stage: nextStage }));
+      await load();
+      await loadActivities(selected.id);
+    }
+    setAdvanceConfirm(false);
+  }
+
+  async function handleRollback() {
+    if (!selected) return;
+    const currentIdx = STAGES.indexOf(detailEdit.stage);
+    if (currentIdx <= 0) return;
+    const prevStage = STAGES[currentIdx - 1];
+    const { error } = await supabase.from("deals").update({ stage: prevStage, updated_at: new Date().toISOString() }).eq("id", selected.id);
+    if (!error) {
+      await supabase.from("activities").insert({ user_id: userId, deal_id: selected.id, type:"stage_change", title:`Rolled back: ${STAGE_LABELS[detailEdit.stage]} → ${STAGE_LABELS[prevStage]}`, occurred_at: new Date().toISOString() });
+      setDetailEdit((p:any) => ({ ...p, stage: prevStage }));
+      setSelected((p:any) => ({ ...p, stage: prevStage }));
+      await load();
+      await loadActivities(selected.id);
+    }
+    setRollbackConfirm(false);
+  }
+
+  async function handleDelete() {
+    if (!selected) return;
+    await supabase.from("activities").insert({ user_id: userId, deal_id: selected.id, type:"note", title:"Deal deleted", occurred_at: new Date().toISOString() });
+    await supabase.from("deals").delete().eq("id", selected.id);
+    closeDetail();
+    await load();
+    setDeleteConfirm(false);
+  }
 
   async function handleAddDeal(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true); setMsg("");
+    setSaving(true); setAddMsg("");
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
     const { error } = await supabase.from("deals").insert({
-      user_id: session.user.id,
-      title: newDeal.title,
-      company: newDeal.company,
-      contact_name: newDeal.contact_name,
-      contact_email: newDeal.contact_email,
-      contact_phone: newDeal.contact_phone || null,
-      value: parseFloat(newDeal.value) || 0,
-      stage: newDeal.stage,
-      probability: parseInt(newDeal.probability) || 20,
-      expected_close_date: newDeal.expected_close_date || null,
-      notes: newDeal.notes || null,
-      commission_tier_id: newDeal.commission_tier_id || null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      user_id: session.user.id, title: newDeal.title, company: newDeal.company,
+      contact_name: newDeal.contact_name, contact_email: newDeal.contact_email,
+      contact_phone: newDeal.contact_phone || null, value: parseFloat(newDeal.value) || 0,
+      stage: newDeal.stage, probability: parseInt(newDeal.probability) || 20,
+      expected_close_date: newDeal.expected_close_date || null, notes: newDeal.notes || null,
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     });
     if (!error) {
-      setNewDeal({ title: "", company: "", contact_name: "", contact_email: "", contact_phone: "", value: "", stage: "prospecting", probability: "20", expected_close_date: "", notes: "", commission_tier_id: "" });
-      setShowAdd(false);
-      await load();
-    } else setMsg(error.message);
+      setNewDeal({ title:"", company:"", contact_name:"", contact_email:"", contact_phone:"", value:"", stage:"prospecting", probability:"20", expected_close_date:"", notes:"" });
+      setShowAdd(false); await load();
+    } else setAddMsg(error.message);
     setSaving(false);
   }
 
-  async function load() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const [{ data }, { data: tiersData }] = await Promise.all([
-      supabase.from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("commission_tiers").select("*").eq("user_id", user.id).order("rate", { ascending: false }),
-    ]);
-    const fresh = data || [];
-    setDeals(fresh);
-    setCache("deals", fresh);
-    setCommissionTiers(tiersData || []);
-    setCache("commission_tiers", tiersData || []);
-    setLoading(false);
-  }
-
-  useEffect(() => { load(); }, []);
-
-  const filtered = deals.filter(d =>
-    !search || d.title?.toLowerCase().includes(search.toLowerCase()) ||
-    d.company?.toLowerCase().includes(search.toLowerCase()) ||
-    d.contact_name?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  useEffect(() => {
-    createClient().auth.getUser().then(({ data:{ user }}) => { if (user) setUserId(user.id); });
-  }, []);
-
+  // DASH handlers
   async function handleDashFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]; if (!file) return;
     setDashLoading(true); setDashError(""); setDashJobs([]); setDashSelected(new Set());
-    const fd = new FormData();
-    fd.append("file", file);
+    const fd = new FormData(); fd.append("file", file);
     try {
-      const res  = await fetch("/api/dash/import", { method:"POST", body:fd });
+      const res = await fetch("/api/dash/import",{method:"POST",body:fd});
       const json = await res.json();
-      if (!res.ok || json.error) { setDashError(json.error ?? "Parse failed"); }
-      else {
-        setDashJobs(json.jobs || []);
-        setDashSelected(new Set((json.jobs||[]).map((_:any,i:number)=>i)));
-      }
+      if (!res.ok || json.error) setDashError(json.error ?? "Parse failed");
+      else { setDashJobs(json.jobs||[]); setDashSelected(new Set((json.jobs||[]).map((_:any,i:number)=>i))); }
     } catch(err:any) { setDashError(err?.message ?? "Upload failed"); }
-    setDashLoading(false);
-    e.target.value = "";
+    setDashLoading(false); e.target.value="";
   }
-
   async function handleDashImport() {
-    if (!userId || dashSelected.size === 0) return;
-    setDashImporting(true);
-    let imported = 0;
+    if (!userId||dashSelected.size===0) return;
+    setDashImporting(true); let imported=0;
     for (const idx of Array.from(dashSelected)) {
-      const job = dashJobs[idx];
-      if (!job) continue;
+      const job=dashJobs[idx]; if (!job) continue;
       try {
-        const res = await fetch("/api/apollo/pipeline", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({
-            user_id: userId, contact_name: job.contact_name, contact_email: null,
-            contact_phone: null, company: job.company, title: job.title,
-            linkedin_url: null, value: job.value, stage: job.stage, notes: job.notes,
-          }),
-        });
+        const res=await fetch("/api/apollo/pipeline",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:userId,contact_name:job.contact_name,contact_email:null,contact_phone:null,company:job.company,title:job.title,linkedin_url:null,value:job.value,stage:job.stage,notes:job.notes})});
         if (res.ok) imported++;
       } catch {}
     }
-    setDashImported(imported);
-    setDashImporting(false);
-    setTimeout(() => {
-      setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashImported(0);
-      load();
-    }, 1800);
+    setDashImported(imported); setDashImporting(false);
+    setTimeout(async()=>{ setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashImported(0); await load(); }, 1800);
   }
 
-  function toggleDashJob(idx: number) {
-    setDashSelected(prev => { const n = new Set(prev); n.has(idx)?n.delete(idx):n.add(idx); return n; });
-  }
-
+  // Spreadsheet import handlers
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]; if (!file) return;
     setImportLoading(true); setImportError(""); setImportDeals([]); setImportSelected(new Set());
-    const fd = new FormData();
-    fd.append("file", file);
+    const fd = new FormData(); fd.append("file", file);
     try {
-      const res  = await fetch("/api/deals/import", { method:"POST", body:fd });
-      const json = await res.json();
-      if (!res.ok || json.error) { setImportError(json.error ?? "Parse failed"); }
-      else {
-        setImportDeals(json.deals || []);
-        setImportDetected(json.detected || []);
-        setImportSelected(new Set((json.deals||[]).map((_:any,i:number)=>i)));
-      }
-    } catch(err:any) { setImportError(err?.message ?? "Upload failed"); }
-    setImportLoading(false);
-    e.target.value = "";
+      const res=await fetch("/api/deals/import",{method:"POST",body:fd});
+      const json=await res.json();
+      if (!res.ok||json.error) setImportError(json.error??"Parse failed");
+      else { setImportDeals(json.deals||[]); setImportDetected(json.detected||[]); setImportSelected(new Set((json.deals||[]).map((_:any,i:number)=>i))); }
+    } catch(err:any) { setImportError(err?.message??"Upload failed"); }
+    setImportLoading(false); e.target.value="";
   }
-
   async function handleImportSave() {
-    if (!userId || importSelected.size === 0) return;
-    setImportSaving(true);
-    let done = 0;
+    if (!userId||importSelected.size===0) return;
+    setImportSaving(true); let done=0;
     for (const idx of Array.from(importSelected)) {
-      const d = importDeals[idx];
-      if (!d) continue;
+      const d=importDeals[idx]; if (!d) continue;
       try {
-        const res = await fetch("/api/apollo/pipeline", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({
-            user_id: userId, title: d.title, company: d.company,
-            contact_name: d.contact_name, contact_email: d.contact_email,
-            contact_phone: d.contact_phone, value: d.value,
-            stage: d.stage, notes: d.notes,
-          }),
-        });
+        const res=await fetch("/api/apollo/pipeline",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:userId,title:d.title,company:d.company,contact_name:d.contact_name,contact_email:d.contact_email,contact_phone:d.contact_phone,value:d.value,stage:d.stage,notes:d.notes})});
         if (res.ok) done++;
       } catch {}
     }
-    setImportDone(done);
-    setImportSaving(false);
-    setTimeout(async () => {
-      setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportDone(0);
-      const { data: { user } } = await createClient().auth.getUser();
-      if (user) {
-        const { data } = await createClient().from("deals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-        setDeals(data || []);
-      }
-    }, 1800);
+    setImportDone(done); setImportSaving(false);
+    setTimeout(async()=>{ setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportDone(0); await load(); }, 1800);
   }
 
-  if (loading) return <div style={{ padding: 32, color: "#71717a" }}>Loading deals...</div>;
+  const filtered = deals.filter(d => {
+    const matchSearch = !search || [d.title,d.company,d.contact_name,d.contact_email].some(v => v?.toLowerCase().includes(search.toLowerCase()));
+    const matchStage  = stageFilter==="all" || d.stage===stageFilter;
+    return matchSearch && matchStage;
+  });
 
+  const stageIdx    = (s: string) => STAGES.indexOf(s);
+  const currentIdx  = selected ? stageIdx(detailEdit?.stage) : -1;
+  const canAdvance  = selected && currentIdx < STAGES.length - 1;
+  const canRollback = selected && currentIdx > 0;
+
+  // ── RENDER ──────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: isMobile ? 16 : 32 }}>
-      {/* Header */}
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 24, gap: 12, width: "100%", boxSizing: "border-box" as const }}>
-        <div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fafafa" }}>Deals</h1>
-          <p style={{ color: "#71717a", fontSize: "0.82rem", marginTop: 3 }}>{deals.length} total deals</p>
-        </div>
+    <div style={{ padding: isMobile ? 16 : 28, maxWidth: 1200 }}>
 
-        {/* Toolbar — mobile: search full-width + scrollable action row */}
-        {isMobile ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-            <input
-              style={{ background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 14px", color: "#fafafa", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" }}
-              placeholder="Search deals..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <div style={{ display: "flex", gap: 8 }}>
-              <label style={{ flex: 1, background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 10px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap" }}>
-                &#128194; DASH Import
-                <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display: "none" }}
-                  onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
-              </label>
-              <label style={{ flex: 1, background: "#1c1c1f", border: "1px solid #27272a", color: "#a1a1aa", borderRadius: 8, padding: "8px 10px", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap" }}>
-                &#128229; Spreadsheet
-                <input type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }}
-                  onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
-              </label>
-            </div>
-            <button onClick={() => setShowAdd(true)} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", width: "100%" }}>+ Add Deal</button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <input
-              style={{ background: "#1c1c1f", border: "1px solid #27272a", borderRadius: 8, padding: "9px 14px", color: "#fafafa", fontSize: "0.85rem", flex: "1 1 180px", minWidth: 120, maxWidth: 220 }}
-              placeholder="Search deals..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 16px", fontWeight:600, fontSize:"0.85rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
-              &#128194; Import DASH Deals
-              <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }}
-                onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
-            </label>
-            <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 16px", fontWeight:600, fontSize:"0.85rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
-              &#128229; Import Spreadsheet
-              <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }}
-                onChange={e => { setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
-            </label>
-            <button onClick={() => setShowAdd(true)} style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "9px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}>+ Add Deal</button>
-          </div>
-        )}
+      {/* Header */}
+      <div style={{ display:"flex", flexDirection:isMobile?"column":"row", justifyContent:"space-between", alignItems:isMobile?"flex-start":"center", marginBottom:24, gap:12 }}>
+        <div>
+          <h1 style={{ fontSize:"1.5rem", fontWeight:800, color:"#fafafa", margin:"0 0 3px", fontFamily:"var(--font-cinzel,serif)", letterSpacing:"0.06em", textTransform:"uppercase" }}>Leads & Pipeline</h1>
+          <p style={{ color:"#52525b", fontSize:"0.82rem", margin:0 }}>{deals.length} total deals</p>
+        </div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", width:isMobile?"100%":"auto" }}>
+          <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"8px 14px", fontWeight:600, fontSize:"0.82rem", cursor:"pointer", display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap" }}>
+            📂 Import DASH
+            <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }} onChange={e=>{ setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
+          </label>
+          <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"8px 14px", fontWeight:600, fontSize:"0.82rem", cursor:"pointer", display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap" }}>
+            📥 Import Spreadsheet
+            <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }} onChange={e=>{ setImportModal(true); setImportError(""); setImportDeals([]); handleImportFile(e); }} />
+          </label>
+          <button onClick={()=>setShowAdd(true)} style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 18px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", whiteSpace:"nowrap" }}>
+            + Add Lead
+          </button>
+        </div>
       </div>
 
-      {/* Mobile card list */}
-      {isMobile ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.length === 0 ? (
-            <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: 32, textAlign: "center", color: "#52525b" }}>
-              {search ? "No deals match your search." : "No deals yet."}
-            </div>
-          ) : filtered.map(deal => {
-            const stageColor = STAGE_COLORS[deal.stage] || "#71717a";
-            const title = cleanTitle(deal.title, deal.company);
-            const showCompany = deal.company && deal.company !== title;
-            const showContact = deal.contact_name && deal.contact_name !== deal.company;
+      {/* Search + stage filter */}
+      <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
+        <input style={{ ...inp, flex:1, minWidth:200, maxWidth:320 }} placeholder="Search leads, companies, contacts..."
+          value={search} onChange={e=>setSearch(e.target.value)} />
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+          {[{id:"all",label:"All"},...STAGES.map(s=>({id:s,label:STAGE_LABELS[s]}))].map(s=>(
+            <button key={s.id} onClick={()=>setStageFilter(s.id)}
+              style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${stageFilter===s.id?(STAGE_COLORS[s.id]||"#C9A84C"):"#27272a"}`,
+                background: stageFilter===s.id?(STAGE_COLORS[s.id]||"#C9A84C")+"22":"transparent",
+                color: stageFilter===s.id?(STAGE_COLORS[s.id]||"#C9A84C"):"#71717a",
+                fontSize:"0.75rem", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── TABLE ────────────────────────────────────────────────────────────── */}
+      {loading ? (
+        <div style={{ textAlign:"center", padding:"60px 0", color:"#52525b" }}>Loading...</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:"60px 0", textAlign:"center" }}>
+          <div style={{ fontSize:"2.5rem", marginBottom:12 }}>📋</div>
+          <p style={{ color:"#52525b", fontSize:"0.95rem", margin:"0 0 6px" }}>{search || stageFilter!=="all" ? "No deals match your filters." : "No deals yet."}</p>
+          {!search && stageFilter==="all" && <p style={{ color:"#3f3f46", fontSize:"0.82rem", margin:0 }}>Click <strong style={{ color:"#C9A84C" }}>+ Add Lead</strong> to get started</p>}
+        </div>
+      ) : isMobile ? (
+        /* Mobile card list */
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {filtered.map(deal => {
+            const sc = STAGE_COLORS[deal.stage] ?? "#71717a";
             return (
-              <div key={deal.id} onClick={() => router.push("/deals/" + deal.id)}
-                style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, borderLeft: `3px solid ${stageColor}`, padding: "14px 16px", cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
-                    <p style={{ color: "#fafafa", fontWeight: 700, fontSize: "0.95rem", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</p>
-                    {showCompany && <p style={{ color: "#71717a", fontSize: "0.78rem", margin: 0 }}>{deal.company}</p>}
+              <div key={deal.id} onClick={()=>openDetail(deal)}
+                style={{ background:"#111113", border:"1px solid #27272a", borderLeft:`3px solid ${sc}`, borderRadius:10, padding:"14px 16px", cursor:"pointer" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
+                    <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(201,168,76,0.1)", border:"1px solid rgba(201,168,76,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.75rem", fontWeight:700, color:"#C9A84C", flexShrink:0 }}>
+                      {initials(deal.contact_name, deal.company)}
+                    </div>
+                    <div style={{ minWidth:0 }}>
+                      <p style={{ color:"#fafafa", fontWeight:700, fontSize:"0.9rem", margin:"0 0 2px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{deal.title || deal.company}</p>
+                      <p style={{ color:"#52525b", fontSize:"0.75rem", margin:0 }}>{deal.company || deal.contact_name || "—"}</p>
+                    </div>
                   </div>
-                  <span style={{ color: "#C9A84C", fontWeight: 800, fontSize: "1rem", fontFamily: "var(--font-cinzel, serif)", flexShrink: 0 }}>{fmt(deal.value)}</span>
+                  <span style={{ color:"#C9A84C", fontWeight:800, fontSize:"0.95rem", fontFamily:"monospace", flexShrink:0, marginLeft:8 }}>{fmt(deal.value)}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  {showContact && deal.contact_phone ? (
-                    <a href={`tel:${deal.contact_phone.replace(/\D/g,"").replace(/^(\d{10})$/,"+1$1")}`}
-                      onClick={e => e.stopPropagation()}
-                      style={{ color:"#34d399", fontSize:"0.78rem", textDecoration:"none", borderBottom:"1px dashed rgba(52,211,153,0.35)", paddingBottom:1 }}>
-                      {deal.contact_name || deal.contact_phone}
-                    </a>
-                  ) : showContact && deal.contact_email ? (
-                    <a href={`mailto:${deal.contact_email}`}
-                      onClick={e => e.stopPropagation()}
-                      style={{ color:"#60a5fa", fontSize:"0.78rem", textDecoration:"none", borderBottom:"1px dashed rgba(96,165,250,0.35)", paddingBottom:1 }}>
-                      {deal.contact_name || deal.contact_email}
-                    </a>
-                  ) : (
-                    <span style={{ color: "#71717a", fontSize: "0.78rem" }}>{showContact ? deal.contact_name : (showCompany ? deal.company : "—")}</span>
-                  )}
-                  <span style={{ fontSize: "0.72rem", padding: "3px 10px", borderRadius: 20, background: stageColor + "22", color: stageColor, fontWeight: 600 }}>
-                    {STAGE_LABELS[deal.stage] || deal.stage}
-                  </span>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:"0.72rem", fontWeight:600, color:sc, background:sc+"22", padding:"2px 8px", borderRadius:4 }}>{STAGE_LABELS[deal.stage]}</span>
+                  <span style={{ color:"#52525b", fontSize:"0.72rem" }}>{timeAgo(deal.updated_at)}</span>
                 </div>
               </div>
             );
           })}
         </div>
       ) : (
-        <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 12, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        /* Desktop table */
+        <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, overflow:"hidden" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #27272a" }}>
-                {["Job #", "Deal", "Company", "Contact", "Value", "Stage", "Close Date"].map(h => (
-                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: "#71717a", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>{h}</th>
+              <tr style={{ borderBottom:"1px solid #1c1c1f" }}>
+                {["CLIENT","COMPANY / SERVICE","VALUE","STAGE","REP","ACTIVITY",""].map(h=>(
+                  <th key={h} style={{ padding:"11px 16px", textAlign:"left", color:"#52525b", fontSize:"0.68rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", whiteSpace:"nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#52525b" }}>
-                  {search ? "No deals match your search." : "No deals yet. Add one from the Pipeline view."}
-                </td></tr>
-              ) : filtered.map(deal => (
-                <tr key={deal.id}
-                  onClick={() => router.push("/deals/" + deal.id)}
-                  style={{ borderBottom: "1px solid #18181b", color: "#fafafa", fontSize: "0.9rem", cursor: "pointer" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#1c1c1f")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                  <td style={{ padding: "13px 16px", color: "#C9A84C", fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}>{deal.job_number || "\u2014"}</td>
-                  <td style={{ padding: "13px 16px", fontWeight: 600 }}>{deal.title}</td>
-                  <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.company || "\u2014"}</td>
-                  <td style={{ padding: "13px 16px", color: "#a1a1aa" }}>{deal.contact_name || "\u2014"}</td>
-                  <td style={{ padding: "13px 16px", color: "#C9A84C", fontWeight: 700 }}>{fmt(deal.value)}</td>
-                  <td style={{ padding: "13px 16px" }}>
-                    <span style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: 5, background: (STAGE_COLORS[deal.stage] || "#71717a") + "22", color: STAGE_COLORS[deal.stage] || "#71717a", fontWeight: 600 }}>
-                      {STAGE_LABELS[deal.stage] || deal.stage}
-                    </span>
-                  </td>
-                  <td style={{ padding: "13px 16px", color: "#71717a", fontSize: "0.82rem" }}>
-                    {deal.expected_close_date ? new Date(deal.expected_close_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "\u2014"}
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(deal => {
+                const sc = STAGE_COLORS[deal.stage] ?? "#71717a";
+                return (
+                  <tr key={deal.id} onClick={()=>openDetail(deal)}
+                    style={{ borderBottom:"1px solid #18181b", cursor:"pointer", transition:"background 0.1s" }}
+                    onMouseEnter={e=>(e.currentTarget.style.background="#18181b")}
+                    onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+                    {/* CLIENT */}
+                    <td style={{ padding:"12px 16px" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                        <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(201,168,76,0.1)", border:"1px solid rgba(201,168,76,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.7rem", fontWeight:700, color:"#C9A84C", flexShrink:0 }}>
+                          {initials(deal.contact_name, deal.company)}
+                        </div>
+                        <div style={{ minWidth:0 }}>
+                          <p style={{ color:"#fafafa", fontWeight:600, fontSize:"0.85rem", margin:"0 0 1px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:220 }}>{deal.title || deal.company}</p>
+                          {deal.contact_email && <p style={{ color:"#52525b", fontSize:"0.72rem", margin:0 }}>{deal.contact_email}</p>}
+                        </div>
+                      </div>
+                    </td>
+                    {/* COMPANY / SERVICE */}
+                    <td style={{ padding:"12px 16px", color:"#a1a1aa", fontSize:"0.82rem", whiteSpace:"nowrap" }}>{deal.company || "—"}</td>
+                    {/* VALUE */}
+                    <td style={{ padding:"12px 16px", color:"#C9A84C", fontWeight:700, fontFamily:"monospace", fontSize:"0.88rem", whiteSpace:"nowrap" }}>{fmt(deal.value)}</td>
+                    {/* STAGE */}
+                    <td style={{ padding:"12px 16px" }}>
+                      <span style={{ fontSize:"0.72rem", fontWeight:700, color:sc, background:sc+"22", padding:"3px 10px", borderRadius:20, whiteSpace:"nowrap" }}>{STAGE_LABELS[deal.stage]}</span>
+                    </td>
+                    {/* REP */}
+                    <td style={{ padding:"12px 16px", color:"#71717a", fontSize:"0.82rem", whiteSpace:"nowrap" }}>{deal.contact_name || userName || "—"}</td>
+                    {/* ACTIVITY */}
+                    <td style={{ padding:"12px 16px", color:"#52525b", fontSize:"0.78rem", whiteSpace:"nowrap" }}>{timeAgo(deal.updated_at)}</td>
+                    {/* ACTION */}
+                    <td style={{ padding:"12px 16px" }}>
+                      <button onClick={e=>{e.stopPropagation();openDetail(deal);}}
+                        style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:6, padding:"4px 8px", cursor:"pointer", fontSize:"0.75rem" }}>
+                        👁
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* DASH Import Modal */}
-      {dashModal && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
-          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:28, width:"100%", maxWidth:700, maxHeight:"85vh", display:"flex", flexDirection:"column" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-              <div>
-                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>&#128194; Import DASH Deals</h2>
-                <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Select which jobs to add to your Signal Strike pipeline</p>
+      {/* ══════════════════════════════════════════════════════════════════════
+          DEAL DETAIL MODAL
+      ══════════════════════════════════════════════════════════════════════ */}
+      {selected && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:500, display:"flex", alignItems:isMobile?"flex-end":"center", justifyContent:"center", padding:isMobile?0:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:isMobile?"16px 16px 0 0":"14px", width:"100%", maxWidth:680, maxHeight:isMobile?"92dvh":"88vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+
+            {/* Modal header */}
+            <div style={{ padding:"20px 24px 16px", borderBottom:"1px solid #1c1c1f", flexShrink:0 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14 }}>
+                <h2 style={{ color:"#fafafa", fontWeight:800, fontSize:"1.1rem", margin:0, lineHeight:1.3, paddingRight:16 }}>{selected.title || selected.company}</h2>
+                <button onClick={closeDetail} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.3rem", cursor:"pointer", flexShrink:0, lineHeight:1, padding:"0 0 0 8px" }}>✕</button>
               </div>
-              <button onClick={() => { setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashError(""); }}
-                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>&times;</button>
-            </div>
-            {dashLoading && <div style={{ textAlign:"center", padding:"40px 0", color:"#71717a" }}><p>Parsing DASH export...</p></div>}
-            {dashError && !dashLoading && (
-              <div style={{ background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.2)", borderRadius:8, padding:"12px 16px", marginBottom:16 }}>
-                <p style={{ color:"#f87171", fontSize:"0.85rem", margin:0 }}>{dashError}</p>
-              </div>
-            )}
-            {!dashLoading && !dashError && dashJobs.length === 0 && (
-              <div style={{ textAlign:"center", padding:"32px 0", color:"#52525b" }}>
-                <div style={{ fontSize:"2.5rem", marginBottom:12 }}>&#128202;</div>
-                <p style={{ margin:"0 0 8px", fontSize:"0.9rem", color:"#a1a1aa" }}>Upload your DASH Open Jobs export</p>
-                <p style={{ margin:"0 0 16px", fontSize:"0.8rem", lineHeight:1.6 }}>In DASH: <strong style={{ color:"#71717a" }}>Reports &rarr; Open Jobs &rarr; Export to Excel</strong></p>
-                <label style={{ background:"#C9A84C", color:"#000", borderRadius:8, padding:"9px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", display:"inline-block" }}>
-                  Choose File
-                  <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }} onChange={handleDashFile} />
-                </label>
-              </div>
-            )}
-            {dashJobs.length > 0 && !dashLoading && (
-              <>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-                  <span style={{ color:"#52525b", fontSize:"0.82rem" }}>{dashJobs.length} deals found &middot; {dashSelected.size} selected</span>
-                  <div style={{ display:"flex", gap:8 }}>
-                    <button onClick={() => setDashSelected(new Set(dashJobs.map((_,i)=>i)))}
-                      style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>Select All</button>
-                    <button onClick={() => setDashSelected(new Set())}
-                      style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>Clear</button>
-                  </div>
+
+              {/* Stage progress bar */}
+              <div style={{ position:"relative", marginBottom:10 }}>
+                {/* Track */}
+                <div style={{ height:4, background:"#27272a", borderRadius:2, position:"relative" }}>
+                  <div style={{ height:"100%", borderRadius:2, background:"#C9A84C", width:`${Math.max(0,(currentIdx/(STAGES.length-3))*100)}%`, maxWidth:"100%", transition:"width 0.3s" }} />
                 </div>
-                <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:6, marginBottom:16 }}>
-                  {dashJobs.map((job:any, idx:number) => {
-                    const selected = dashSelected.has(idx);
-                    const SC: Record<string,string> = { prospecting:"#71717a", qualification:"#60a5fa", proposal:"#a78bfa", negotiation:"#fbbf24", closed_won:"#C9A84C", closed_lost:"#f87171" };
-                    const stageClr = SC[job.stage] ?? "#71717a";
+                {/* Stage dots */}
+                <div style={{ display:"flex", justifyContent:"space-between", marginTop:6 }}>
+                  {STAGES.filter(s=>s!=="closed_lost").map((s,i)=>{
+                    const active = STAGES.indexOf(detailEdit?.stage) >= STAGES.indexOf(s);
+                    const current = detailEdit?.stage === s;
+                    const sc = STAGE_COLORS[s];
                     return (
-                      <div key={idx} onClick={() => toggleDashJob(idx)}
-                        style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background:selected?"#18181b":"#0f0f10", border:`1px solid ${selected?"#27272a":"#1c1c1f"}`, borderLeft:`3px solid ${selected?stageClr:"#27272a"}`, borderRadius:8, cursor:"pointer" }}>
-                        <div style={{ width:18, height:18, borderRadius:4, border:`2px solid ${selected?"#C9A84C":"#27272a"}`, background:selected?"#C9A84C":"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"0.7rem", color:"#000", fontWeight:700 }}>
-                          {selected?"\u2713":""}
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-                            <span style={{ color:selected?"#fafafa":"#71717a", fontWeight:700, fontSize:"0.85rem" }}>{job.title}</span>
-                            <span style={{ fontSize:"0.68rem", fontWeight:600, color:stageClr, background:stageClr+"22", padding:"2px 7px", borderRadius:4 }}>{job.dash_status}</span>
-                          </div>
-                          {job.company && <p style={{ color:"#52525b", fontSize:"0.75rem", margin:"2px 0 0" }}>{job.company}</p>}
-                        </div>
-                        <div style={{ textAlign:"right", flexShrink:0 }}>
-                          <p style={{ color:job.value>0?"#C9A84C":"#3f3f46", fontWeight:700, fontSize:"0.88rem", margin:0, fontFamily:"monospace" }}>
-                            {job.value>=1000000?"$"+(job.value/1000000).toFixed(2)+"M":job.value>=1000?"$"+(job.value/1000).toFixed(1)+"K":job.value>0?"$"+job.value:"\u2014"}
-                          </p>
-                          {job.received_date && <p style={{ color:"#3f3f46", fontSize:"0.7rem", margin:"2px 0 0" }}>{job.received_date}</p>}
-                        </div>
+                      <div key={s} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+                        <div style={{ width:8, height:8, borderRadius:"50%", background:current?sc:active?"#C9A84C":"#27272a", border:`2px solid ${current?sc:active?"#C9A84C":"#27272a"}`, transition:"all 0.2s" }} />
+                        <span style={{ fontSize:"0.6rem", color:current?sc:active?"#a1a1aa":"#3f3f46", fontWeight:current?700:400, whiteSpace:"nowrap" }}>{STAGE_LABELS[s]}</span>
                       </div>
                     );
                   })}
                 </div>
-                {dashImported > 0 && (
-                  <div style={{ background:"rgba(52,211,153,0.08)", border:"1px solid rgba(52,211,153,0.2)", borderRadius:8, padding:"10px 14px", marginBottom:12 }}>
-                    <p style={{ color:"#34d399", fontSize:"0.85rem", margin:0, fontWeight:600 }}>\u2713 {dashImported} deal{dashImported!==1?"s":""} added to pipeline</p>
+              </div>
+
+              {/* Roll back button */}
+              {canRollback && (
+                <button onClick={()=>setRollbackConfirm(true)}
+                  style={{ background:"rgba(201,168,76,0.08)", border:"1px solid rgba(201,168,76,0.25)", color:"#C9A84C", borderRadius:6, padding:"4px 12px", fontSize:"0.75rem", fontWeight:600, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:4 }}>
+                  ↶ Roll back to {STAGE_LABELS[STAGES[currentIdx-1]]}
+                </button>
+              )}
+            </div>
+
+            {/* Modal body — scrollable */}
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 24px" }}>
+
+              {/* CLIENT INFO / DEAL INFO */}
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:16, marginBottom:20 }}>
+                <div>
+                  <p style={{ color:"#C9A84C", fontSize:"0.68rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px" }}>Client Info</p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                    {selected.contact_phone && (
+                      <a href={`tel:${selected.contact_phone.replace(/\D/g,"").replace(/^(\d{10})$/,"+1$1")}`}
+                        style={{ display:"flex", alignItems:"center", gap:8, color:"#34d399", fontSize:"0.82rem", textDecoration:"none" }}>
+                        <span style={{ color:"#52525b" }}>📞</span>{selected.contact_phone}
+                      </a>
+                    )}
+                    {selected.contact_email && (
+                      <a href={`mailto:${selected.contact_email}?subject=${encodeURIComponent("Following up — "+(selected.company||selected.title||""))}`}
+                        style={{ display:"flex", alignItems:"center", gap:8, color:"#60a5fa", fontSize:"0.82rem", textDecoration:"none" }}>
+                        <span style={{ color:"#52525b" }}>✉</span>{selected.contact_email}
+                      </a>
+                    )}
+                    {selected.contact_name && (
+                      <div style={{ display:"flex", alignItems:"center", gap:8, color:"#a1a1aa", fontSize:"0.82rem" }}>
+                        <span style={{ color:"#52525b" }}>👤</span>{selected.contact_name}
+                      </div>
+                    )}
+                    {!selected.contact_phone && !selected.contact_email && !selected.contact_name && (
+                      <p style={{ color:"#3f3f46", fontSize:"0.82rem" }}>No contact info</p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <p style={{ color:"#C9A84C", fontSize:"0.68rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 10px" }}>Deal Info</p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between" }}>
+                      <span style={{ color:"#52525b", fontSize:"0.78rem" }}>Value</span>
+                      <span style={{ color:"#C9A84C", fontWeight:700, fontFamily:"monospace", fontSize:"0.88rem" }}>{fmt(selected.value)}</span>
+                    </div>
+                    <div style={{ display:"flex", justifyContent:"space-between" }}>
+                      <span style={{ color:"#52525b", fontSize:"0.78rem" }}>Stage</span>
+                      <span style={{ fontSize:"0.72rem", fontWeight:700, color:STAGE_COLORS[detailEdit?.stage], background:(STAGE_COLORS[detailEdit?.stage]||"#71717a")+"22", padding:"2px 8px", borderRadius:4 }}>{STAGE_LABELS[detailEdit?.stage]}</span>
+                    </div>
+                    <div style={{ display:"flex", justifyContent:"space-between" }}>
+                      <span style={{ color:"#52525b", fontSize:"0.78rem" }}>Rep</span>
+                      <span style={{ color:"#a1a1aa", fontSize:"0.78rem" }}>{userName || "—"}</span>
+                    </div>
+                    {selected.expected_close_date && (
+                      <div style={{ display:"flex", justifyContent:"space-between" }}>
+                        <span style={{ color:"#52525b", fontSize:"0.78rem" }}>Close Date</span>
+                        <span style={{ color:"#a1a1aa", fontSize:"0.78rem" }}>{new Date(selected.expected_close_date+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Inline edit — title, company, value, phone, email */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+                <div style={{ gridColumn:"1/-1" }}>
+                  <label style={lbl}>Deal Title</label>
+                  <input style={inp} value={detailEdit?.title??""} onChange={e=>setDetailEdit((p:any)=>({...p,title:e.target.value}))} />
+                </div>
+                <div>
+                  <label style={lbl}>Company</label>
+                  <input style={inp} value={detailEdit?.company??""} onChange={e=>setDetailEdit((p:any)=>({...p,company:e.target.value}))} />
+                </div>
+                <div>
+                  <label style={lbl}>Value ($)</label>
+                  <input style={inp} type="number" value={detailEdit?.value??""} onChange={e=>setDetailEdit((p:any)=>({...p,value:e.target.value}))} />
+                </div>
+                <div>
+                  <label style={lbl}>Contact Name</label>
+                  <input style={inp} value={detailEdit?.contact_name??""} onChange={e=>setDetailEdit((p:any)=>({...p,contact_name:e.target.value}))} />
+                </div>
+                <div>
+                  <label style={lbl}>Contact Email</label>
+                  <input style={inp} type="email" value={detailEdit?.contact_email??""} onChange={e=>setDetailEdit((p:any)=>({...p,contact_email:e.target.value}))} />
+                </div>
+                <div style={{ gridColumn:"1/-1" }}>
+                  <label style={lbl}>Contact Phone</label>
+                  <input style={inp} type="tel" value={detailEdit?.contact_phone??""} onChange={e=>setDetailEdit((p:any)=>({...p,contact_phone:e.target.value}))} />
+                </div>
+              </div>
+
+              {/* Scope notes */}
+              <div style={{ marginBottom:20 }}>
+                <label style={lbl}>Scope Notes</label>
+                <textarea style={{ ...inp, resize:"vertical", minHeight:80 }}
+                  placeholder="Describe the project scope, materials, timeline considerations..."
+                  value={detailEdit?.notes??""} onChange={e=>setDetailEdit((p:any)=>({...p,notes:e.target.value}))} />
+              </div>
+
+              {/* Save button */}
+              <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:24, gap:8 }}>
+                {detailMsg && <p style={{ color:detailMsg.ok?"#34d399":"#f87171", fontSize:"0.82rem", margin:"auto 0" }}>{detailMsg.text}</p>}
+                <button onClick={handleDetailSave} disabled={detailSaving}
+                  style={{ background:"#27272a", border:"1px solid #3f3f46", color:"#a1a1aa", borderRadius:8, padding:"7px 16px", fontWeight:600, fontSize:"0.82rem", cursor:"pointer" }}>
+                  {detailSaving?"Saving...":"Save Changes"}
+                </button>
+              </div>
+
+              {/* Activity log */}
+              <div>
+                <p style={{ color:"#52525b", fontSize:"0.68rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 12px" }}>Activity Log</p>
+                {actLoading ? (
+                  <p style={{ color:"#52525b", fontSize:"0.82rem" }}>Loading...</p>
+                ) : activities.length === 0 ? (
+                  <p style={{ color:"#3f3f46", fontSize:"0.82rem" }}>No activity yet.</p>
+                ) : (
+                  <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
+                    {activities.map((act, i) => {
+                      const isRollback = act.title?.includes("Rolled back");
+                      const isStage    = act.type === "stage_change";
+                      return (
+                        <div key={act.id} style={{ display:"flex", alignItems:"flex-start", gap:10, paddingBottom:i<activities.length-1?12:0, position:"relative" }}>
+                          {/* Timeline line */}
+                          {i < activities.length-1 && (
+                            <div style={{ position:"absolute", left:14, top:28, bottom:0, width:1, background:"#1c1c1f" }} />
+                          )}
+                          {/* Icon */}
+                          <div style={{ width:28, height:28, borderRadius:"50%", background:isRollback?"rgba(113,113,122,0.15)":isStage?"rgba(201,168,76,0.12)":"#18181b", border:`1px solid ${isRollback?"#27272a":isStage?"rgba(201,168,76,0.2)":"#1c1c1f"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"0.65rem" }}>
+                            {isRollback?"↩":isStage?"↑":"·"}
+                          </div>
+                          <div style={{ flex:1, paddingTop:4 }}>
+                            <p style={{ color:isRollback?"#71717a":"#a1a1aa", fontSize:"0.82rem", margin:"0 0 1px" }}>{act.title}</p>
+                            <p style={{ color:"#3f3f46", fontSize:"0.7rem", margin:0 }}>
+                              {new Date(act.occurred_at).toLocaleDateString("en-US",{month:"short",day:"numeric"})} · {new Date(act.occurred_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-                <div style={{ display:"flex", gap:10, justifyContent:"flex-end", borderTop:"1px solid #1c1c1f", paddingTop:16 }}>
-                  <button onClick={() => { setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashError(""); }}
-                    style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 16px", cursor:"pointer", fontSize:"0.85rem" }}>Cancel</button>
-                  <button onClick={handleDashImport} disabled={dashImporting||dashSelected.size===0}
-                    style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", opacity:dashSelected.size>0&&!dashImporting?1:0.5 }}>
-                    {dashImporting?"Adding...": `Add ${dashSelected.size} Deal${dashSelected.size!==1?"s":""} to Pipeline`}
-                  </button>
+
+                {/* 24-hour delete link */}
+                {canDelete(selected, userId) && (
+                  <div style={{ marginTop:20, paddingTop:16, borderTop:"1px solid #1c1c1f", textAlign:"center" }}>
+                    <button onClick={()=>setDeleteConfirm(true)}
+                      style={{ background:"none", border:"none", color:"#f87171", fontSize:"0.78rem", cursor:"pointer", textDecoration:"underline" }}>
+                      Delete this lead
+                    </button>
+                    <p style={{ color:"#3f3f46", fontSize:"0.68rem", margin:"4px 0 0" }}>Available for 24 hours after creation</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div style={{ padding:"14px 24px", borderTop:"1px solid #1c1c1f", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, gap:10 }}>
+              <button onClick={closeDetail}
+                style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 16px", fontSize:"0.85rem", cursor:"pointer" }}>
+                Close
+              </button>
+              {canAdvance && (
+                <button onClick={()=>setAdvanceConfirm(true)}
+                  style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer" }}>
+                  Advance Stage →
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Rollback confirm ─────────────────────────────────────────────────── */}
+      {rollbackConfirm && selected && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:24, width:"100%", maxWidth:360 }}>
+            <h3 style={{ color:"#fafafa", fontWeight:700, fontSize:"1rem", margin:"0 0 6px" }}>Roll back stage?</h3>
+            <p style={{ color:"#71717a", fontSize:"0.85rem", margin:"0 0 4px" }}>
+              Roll back from <strong style={{ color:STAGE_COLORS[detailEdit?.stage] }}>{STAGE_LABELS[detailEdit?.stage]}</strong> to <strong style={{ color:STAGE_COLORS[STAGES[currentIdx-1]] }}>{STAGE_LABELS[STAGES[currentIdx-1]]}</strong>?
+            </p>
+            <p style={{ color:"#52525b", fontSize:"0.75rem", margin:"0 0 20px" }}>This action will be logged.</p>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={()=>setRollbackConfirm(false)} style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"7px 16px", fontSize:"0.85rem", cursor:"pointer" }}>Cancel</button>
+              <button onClick={handleRollback} style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"7px 16px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer" }}>Confirm rollback</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Advance confirm ──────────────────────────────────────────────────── */}
+      {advanceConfirm && selected && canAdvance && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:24, width:"100%", maxWidth:360 }}>
+            <h3 style={{ color:"#fafafa", fontWeight:700, fontSize:"1rem", margin:"0 0 6px" }}>Advance stage?</h3>
+            <p style={{ color:"#71717a", fontSize:"0.85rem", margin:"0 0 4px" }}>
+              Move from <strong style={{ color:STAGE_COLORS[detailEdit?.stage] }}>{STAGE_LABELS[detailEdit?.stage]}</strong> to <strong style={{ color:STAGE_COLORS[STAGES[currentIdx+1]] }}>{STAGE_LABELS[STAGES[currentIdx+1]]}</strong>?
+            </p>
+            <p style={{ color:"#52525b", fontSize:"0.75rem", margin:"0 0 20px" }}>This action will be logged.</p>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={()=>setAdvanceConfirm(false)} style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"7px 16px", fontSize:"0.85rem", cursor:"pointer" }}>Cancel</button>
+              <button onClick={handleAdvanceStage} style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"7px 16px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer" }}>Advance Stage →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete confirm ───────────────────────────────────────────────────── */}
+      {deleteConfirm && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:24, width:"100%", maxWidth:360 }}>
+            <h3 style={{ color:"#f87171", fontWeight:700, fontSize:"1rem", margin:"0 0 8px" }}>Delete this lead?</h3>
+            <p style={{ color:"#71717a", fontSize:"0.85rem", margin:"0 0 20px" }}>This cannot be undone.</p>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={()=>setDeleteConfirm(false)} style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"7px 16px", fontSize:"0.85rem", cursor:"pointer" }}>Cancel</button>
+              <button onClick={handleDelete} style={{ background:"rgba(248,113,113,0.15)", border:"1px solid rgba(248,113,113,0.3)", color:"#f87171", borderRadius:8, padding:"7px 16px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer" }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Lead Modal ───────────────────────────────────────────────────── */}
+      {showAdd && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:28, width:"100%", maxWidth:520, maxHeight:"90vh", overflowY:"auto" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h2 style={{ color:"#fafafa", fontWeight:700, margin:0 }}>New Lead</h2>
+              <button onClick={()=>setShowAdd(false)} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+            </div>
+            <form onSubmit={handleAddDeal} style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+              {[{label:"Deal Title *",key:"title",full:true},{label:"Company",key:"company"},{label:"Contact Name",key:"contact_name"},{label:"Contact Email",key:"contact_email",type:"email"},{label:"Contact Phone",key:"contact_phone",type:"tel"},{label:"Value ($) *",key:"value",type:"number"},{label:"Probability (%)",key:"probability",type:"number"},{label:"Expected Close",key:"expected_close_date",type:"date",maxWidth:240}].map((f:any)=>(
+                <div key={f.key} style={{ gridColumn:(f as any).full?"1/-1":undefined }}>
+                  <label style={lbl}>{f.label}</label>
+                  <input style={{ ...inp, maxWidth:f.maxWidth }} type={f.type||"text"} value={(newDeal as any)[f.key]} onChange={e=>setNewDeal((p:any)=>({...p,[f.key]:e.target.value}))} required={f.label.includes("*")} />
+                </div>
+              ))}
+              <div style={{ gridColumn:"1/-1" }}>
+                <label style={lbl}>Stage</label>
+                <select style={inp} value={newDeal.stage} onChange={e=>setNewDeal(p=>({...p,stage:e.target.value}))}>
+                  {STAGES.map(s=><option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn:"1/-1" }}>
+                <label style={lbl}>Commission Tier</label>
+                <select style={inp} value={newDeal.commission_tier_id||""} onChange={e=>setNewDeal((p:any)=>({...p,commission_tier_id:e.target.value}))}>
+                  <option value="">— None —</option>
+                  {commissionTiers.map((t:any)=><option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn:"1/-1" }}>
+                <label style={lbl}>Notes</label>
+                <textarea style={{ ...inp, resize:"vertical", minHeight:60 }} value={newDeal.notes} onChange={e=>setNewDeal(p=>({...p,notes:e.target.value}))} />
+              </div>
+              {addMsg && <p style={{ gridColumn:"1/-1", color:"#f87171", fontSize:"0.82rem", margin:0 }}>{addMsg}</p>}
+              <div style={{ gridColumn:"1/-1", display:"flex", justifyContent:"flex-end", gap:10 }}>
+                <button type="button" onClick={()=>setShowAdd(false)} style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 16px", fontSize:"0.85rem", cursor:"pointer" }}>Cancel</button>
+                <button type="submit" disabled={saving} style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer" }}>{saving?"Saving...":"Add Lead"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── DASH Import Modal ─────────────────────────────────────────────────── */}
+      {dashModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:28, width:"100%", maxWidth:700, maxHeight:"85vh", display:"flex", flexDirection:"column" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:0 }}>📂 Import DASH Deals</h2>
+              <button onClick={()=>{setDashModal(false);setDashJobs([]);setDashSelected(new Set());setDashError("");}} style={{ background:"none",border:"none",color:"#52525b",fontSize:"1.2rem",cursor:"pointer" }}>✕</button>
+            </div>
+            {dashLoading && <div style={{ textAlign:"center",padding:"40px 0",color:"#71717a" }}>Parsing DASH export...</div>}
+            {dashError && !dashLoading && <div style={{ background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,padding:"12px 16px",marginBottom:16 }}><p style={{ color:"#f87171",fontSize:"0.85rem",margin:0 }}>{dashError}</p></div>}
+            {!dashLoading && !dashError && dashJobs.length===0 && (
+              <div style={{ textAlign:"center",padding:"32px 0",color:"#52525b" }}>
+                <div style={{ fontSize:"2.5rem",marginBottom:12 }}>📊</div>
+                <p style={{ margin:"0 0 16px",fontSize:"0.9rem",color:"#a1a1aa" }}>Upload your DASH Open Jobs export</p>
+                <label style={{ background:"#C9A84C",color:"#000",borderRadius:8,padding:"9px 20px",fontWeight:700,fontSize:"0.85rem",cursor:"pointer" }}>
+                  Choose File<input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }} onChange={handleDashFile} />
+                </label>
+              </div>
+            )}
+            {dashJobs.length>0 && !dashLoading && (
+              <>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+                  <span style={{ color:"#52525b",fontSize:"0.82rem" }}>{dashJobs.length} deals · {dashSelected.size} selected</span>
+                  <div style={{ display:"flex",gap:8 }}>
+                    <button onClick={()=>setDashSelected(new Set(dashJobs.map((_:any,i:number)=>i)))} style={{ background:"none",border:"1px solid #27272a",color:"#a1a1aa",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",cursor:"pointer" }}>Select All</button>
+                    <button onClick={()=>setDashSelected(new Set())} style={{ background:"none",border:"1px solid #27272a",color:"#a1a1aa",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",cursor:"pointer" }}>Clear</button>
+                  </div>
+                </div>
+                <div style={{ flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:6,marginBottom:16 }}>
+                  {dashJobs.map((job:any,idx:number)=>{
+                    const sel=dashSelected.has(idx);const sc=STAGE_COLORS[job.stage]??"#71717a";
+                    return (<div key={idx} onClick={()=>setDashSelected(prev=>{const n=new Set(prev);n.has(idx)?n.delete(idx):n.add(idx);return n;})} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:sel?"#18181b":"#0f0f10",border:`1px solid ${sel?"#27272a":"#1c1c1f"}`,borderLeft:`3px solid ${sel?sc:"#27272a"}`,borderRadius:8,cursor:"pointer" }}>
+                      <div style={{ width:18,height:18,borderRadius:4,border:`2px solid ${sel?"#C9A84C":"#27272a"}`,background:sel?"#C9A84C":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:"0.7rem",color:"#000",fontWeight:700 }}>{sel?"✓":""}</div>
+                      <div style={{ flex:1,minWidth:0 }}><span style={{ color:sel?"#fafafa":"#71717a",fontWeight:700,fontSize:"0.85rem" }}>{job.title}</span>{job.company&&<p style={{ color:"#52525b",fontSize:"0.75rem",margin:"2px 0 0" }}>{job.company}</p>}</div>
+                      <p style={{ color:job.value>0?"#C9A84C":"#3f3f46",fontWeight:700,fontSize:"0.88rem",margin:0,fontFamily:"monospace" }}>{job.value>=1000?"$"+(job.value/1000).toFixed(1)+"K":job.value>0?"$"+job.value:"—"}</p>
+                    </div>);
+                  })}
+                </div>
+                {dashImported>0&&<div style={{ background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:8,padding:"10px 14px",marginBottom:12 }}><p style={{ color:"#34d399",fontSize:"0.85rem",margin:0,fontWeight:600 }}>✓ {dashImported} deal{dashImported!==1?"s":""} added</p></div>}
+                <div style={{ display:"flex",gap:10,justifyContent:"flex-end",borderTop:"1px solid #1c1c1f",paddingTop:16 }}>
+                  <button onClick={()=>{setDashModal(false);setDashJobs([]);setDashSelected(new Set());setDashError("");}} style={{ background:"none",border:"1px solid #27272a",color:"#71717a",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontSize:"0.85rem" }}>Cancel</button>
+                  <button onClick={handleDashImport} disabled={dashImporting||dashSelected.size===0} style={{ background:"#C9A84C",color:"#000",border:"none",borderRadius:8,padding:"8px 20px",fontWeight:700,fontSize:"0.85rem",cursor:"pointer",opacity:dashSelected.size>0&&!dashImporting?1:0.5 }}>{dashImporting?"Adding...":`Add ${dashSelected.size} Deal${dashSelected.size!==1?"s":""}`}</button>
                 </div>
               </>
             )}
@@ -475,168 +789,60 @@ export default function DealsPage() {
         </div>
       )}
 
-      {/* Generic Import Modal */}
+      {/* ── Spreadsheet Import Modal ──────────────────────────────────────────── */}
       {importModal && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:700, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
           <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:28, width:"100%", maxWidth:720, maxHeight:"85vh", display:"flex", flexDirection:"column" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-              <div>
-                <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:"0 0 3px" }}>&#128229; Import Deals from Spreadsheet</h2>
-                <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Excel or CSV &mdash; columns are detected automatically</p>
-              </div>
-              <button onClick={() => { setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportError(""); }}
-                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>&times;</button>
+              <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:0 }}>📥 Import from Spreadsheet</h2>
+              <button onClick={()=>{setImportModal(false);setImportDeals([]);setImportSelected(new Set());setImportError("");}} style={{ background:"none",border:"none",color:"#52525b",fontSize:"1.2rem",cursor:"pointer" }}>✕</button>
             </div>
-            {importLoading && <div style={{ textAlign:"center", padding:"40px 0", color:"#71717a" }}><p>Parsing file...</p></div>}
-            {importError && !importLoading && (
-              <div style={{ background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.2)", borderRadius:8, padding:"12px 16px", marginBottom:16 }}>
-                <p style={{ color:"#f87171", fontSize:"0.85rem", margin:"0 0 8px", fontWeight:600 }}>Could not parse file</p>
-                <p style={{ color:"#a1a1aa", fontSize:"0.82rem", margin:0 }}>{importError}</p>
-              </div>
-            )}
-            {!importLoading && !importError && importDeals.length === 0 && (
-              <div style={{ textAlign:"center", padding:"32px 0", color:"#52525b" }}>
-                <div style={{ fontSize:"2.5rem", marginBottom:12 }}>&#128202;</div>
-                <p style={{ margin:"0 0 8px", fontSize:"0.9rem", color:"#a1a1aa" }}>Upload an Excel or CSV file</p>
-                <p style={{ margin:"0 0 6px", fontSize:"0.8rem", lineHeight:1.6 }}>
-                  Recognized columns: <strong style={{ color:"#71717a" }}>Title, Company, Contact Name, Email, Phone, Value, Stage, Probability, Close Date, Notes</strong>
-                </p>
-                <p style={{ margin:"0 0 20px", fontSize:"0.78rem", color:"#3f3f46" }}>Column names are flexible &mdash; "Deal Name", "Opportunity", "Job" all map to Title automatically</p>
-                <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap" }}>
-                  <label style={{ background:"#C9A84C", color:"#000", borderRadius:8, padding:"9px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", display:"inline-block" }}>
-                    Choose File
-                    <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }} onChange={handleImportFile} />
-                  </label>
-                  <a href="/api/deals/template" download style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"9px 20px", fontWeight:600, fontSize:"0.85rem", textDecoration:"none", display:"inline-flex", alignItems:"center", gap:6 }}>
-                    &darr; Download Template
-                  </a>
+            {importLoading&&<div style={{ textAlign:"center",padding:"40px 0",color:"#71717a" }}>Parsing file...</div>}
+            {importError&&!importLoading&&<div style={{ background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,padding:"12px 16px",marginBottom:16 }}><p style={{ color:"#f87171",fontSize:"0.85rem",margin:"0 0 4px",fontWeight:600 }}>Could not parse file</p><p style={{ color:"#a1a1aa",fontSize:"0.82rem",margin:0 }}>{importError}</p></div>}
+            {!importLoading&&!importError&&importDeals.length===0&&(
+              <div style={{ textAlign:"center",padding:"32px 0",color:"#52525b" }}>
+                <div style={{ fontSize:"2.5rem",marginBottom:12 }}>📊</div>
+                <p style={{ margin:"0 0 20px",fontSize:"0.9rem",color:"#a1a1aa" }}>Upload an Excel or CSV file</p>
+                <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
+                  <label style={{ background:"#C9A84C",color:"#000",borderRadius:8,padding:"9px 20px",fontWeight:700,fontSize:"0.85rem",cursor:"pointer" }}>Choose File<input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }} onChange={handleImportFile} /></label>
+                  <a href="/api/deals/template" download style={{ background:"#1c1c1f",border:"1px solid #27272a",color:"#a1a1aa",borderRadius:8,padding:"9px 20px",fontWeight:600,fontSize:"0.85rem",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:6 }}>↓ Template</a>
                 </div>
               </div>
             )}
-            {importDeals.length > 0 && !importLoading && (
+            {importDeals.length>0&&!importLoading&&(
               <>
-                <div style={{ background:"rgba(52,211,153,0.06)", border:"1px solid rgba(52,211,153,0.15)", borderRadius:8, padding:"10px 14px", marginBottom:12, display:"flex", gap:16, flexWrap:"wrap", alignItems:"center" }}>
-                  <span style={{ color:"#34d399", fontSize:"0.82rem", fontWeight:600 }}>\u2713 {importDeals.length} rows detected</span>
-                  <span style={{ color:"#52525b", fontSize:"0.78rem" }}>Columns mapped: {importDetected.join(", ")}</span>
+                <div style={{ background:"rgba(52,211,153,0.06)",border:"1px solid rgba(52,211,153,0.15)",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center" }}>
+                  <span style={{ color:"#34d399",fontSize:"0.82rem",fontWeight:600 }}>✓ {importDeals.length} rows detected</span>
+                  <span style={{ color:"#52525b",fontSize:"0.78rem" }}>Columns: {importDetected.join(", ")}</span>
                 </div>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                  <span style={{ color:"#52525b", fontSize:"0.82rem" }}>{importSelected.size} of {importDeals.length} selected</span>
-                  <div style={{ display:"flex", gap:8 }}>
-                    <button onClick={() => setImportSelected(new Set(importDeals.map((_,i)=>i)))}
-                      style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>Select All</button>
-                    <button onClick={() => setImportSelected(new Set())}
-                      style={{ background:"none", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:6, padding:"4px 10px", fontSize:"0.75rem", cursor:"pointer" }}>Clear</button>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
+                  <span style={{ color:"#52525b",fontSize:"0.82rem" }}>{importSelected.size} of {importDeals.length} selected</span>
+                  <div style={{ display:"flex",gap:8 }}>
+                    <button onClick={()=>setImportSelected(new Set(importDeals.map((_:any,i:number)=>i)))} style={{ background:"none",border:"1px solid #27272a",color:"#a1a1aa",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",cursor:"pointer" }}>Select All</button>
+                    <button onClick={()=>setImportSelected(new Set())} style={{ background:"none",border:"1px solid #27272a",color:"#a1a1aa",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",cursor:"pointer" }}>Clear</button>
                   </div>
                 </div>
-                <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:5, marginBottom:16 }}>
-                  {importDeals.map((d:any, idx:number) => {
-                    const sel = importSelected.has(idx);
-                    const SC: Record<string,string> = { prospecting:"#71717a", qualification:"#60a5fa", proposal:"#a78bfa", negotiation:"#fbbf24", closed_won:"#C9A84C", closed_lost:"#f87171" };
-                    const SL: Record<string,string> = { prospecting:"Prospecting", qualification:"Qualified", proposal:"Proposal", negotiation:"Negotiation", closed_won:"Won", closed_lost:"Lost" };
-                    const sc = SC[d.stage] ?? "#71717a";
-                    return (
-                      <div key={idx} onClick={() => setImportSelected(prev => { const n=new Set(prev); n.has(idx)?n.delete(idx):n.add(idx); return n; })}
-                        style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background:sel?"#18181b":"#0f0f10", border:`1px solid ${sel?"#27272a":"#1c1c1f"}`, borderLeft:`3px solid ${sel?sc:"#27272a"}`, borderRadius:8, cursor:"pointer" }}>
-                        <div style={{ width:18, height:18, borderRadius:4, border:`2px solid ${sel?"#C9A84C":"#27272a"}`, background:sel?"#C9A84C":"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"0.7rem", color:"#000", fontWeight:700 }}>
-                          {sel?"\u2713":""}
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-                            <span style={{ color:sel?"#fafafa":"#71717a", fontWeight:700, fontSize:"0.85rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:280 }}>{d.title}</span>
-                            <span style={{ fontSize:"0.68rem", fontWeight:600, color:sc, background:sc+"22", padding:"2px 7px", borderRadius:4, flexShrink:0 }}>{SL[d.stage]??d.stage}</span>
-                          </div>
-                          <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:2 }}>
-                            {d.company     && <span style={{ color:"#52525b", fontSize:"0.73rem" }}>{d.company}</span>}
-                            {d.contact_name && <span style={{ color:"#52525b", fontSize:"0.73rem" }}>&middot; {d.contact_name}</span>}
-                          </div>
-                        </div>
-                        <div style={{ textAlign:"right", flexShrink:0 }}>
-                          <p style={{ color:d.value>0?"#C9A84C":"#3f3f46", fontWeight:700, fontSize:"0.88rem", margin:0, fontFamily:"monospace" }}>
-                            {d.value>=1000000?"$"+(d.value/1000000).toFixed(2)+"M":d.value>=1000?"$"+(d.value/1000).toFixed(1)+"K":d.value>0?"$"+d.value.toFixed(0):"\u2014"}
-                          </p>
-                          {d.expected_close_date && <p style={{ color:"#3f3f46", fontSize:"0.7rem", margin:"2px 0 0" }}>{d.expected_close_date}</p>}
-                        </div>
+                <div style={{ flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:5,marginBottom:16 }}>
+                  {importDeals.map((d:any,idx:number)=>{
+                    const sel=importSelected.has(idx);const sc=STAGE_COLORS[d.stage]??"#71717a";
+                    return (<div key={idx} onClick={()=>setImportSelected(prev=>{const n=new Set(prev);n.has(idx)?n.delete(idx):n.add(idx);return n;})} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:sel?"#18181b":"#0f0f10",border:`1px solid ${sel?"#27272a":"#1c1c1f"}`,borderLeft:`3px solid ${sel?sc:"#27272a"}`,borderRadius:8,cursor:"pointer" }}>
+                      <div style={{ width:18,height:18,borderRadius:4,border:`2px solid ${sel?"#C9A84C":"#27272a"}`,background:sel?"#C9A84C":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:"0.7rem",color:"#000",fontWeight:700 }}>{sel?"✓":""}</div>
+                      <div style={{ flex:1,minWidth:0 }}><span style={{ color:sel?"#fafafa":"#71717a",fontWeight:700,fontSize:"0.85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:280,display:"block" }}>{d.title}</span>{d.company&&<span style={{ color:"#52525b",fontSize:"0.73rem" }}>{d.company}</span>}</div>
+                      <div style={{ textAlign:"right",flexShrink:0 }}>
+                        <p style={{ color:d.value>0?"#C9A84C":"#3f3f46",fontWeight:700,fontSize:"0.88rem",margin:0,fontFamily:"monospace" }}>{d.value>=1000?"$"+(d.value/1000).toFixed(1)+"K":d.value>0?"$"+d.value:"—"}</p>
+                        <span style={{ fontSize:"0.68rem",fontWeight:600,color:sc,background:sc+"22",padding:"1px 6px",borderRadius:4 }}>{STAGE_LABELS[d.stage]??d.stage}</span>
                       </div>
-                    );
+                    </div>);
                   })}
                 </div>
-                {importDone > 0 && (
-                  <div style={{ background:"rgba(52,211,153,0.08)", border:"1px solid rgba(52,211,153,0.2)", borderRadius:8, padding:"10px 14px", marginBottom:12 }}>
-                    <p style={{ color:"#34d399", fontSize:"0.85rem", margin:0, fontWeight:600 }}>\u2713 {importDone} deal{importDone!==1?"s":""} imported successfully</p>
-                  </div>
-                )}
-                <div style={{ display:"flex", gap:10, justifyContent:"flex-end", borderTop:"1px solid #1c1c1f", paddingTop:16 }}>
-                  <a href="/api/deals/template" download style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 14px", fontSize:"0.82rem", textDecoration:"none", display:"flex", alignItems:"center", gap:5 }}>
-                    &darr; Template
-                  </a>
-                  <button onClick={() => { setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportError(""); }}
-                    style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 16px", cursor:"pointer", fontSize:"0.85rem" }}>Cancel</button>
-                  <button onClick={handleImportSave} disabled={importSaving||importSelected.size===0}
-                    style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", opacity:importSelected.size>0&&!importSaving?1:0.5 }}>
-                    {importSaving?"Importing...": `Import ${importSelected.size} Deal${importSelected.size!==1?"s":""}`}
-                  </button>
+                {importDone>0&&<div style={{ background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:8,padding:"10px 14px",marginBottom:12 }}><p style={{ color:"#34d399",fontSize:"0.85rem",margin:0,fontWeight:600 }}>✓ {importDone} deal{importDone!==1?"s":""} imported</p></div>}
+                <div style={{ display:"flex",gap:10,justifyContent:"flex-end",borderTop:"1px solid #1c1c1f",paddingTop:16 }}>
+                  <a href="/api/deals/template" download style={{ background:"none",border:"1px solid #27272a",color:"#71717a",borderRadius:8,padding:"8px 14px",fontSize:"0.82rem",textDecoration:"none",display:"flex",alignItems:"center" }}>↓ Template</a>
+                  <button onClick={()=>{setImportModal(false);setImportDeals([]);setImportSelected(new Set());setImportError("");}} style={{ background:"none",border:"1px solid #27272a",color:"#71717a",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontSize:"0.85rem" }}>Cancel</button>
+                  <button onClick={handleImportSave} disabled={importSaving||importSelected.size===0} style={{ background:"#C9A84C",color:"#000",border:"none",borderRadius:8,padding:"8px 20px",fontWeight:700,fontSize:"0.85rem",cursor:"pointer",opacity:importSelected.size>0&&!importSaving?1:0.5 }}>{importSaving?"Importing...":`Import ${importSelected.size} Deal${importSelected.size!==1?"s":""}`}</button>
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
-      {/* Add Deal Modal */}
-      {showAdd && (
-        <div style={{ position: "fixed", inset: 0, background: "#000000bb", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: 14, padding: 28, width: 520, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto" }}>
-            <h2 style={{ color: "#fafafa", fontWeight: 700, marginBottom: 20 }}>New Deal</h2>
-            <form onSubmit={handleAddDeal} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              {[
-                { label: "Deal Title *", key: "title", full: true },
-                { label: "Company", key: "company" },
-                { label: "Contact Name", key: "contact_name" },
-                { label: "Contact Email", key: "contact_email", type: "email" },
-                { label: "Contact Phone", key: "contact_phone", type: "tel" },
-                { label: "Value ($) *", key: "value", type: "number" },
-                { label: "Probability (%)", key: "probability", type: "number" },
-                { label: "Expected Close", key: "expected_close_date", type: "date" },
-              ].map(f => (
-                <div key={f.key} style={{ gridColumn: (f as any).full ? "1/-1" : undefined }}>
-                  <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>{f.label}</label>
-                  <input style={inputStyle} type={(f as any).type || "text"} required={f.label.includes("*")}
-                    value={(newDeal as any)[f.key]} onChange={e => setNewDeal(p => ({ ...p, [f.key]: e.target.value }))} />
-                </div>
-              ))}
-              <div>
-                <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>Stage</label>
-                <select style={inputStyle} value={newDeal.stage} onChange={e => setNewDeal(p => ({ ...p, stage: e.target.value }))}>
-                  {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </select>
-              </div>
-              {commissionTiers.length > 0 && (
-                <div>
-                  <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>Commission Tier</label>
-                  <select style={inputStyle} value={newDeal.commission_tier_id} onChange={e => setNewDeal(p => ({ ...p, commission_tier_id: e.target.value }))}>
-                    <option value="">— Select tier —</option>
-                    {commissionTiers.map(t => (
-                      <option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div style={{ gridColumn: "1/-1" }}>
-                <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", display: "block", marginBottom: 5 }}>Notes</label>
-                <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
-                  value={newDeal.notes} onChange={e => setNewDeal(p => ({ ...p, notes: e.target.value }))} />
-              </div>
-              {msg && <p style={{ gridColumn: "1/-1", color: "#f87171", fontSize: "0.82rem", margin: 0 }}>{msg}</p>}
-              <div style={{ gridColumn: "1/-1", display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-                <button type="button" onClick={() => setShowAdd(false)}
-                  style={{ background: "none", border: "1px solid #27272a", color: "#71717a", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: "0.85rem" }}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving}
-                  style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "8px 22px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
-                  {saving ? "Saving..." : "Save Deal"}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
