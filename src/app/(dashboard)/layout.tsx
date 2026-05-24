@@ -17,7 +17,6 @@ function useIsMobile() {
 
 const NAV = [
   { href: "/dashboard",  label: "Dashboard"  },
-  { href: "/pipeline",   label: "Pipeline"   },
   { href: "/deals",      label: "Deals"      },
   { href: "/prospects",  label: "Prospects"  },
   { href: "/contracts",  label: "Contracts"  },
