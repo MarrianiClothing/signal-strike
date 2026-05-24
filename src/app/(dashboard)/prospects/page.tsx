@@ -101,6 +101,12 @@ export default function ProspectsPage() {
   const [seniorities, setSeniorities] = useState<string[]>([]);
   const [companySizes,setCompanySizes]= useState<string[]>([]);
 
+  // AI search state
+  const [aiQuery,    setAiQuery]    = useState("");
+  const [aiParsing,  setAiParsing]  = useState(false);
+  const [aiError,    setAiError]    = useState("");
+  const [aiFilters,  setAiFilters]  = useState<string|null>(null); // description of what Claude extracted
+
   // Per-prospect state
   const [enriching,   setEnriching]   = useState<Record<string,boolean>>({});
   const [enriched,    setEnriched]    = useState<Record<string,any>>({});
@@ -164,6 +170,59 @@ export default function ProspectsPage() {
       }
     });
   }, []);
+
+  async function handleAiSearch() {
+    if (!aiQuery.trim()) return;
+    setAiParsing(true); setAiError(""); setAiFilters(null);
+    try {
+      const res  = await fetch("/api/apollo/parse", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: aiQuery }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) { setAiError(json.error ?? "Could not parse query"); setAiParsing(false); return; }
+
+      const f = json.filters ?? {};
+      // Apply filters to existing state
+      if (f.keywords)     setKeywords(f.keywords);
+      if (f.titles)       setTitles(f.titles.join(", "));
+      if (f.location)     setLocation(f.location);
+      if (f.seniority)    setSeniorities(f.seniority);
+      if (f.company_size) setCompanySizes(f.company_size);
+
+      // Build human-readable summary
+      const parts: string[] = [];
+      if (f.titles?.length)       parts.push(`Titles: ${f.titles.join(", ")}`);
+      if (f.location)             parts.push(`Location: ${f.location}`);
+      if (f.seniority?.length)    parts.push(`Seniority: ${f.seniority.join(", ")}`);
+      if (f.company_size?.length) parts.push(`Company size: ${f.company_size.join(", ")}`);
+      if (f.keywords)             parts.push(`Keywords: ${f.keywords}`);
+      setAiFilters(parts.length ? parts.join(" · ") : "No specific filters detected — running broad search");
+
+      // Fire Apollo search with parsed filters
+      setLoading(true); setError(""); setPage(1);
+      const searchRes = await fetch("/api/apollo/search", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          keywords:     f.keywords     || undefined,
+          titles:       f.titles       || undefined,
+          location:     f.location     ? [f.location] : undefined,
+          seniority:    f.seniority    || undefined,
+          company_size: f.company_size || undefined,
+          page: 1, per_page: 25,
+        }),
+      });
+      const searchJson = await searchRes.json();
+      if (!searchRes.ok || searchJson.error) { setError(searchJson.error ?? "Search failed"); }
+      else {
+        setProspects(searchJson.people || []);
+        setTotal(searchJson.total || 0);
+        setTotalPages(searchJson.total_pages || 1);
+      }
+      setLoading(false);
+    } catch (err: any) { setAiError(err?.message ?? "Network error"); }
+    setAiParsing(false);
+  }
 
   async function handleSearch(p = 1) {
     setLoading(true); setError(""); setPage(p);
@@ -404,6 +463,40 @@ export default function ProspectsPage() {
           <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }}
             onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
         </label>
+      </div>
+
+      {/* ── AI Search Bar ───────────────────────────────────────────────────── */}
+      <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:20, marginBottom:16 }}>
+        <div style={{ marginBottom:10 }}>
+          <p style={{ color:"#C9A84C", fontSize:"0.72rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 4px" }}>
+            ✦ AI Prospect Search
+          </p>
+          <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>
+            Describe who you're looking for in plain English — Claude will set the filters and search Apollo automatically
+          </p>
+        </div>
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+          <input
+            style={{ ...inp, flex:1, minWidth:200, border:`1px solid ${aiParsing?"#C9A84C":"#27272a"}`, transition:"border-color 0.2s" }}
+            placeholder='e.g. "Facilities managers at mid-size commercial property firms in Kansas City"'
+            value={aiQuery}
+            onChange={e => setAiQuery(e.target.value)}
+            onKeyDown={e => e.key==="Enter" && handleAiSearch()}
+          />
+          <button onClick={handleAiSearch} disabled={aiParsing || !aiQuery.trim()}
+            style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"9px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", opacity:aiQuery.trim()&&!aiParsing?1:0.5, whiteSpace:"nowrap" }}>
+            {aiParsing ? "Searching..." : "✦ Search with AI"}
+          </button>
+        </div>
+        {aiFilters && !aiParsing && (
+          <div style={{ marginTop:10, display:"flex", alignItems:"flex-start", gap:8 }}>
+            <span style={{ color:"#34d399", fontSize:"0.72rem", fontWeight:700, flexShrink:0, marginTop:1 }}>✓ Filters applied:</span>
+            <span style={{ color:"#71717a", fontSize:"0.72rem", lineHeight:1.5 }}>{aiFilters}</span>
+          </div>
+        )}
+        {aiError && (
+          <p style={{ color:"#f87171", fontSize:"0.78rem", margin:"8px 0 0" }}>{aiError}</p>
+        )}
       </div>
 
       {/* ── Filter Panel ─────────────────────────────────────────────────────── */}
