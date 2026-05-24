@@ -65,7 +65,25 @@ export default function WorkOrderDetailPage() {
   async function toggleMilestone(msId: string, completed: boolean) {
     const updates = { completed, completed_at: completed ? new Date().toISOString() : null };
     await supabase.from("work_order_milestones").update(updates).eq("id", msId);
-    setMilestones(prev => prev.map(m => m.id===msId ? {...m,...updates} : m));
+    const updatedMs = milestones.map(m => m.id===msId ? {...m,...updates} : m);
+    setMilestones(updatedMs);
+
+    // Fire client email notification when marking complete (not on rollback)
+    if (completed && project?.email_client_updates) {
+      const doneCount = updatedMs.filter(m => m.completed).length;
+      const total     = updatedMs.length;
+      const ms        = updatedMs.find(m => m.id===msId);
+      fetch("/api/milestones/notify", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          project_id:       id,
+          milestone_name:   ms?.name ?? "Milestone",
+          milestone_index:  doneCount,
+          milestone_total:  total,
+        }),
+      }).catch(() => {}); // fire-and-forget
+    }
   }
 
   async function rollbackMilestone(msId: string) {
