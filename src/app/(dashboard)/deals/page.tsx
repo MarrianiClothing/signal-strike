@@ -47,9 +47,7 @@ function timeAgo(ts?: string | null) {
 
 function canDelete(deal: any, userId: string) {
   if (!deal) return false;
-  const created = new Date(deal.created_at).getTime();
-  const now     = new Date().getTime();
-  return deal.user_id === userId && (now - created) < 24 * 60 * 60 * 1000;
+  return deal.user_id === userId;
 }
 
 const inp: React.CSSProperties = {
@@ -629,7 +627,7 @@ export default function DealsPage() {
                       style={{ background:"none", border:"none", color:"#f87171", fontSize:"0.78rem", cursor:"pointer", textDecoration:"underline" }}>
                       Delete this lead
                     </button>
-                    <p style={{ color:"#3f3f46", fontSize:"0.68rem", margin:"4px 0 0" }}>Available for 24 hours after creation</p>
+                    <p style={{ color:"#3f3f46", fontSize:"0.68rem", margin:"4px 0 0" }}>Permanently deletes this lead and all its data</p>
                   </div>
                 )}
               </div>
