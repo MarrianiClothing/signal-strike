@@ -118,7 +118,7 @@ function SidebarInner() {
       }}>
         <div style={{ padding: "0 20px 28px", textAlign: "center" }}>
           <img src="/logo-white.png" alt="Signal Strike Logo"
-            style={{ width: "90px", display: "block", margin: "0 auto 12px auto", opacity: 0.9 }} />
+            style={{ width: isMobile ? "64px" : "90px", height: "auto", maxWidth: "100%", display: "block", margin: "0 auto 12px auto", opacity: 0.9 }} />
           <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#ffffff", letterSpacing: "0.12em", textAlign: "center", fontFamily: "var(--font-cinzel, serif)", textTransform: "uppercase" }}>
             Signal Strike
           </h1>
