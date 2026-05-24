@@ -101,7 +101,7 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
       display: "flex",
       flexDirection: "column",
       gap: 8,
-      minWidth: 240,
+      width: "100%",
     }}>
       {/* Top row — label + schedule/last sent meta */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 6 }}>

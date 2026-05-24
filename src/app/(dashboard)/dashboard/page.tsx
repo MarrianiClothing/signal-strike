@@ -212,7 +212,7 @@ export default function DashboardPage() {
       <div style={{ marginBottom: isMobile ? 16 : 20, background: "#111113", border: "1px solid #27272a", borderRadius: 14, padding: isMobile ? "16px" : "20px 24px", marginBottom: 16 }}>
 
         {/* Top row — welcome + countdown */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 12, flexDirection: isMobile ? "column" : "row" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: 16, marginBottom: 12, flexDirection: isMobile ? "column" : "row" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ fontSize: isMobile ? "1.5rem" : "2.2rem", fontWeight: 800, color: "#fafafa", margin: "0 0 6px", fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
               {userName ? `Welcome back, ${userName}` : "Dashboard"}
