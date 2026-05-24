@@ -214,10 +214,10 @@ export default function DashboardPage() {
         {/* Top row — welcome + countdown */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 12, flexDirection: isMobile ? "column" : "row" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontSize: isMobile ? "1.3rem" : "1.7rem", fontWeight: 800, color: "#fafafa", margin: "0 0 3px", fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
+            <h1 style={{ fontSize: isMobile ? "1.5rem" : "2.2rem", fontWeight: 800, color: "#fafafa", margin: "0 0 6px", fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
               {userName ? `Welcome back, ${userName}` : "Dashboard"}
             </h1>
-            <p style={{ color: "#52525b", fontSize: "0.82rem", margin: 0, letterSpacing: "0.02em" }}>
+            <p style={{ color: "#71717a", fontSize: "0.95rem", margin: 0, letterSpacing: "0.03em" }}>
               {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
