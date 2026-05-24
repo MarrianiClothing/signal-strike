@@ -185,7 +185,7 @@ export default function DashboardPage() {
 
       {/* Header */}
       <div style={{ marginBottom: isMobile ? 16 : 20, display: isMobile ? "flex" : "grid", gridTemplateColumns: "1fr 1fr", flexDirection: isMobile ? "column" : undefined, alignItems: isMobile ? "center" : "stretch", gap: isMobile ? 12 : 12 }}>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.6rem", fontWeight: 800, color: "#fafafa", textAlign: isMobile ? "center" : "left", margin: 0 }}>
             {userName ? `Welcome back, ${userName}` : "Dashboard"}
           </h1>

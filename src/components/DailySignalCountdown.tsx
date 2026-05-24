@@ -114,12 +114,12 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
         </p>
         <div style={{ textAlign: "right" }}>
           {sendTime && (
-            <p style={{ color: "#52525b", fontSize: "0.72rem", margin: "0 0 2px" }}>
-              Scheduled daily at <strong style={{ color: "#71717a" }}>{fmtScheduledTime(sendTime)}</strong>
+            <p style={{ color: "#52525b", fontSize: "0.82rem", margin: "0 0 3px" }}>
+              Scheduled daily at <strong style={{ color: "#a1a1aa" }}>{fmtScheduledTime(sendTime)}</strong>
             </p>
           )}
-          <p style={{ color: "#52525b", fontSize: "0.72rem", margin: 0 }}>
-            Last sent: <strong style={{ color: "#71717a" }}>{fmtLastSent(lastSentAt)}</strong>
+          <p style={{ color: "#52525b", fontSize: "0.82rem", margin: 0 }}>
+            Last sent: <strong style={{ color: "#a1a1aa" }}>{fmtLastSent(lastSentAt)}</strong>
           </p>
         </div>
       </div>
