@@ -167,7 +167,7 @@ export default function RevenueGoalSection({ userId }: { userId: string }) {
           </>
         )}
         <div><label style={s.label}>Target Revenue ($)</label>
-          <input style={s.input} type="number" placeholder="e.g. 500000" value={target} onChange={e => setTarget(e.target.value)} />
+          <input style={s.input} type="number" inputMode="decimal" placeholder="e.g. 500000" value={target} onChange={e => setTarget(e.target.value)} />
         </div>
       </div>
 

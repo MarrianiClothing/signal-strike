@@ -167,7 +167,7 @@ export default function ActivityLog({ dealId, userId }: { dealId: string; userId
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ flex:1 }}>
               <label style={{ color:"#71717a", fontSize:"0.75rem", display:"block", marginBottom:4 }}>Date &amp; Time</label>
-              <input type="datetime-local" style={inp} value={occurredAt} onChange={e => setOccurredAt(e.target.value)} />
+              <input type="datetime-local" style={inp} value={occurredAt} onChange={e => setOccurredAt(e.target.value)} style={{ maxWidth: 260 }}/>
             </div>
             <button onClick={handleAdd} disabled={saving || !title.trim()}
               style={{ marginTop:20, background:saving||!title.trim()?"#27272a":"#C9A84C",
@@ -233,7 +233,7 @@ export default function ActivityLog({ dealId, userId }: { dealId: string; userId
                         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                           <div style={{ flex:1 }}>
                             <label style={{ color:"#71717a", fontSize:"0.72rem", display:"block", marginBottom:4 }}>Date &amp; Time</label>
-                            <input type="datetime-local" style={inp} value={editDate} onChange={e => setEditDate(e.target.value)} />
+                            <input type="datetime-local" style={inp} value={editDate} onChange={e => setEditDate(e.target.value)} style={{ maxWidth: 260 }}/>
                           </div>
                         </div>
                         <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>

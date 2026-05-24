@@ -384,7 +384,7 @@ export default function DealDetailPage() {
               </div>
               <div>
                 <label style={labelStyle}>Value ($)</label>
-                <input style={inputStyle} type="number" value={edit.value ?? ""} onChange={e => setEdit((p:any)=>({...p,value:e.target.value}))} />
+                <input style={inputStyle} type="number" inputMode="decimal" value={edit.value ?? ""} onChange={e => setEdit((p:any)=>({...p,value:e.target.value}))} />
               </div>
               <div>
                 <label style={labelStyle}>Contact Name</label>
@@ -406,11 +406,11 @@ export default function DealDetailPage() {
               </div>
               <div>
                 <label style={labelStyle}>Probability (%)</label>
-                <input style={inputStyle} type="number" min="0" max="100" value={edit.probability ?? ""} onChange={e => setEdit((p:any)=>({...p,probability:e.target.value}))} />
+                <input style={inputStyle} type="number" inputMode="decimal" min="0" max="100" value={edit.probability ?? ""} onChange={e => setEdit((p:any)=>({...p,probability:e.target.value}))} />
               </div>
               <div>
                 <label style={labelStyle}>Expected Close Date</label>
-                <input style={inputStyle} type="date" value={edit.expected_close_date ?? ""} onChange={e => setEdit((p:any)=>({...p,expected_close_date:e.target.value}))} />
+                <input style={inputStyle} type="date" value={edit.expected_close_date ?? ""} onChange={e => setEdit((p:any)=>({...p,expected_close_date:e.target.value}))} style={{ maxWidth: 240 }}/>
               </div>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={labelStyle}>Notes</label>

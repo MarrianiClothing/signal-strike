@@ -66,7 +66,7 @@ export default function CommissionTiersSection({ userId }: { userId: string }) {
           <h3 style={{ color: "#fafafa", fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", marginBottom: 14, marginTop: 0 }}>{editing.id ? "Edit Tier" : "New Tier"}</h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 12, marginBottom: 12 }}>
             <div><label style={lbl}>Tier Name *</label><input style={inp} placeholder="e.g. Residential, Commercial" value={editing.name} onChange={e => setEditing(p => ({ ...p!, name: e.target.value }))} /></div>
-            <div><label style={lbl}>Rate (%) *</label><input style={inp} type="number" min="0" max="100" step="0.1" placeholder="8.5" value={editing.rate} onChange={e => setEditing(p => ({ ...p!, rate: e.target.value }))} /></div>
+            <div><label style={lbl}>Rate (%) *</label><input style={inp} type="number" inputMode="decimal" min="0" max="100" step="0.1" placeholder="8.5" value={editing.rate} onChange={e => setEditing(p => ({ ...p!, rate: e.target.value }))} /></div>
           </div>
           <div style={{ marginBottom: 14 }}><label style={lbl}>Description</label><input style={inp} placeholder="Optional notes" value={editing.description} onChange={e => setEditing(p => ({ ...p!, description: e.target.value }))} /></div>
           {msg && <p style={{ color: msg.ok ? "#4ade80" : "#f87171", fontSize: "0.82rem", marginBottom: 10 }}>{msg.text}</p>}

@@ -553,7 +553,7 @@ export default function DealsPage() {
                 </div>
                 <div>
                   <label style={lbl}>Value ($)</label>
-                  <input style={inp} type="number" value={detailEdit?.value??""} onChange={e=>setDetailEdit((p:any)=>({...p,value:e.target.value}))} />
+                  <input style={inp} type="number" inputMode="decimal" value={detailEdit?.value??""} onChange={e=>setDetailEdit((p:any)=>({...p,value:e.target.value}))} />
                 </div>
                 <div>
                   <label style={lbl}>Contact Name</label>
@@ -714,8 +714,8 @@ export default function DealsPage() {
 
       {/* ── Add Lead Modal ───────────────────────────────────────────────────── */}
       {showAdd && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
-          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:14, padding:28, width:"100%", maxWidth:520, maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:500, display:"flex", alignItems:isMobile?"flex-end":"center", justifyContent:"center", padding:isMobile?0:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:isMobile?"16px 16px 0 0":14, padding:isMobile?20:28, width:"100%", maxWidth:isMobile?"100%":520, maxHeight:isMobile?"92dvh":"90vh", overflowY:"auto" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
               <h2 style={{ color:"#fafafa", fontWeight:700, margin:0 }}>New Lead</h2>
               <button onClick={()=>setShowAdd(false)} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>

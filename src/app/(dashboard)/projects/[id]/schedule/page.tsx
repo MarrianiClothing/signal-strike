@@ -643,16 +643,16 @@ export default function ProjectDetailPage() {
 
       {/* ── Phase Modal ─────────────────────────────────────────────────────────── */}
       {phaseModal.open && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-          <div style={{background:"#111113",border:"1px solid #27272a",borderRadius:14,padding:28,width:"100%",maxWidth:460}}>
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:500,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:16}}>
+          <div style={{background:"#111113",border:"1px solid #27272a",borderRadius:isMobile?"16px 16px 0 0":14,padding:28,width:"100%",maxWidth:isMobile?"100%":460,maxHeight:isMobile?"92dvh":"90vh"}}>
             <h2 style={{color:"#fafafa",fontWeight:700,fontSize:"1.05rem",margin:"0 0 20px"}}>{phaseModal.editing?"Edit Phase":"Add Phase"}</h2>
             <div style={{marginBottom:14}}>
               <label style={lbl}>Phase Name *</label>
               <input style={inp} autoFocus value={phaseForm.name} onChange={e => setPhaseForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Pre-Construction" />
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-              <div><label style={lbl}>Start Date</label><input style={inp} type="date" value={phaseForm.start_date} onChange={e => setPhaseForm(f=>({...f,start_date:e.target.value}))} /></div>
-              <div><label style={lbl}>End Date</label><input style={inp} type="date" value={phaseForm.end_date} onChange={e => setPhaseForm(f=>({...f,end_date:e.target.value}))} /></div>
+              <div><label style={lbl}>Start Date</label><input style={inp} type="date" value={phaseForm.start_date} onChange={e => setPhaseForm(f=>({...f,start_date:e.target.value}))} style={{ maxWidth: 240 }}/></div>
+              <div><label style={lbl}>End Date</label><input style={inp} type="date" value={phaseForm.end_date} onChange={e => setPhaseForm(f=>({...f,end_date:e.target.value}))} style={{ maxWidth: 240 }}/></div>
             </div>
             <div style={{marginBottom:14}}>
               <label style={lbl}>Color</label>
@@ -683,8 +683,8 @@ export default function ProjectDetailPage() {
 
       {/* ── Task Modal ──────────────────────────────────────────────────────────── */}
       {taskModal.open && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-          <div style={{background:"#111113",border:"1px solid #27272a",borderRadius:14,padding:28,width:"100%",maxWidth:460}}>
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:500,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:16}}>
+          <div style={{background:"#111113",border:"1px solid #27272a",borderRadius:isMobile?"16px 16px 0 0":14,padding:28,width:"100%",maxWidth:isMobile?"100%":460,maxHeight:isMobile?"92dvh":"90vh"}}>
             <h2 style={{color:"#fafafa",fontWeight:700,fontSize:"1.05rem",margin:"0 0 20px"}}>{taskModal.editing?"Edit Task":"Add Task"}</h2>
             <div style={{marginBottom:14}}>
               <label style={lbl}>Task Name *</label>
@@ -699,8 +699,8 @@ export default function ProjectDetailPage() {
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-              <div><label style={lbl}>Start Date</label><input style={inp} type="date" value={taskForm.start_date} onChange={e => setTaskForm(f=>({...f,start_date:e.target.value}))} /></div>
-              <div><label style={lbl}>Due Date</label><input style={inp} type="date" value={taskForm.due_date} onChange={e => setTaskForm(f=>({...f,due_date:e.target.value}))} /></div>
+              <div><label style={lbl}>Start Date</label><input style={inp} type="date" value={taskForm.start_date} onChange={e => setTaskForm(f=>({...f,start_date:e.target.value}))} style={{ maxWidth: 240 }}/></div>
+              <div><label style={lbl}>Due Date</label><input style={inp} type="date" value={taskForm.due_date} onChange={e => setTaskForm(f=>({...f,due_date:e.target.value}))} style={{ maxWidth: 240 }}/></div>
             </div>
             <div style={{marginBottom:24}}>
               <label style={lbl}>Notes</label>

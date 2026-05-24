@@ -223,7 +223,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <label style={{ color: "#a1a1aa", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginTop: 16, marginBottom: 6 }}>Open Deals Goal</label>
-            <input style={inputStyle} type="number" min="0" placeholder="e.g. 12" value={profile.open_deals_goal} onChange={e => setProfile(p => ({ ...p, open_deals_goal: e.target.value }))} />
+            <input style={inputStyle} type="number" inputMode="decimal" min="0" placeholder="e.g. 12" value={profile.open_deals_goal} onChange={e => setProfile(p => ({ ...p, open_deals_goal: e.target.value }))} />
             <p style={{ color: "#52525b", fontSize: "0.72rem", marginTop: 4 }}>Sets color on the Open Deals card: red &lt;50%, green ≥50%, gold ≥100%</p>
           </div>
         </div>
