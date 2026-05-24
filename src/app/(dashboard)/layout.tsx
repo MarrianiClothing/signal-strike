@@ -38,17 +38,21 @@ function SidebarInner() {
   useEffect(() => { setHydrated(true); }, []);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isMobile    = useIsMobile();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
         setDropdownOpen(false);
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node))
+        setMobileMenuOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  useEffect(() => { setSidebarOpen(false); }, [pathname]);
+  useEffect(() => { setSidebarOpen(false); setMobileMenuOpen(false); }, [pathname]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -88,13 +92,61 @@ function SidebarInner() {
             fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.08em",
             textTransform: "uppercase",
           }}>{pageTitle}</span>
-          <div style={{
-            width: 44, height: 44, borderRadius: "50%",
-            background: "rgba(201,168,76,0.15)", border: "1px solid #C9A84C",
-            color: "#C9A84C", fontSize: "0.72rem", fontWeight: 700,
-            fontFamily: "var(--font-montserrat, sans-serif)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>{initials}</div>
+          <div ref={mobileMenuRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setMobileMenuOpen(p => !p)}
+              style={{
+                width: 44, height: 44, borderRadius: "50%",
+                background: "rgba(201,168,76,0.15)",
+                border: `1px solid ${mobileMenuOpen ? "#fafafa" : "#C9A84C"}`,
+                color: mobileMenuOpen ? "#fafafa" : "#C9A84C",
+                fontSize: "0.72rem", fontWeight: 700,
+                fontFamily: "var(--font-montserrat, sans-serif)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", padding: 0, transition: "all 0.15s",
+              }}
+            >{hydrated ? initials : "?"}</button>
+
+            {mobileMenuOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 6px)", right: 0,
+                minWidth: 200, background: "#18181b",
+                border: "1px solid #27272a", borderRadius: 10,
+                boxShadow: "0 8px 32px rgba(0,0,0,0.5)", overflow: "hidden",
+                zIndex: 250,
+              }}>
+                <div style={{ padding: "10px 14px", borderBottom: "1px solid #27272a" }}>
+                  <p style={{ fontSize: "0.78rem", fontWeight: 600, color: "#fafafa", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hydrated ? (fullName || "User") : "User"}</p>
+                  <p style={{ fontSize: "0.62rem", color: "#71717a", margin: "2px 0 0", letterSpacing: "0.08em", textTransform: "uppercase" }}>HillTop Ave</p>
+                </div>
+                <div style={{ padding: 6 }}>
+                  <a href="/settings" onClick={() => setMobileMenuOpen(false)} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "11px 12px",
+                    borderRadius: 7, color: "#a1a1aa", textDecoration: "none",
+                    fontSize: "0.88rem", fontWeight: 500, minHeight: 44,
+                  }}>
+                    <span>⚙</span> Settings
+                  </a>
+                  <a href="/account" onClick={() => setMobileMenuOpen(false)} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "11px 12px",
+                    borderRadius: 7, color: "#a1a1aa", textDecoration: "none",
+                    fontSize: "0.88rem", fontWeight: 500, minHeight: 44,
+                  }}>
+                    <span>💳</span> Account & Billing
+                  </a>
+                  <div style={{ height: 1, background: "#27272a", margin: "4px 0" }} />
+                  <button onClick={handleSignOut} style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 10,
+                    padding: "11px 12px", borderRadius: 7, background: "transparent",
+                    border: "none", color: "#f87171", fontSize: "0.88rem", fontWeight: 500,
+                    cursor: "pointer", textAlign: "left", minHeight: 44,
+                  }}>
+                    <span>↩</span> Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
