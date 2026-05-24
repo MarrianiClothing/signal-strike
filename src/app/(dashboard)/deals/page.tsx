@@ -452,7 +452,7 @@ export default function DealsPage() {
             <div style={{ padding:"20px 24px 16px", borderBottom:"1px solid #1c1c1f", flexShrink:0 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14 }}>
                 <h2 style={{ color:"#fafafa", fontWeight:800, fontSize:"1.1rem", margin:0, lineHeight:1.3, paddingRight:16 }}>{selected.title || selected.company}</h2>
-                <button onClick={closeDetail} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.3rem", cursor:"pointer", flexShrink:0, lineHeight:1, padding:"0 0 0 8px" }}>✕</button>
+                <button onClick={closeDetail} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.3rem", cursor:"pointer", flexShrink:0, lineHeight:1, minWidth:44, minHeight:44, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
               </div>
 
               {/* Stage progress bar */}
@@ -718,7 +718,7 @@ export default function DealsPage() {
           <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:isMobile?"16px 16px 0 0":14, padding:isMobile?20:28, width:"100%", maxWidth:isMobile?"100%":520, maxHeight:isMobile?"92dvh":"90vh", overflowY:"auto" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
               <h2 style={{ color:"#fafafa", fontWeight:700, margin:0 }}>New Lead</h2>
-              <button onClick={()=>setShowAdd(false)} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+              <button onClick={()=>setShowAdd(false)} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer", minWidth:44, minHeight:44, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
             </div>
             <form onSubmit={handleAddDeal} style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
               {[{label:"Deal Title *",key:"title",full:true},{label:"Company",key:"company"},{label:"Contact Name",key:"contact_name"},{label:"Contact Email",key:"contact_email",type:"email"},{label:"Contact Phone",key:"contact_phone",type:"tel"},{label:"Value ($) *",key:"value",type:"number"},{label:"Probability (%)",key:"probability",type:"number"},{label:"Expected Close",key:"expected_close_date",type:"date",maxWidth:240}].map((f:any)=>(

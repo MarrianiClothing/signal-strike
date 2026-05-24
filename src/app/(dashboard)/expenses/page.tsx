@@ -343,7 +343,7 @@ export default function ExpensesPage() {
           <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: isMobile ? "16px 16px 0 0" : 16, padding: 28, width: "100%", maxWidth: isMobile ? "100%" : 480, maxHeight: isMobile ? "92dvh" : "90vh"}}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "1.1rem", margin: 0 }}>Generate Expense Report</h2>
-              <button onClick={() => setReportModal(false)} style={{ background: "transparent", border: "none", color: "#71717a", fontSize: "1.2rem", cursor: "pointer" }}>✕</button>
+              <button onClick={() => setReportModal(false)} style={{ background: "transparent", border: "none", color: "#71717a", fontSize: "1.2rem", cursor: "pointer", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
@@ -400,7 +400,7 @@ export default function ExpensesPage() {
           <div style={{ background: "#111113", border: "1px solid #27272a", borderRadius: isMobile ? "16px 16px 0 0" : 16, padding: 24, width: "100%", maxWidth: isMobile ? "100%" : 520, maxHeight: isMobile ? "92dvh" : "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "1.1rem", margin: 0 }}>{editing ? "Edit Expense" : "Add Expense"}</h2>
-              <button onClick={() => setModal(false)} style={{ background: "transparent", border: "none", color: "#71717a", fontSize: "1.2rem", cursor: "pointer" }}>✕</button>
+              <button onClick={() => setModal(false)} style={{ background: "transparent", border: "none", color: "#71717a", fontSize: "1.2rem", cursor: "pointer", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

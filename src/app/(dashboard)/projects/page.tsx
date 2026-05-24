@@ -233,7 +233,7 @@ export default function ProjectsPage() {
             {/* Modal header */}
             <div style={{ padding:"20px 24px 16px", borderBottom:"1px solid #1c1c1f", flexShrink:0, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.05rem", margin:0 }}>Create Work Order</h2>
-              <button onClick={()=>setShowCreate(false)} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+              <button onClick={()=>setShowCreate(false)} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer", minWidth:44, minHeight:44, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
             </div>
 
             <div style={{ flex:1, overflowY:"auto", padding:"20px 24px" }}>

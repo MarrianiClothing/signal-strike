@@ -450,8 +450,8 @@ export default function ProjectDetailPage() {
                     style={{background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.15)",color:"#C9A84C",borderRadius:6,padding:"4px 10px",fontSize:"0.72rem",fontWeight:600,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>
                     + Task
                   </button>
-                  <button onClick={() => openEditPhase(ph)} style={{background:"none",border:"none",color:"#52525b",cursor:"pointer",fontSize:"0.82rem",padding:"2px 6px",flexShrink:0}}>✎</button>
-                  <button onClick={() => deletePhase(ph.id)} style={{background:"none",border:"none",color:"#3f3f46",cursor:"pointer",fontSize:"0.82rem",padding:"2px 6px",flexShrink:0}}>✕</button>
+                  <button onClick={() => openEditPhase(ph)} style={{background:"none",border:"none",color:"#52525b",cursor:"pointer",fontSize:"0.82rem",flexShrink:0,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>✎</button>
+                  <button onClick={() => deletePhase(ph.id)} style={{background:"none",border:"none",color:"#3f3f46",cursor:"pointer",fontSize:"0.82rem",flexShrink:0,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
                 </div>
 
                 {/* Tasks */}
@@ -477,8 +477,8 @@ export default function ProjectDetailPage() {
                                 {t.notes     && <span style={{fontSize:"0.72rem",color:"#52525b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>📝 {t.notes}</span>}
                               </div>
                             </div>
-                            <button onClick={() => openEditTask(t)} style={{background:"none",border:"none",color:"#52525b",cursor:"pointer",fontSize:"0.82rem",padding:"2px 6px",flexShrink:0}}>✎</button>
-                            <button onClick={() => deleteTask(t.id)} style={{background:"none",border:"none",color:"#3f3f46",cursor:"pointer",fontSize:"0.82rem",padding:"2px 6px",flexShrink:0}}>✕</button>
+                            <button onClick={() => openEditTask(t)} style={{background:"none",border:"none",color:"#52525b",cursor:"pointer",fontSize:"0.82rem",flexShrink:0,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>✎</button>
+                            <button onClick={() => deleteTask(t.id)} style={{background:"none",border:"none",color:"#3f3f46",cursor:"pointer",fontSize:"0.82rem",flexShrink:0,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
                           </div>
                         ))}
                       </div>
@@ -498,7 +498,7 @@ export default function ProjectDetailPage() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <h2 style={{color:"#fafafa",fontWeight:700,fontSize:"1.05rem",margin:0}}>✉ Export Schedule</h2>
               <button onClick={() => { setExportModal(false); setExportMsg(null); }}
-                style={{background:"none",border:"none",color:"#52525b",fontSize:"1.2rem",cursor:"pointer",padding:"2px 6px"}}>✕</button>
+                style={{background:"none",border:"none",color:"#52525b",fontSize:"1.2rem",cursor:"pointer",minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
             </div>
 
             <p style={{color:"#71717a",fontSize:"0.82rem",marginBottom:20,lineHeight:1.5}}>
@@ -552,7 +552,7 @@ export default function ProjectDetailPage() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <h2 style={{color:"#fafafa",fontWeight:700,fontSize:"1.05rem",margin:0}}>Import Schedule</h2>
               <button onClick={() => { setImportModal(false); setImportPreview(null); setImportError(""); }}
-                style={{background:"none",border:"none",color:"#52525b",fontSize:"1.2rem",cursor:"pointer",padding:"2px 6px"}}>✕</button>
+                style={{background:"none",border:"none",color:"#52525b",fontSize:"1.2rem",cursor:"pointer",minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
             </div>
 
             {/* Loading */}

@@ -188,7 +188,7 @@ export default function RevenueGoalSection({ userId }: { userId: string }) {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ color: "#C9A84C", fontWeight: 700, fontSize: "0.88rem" }}>{fmt(g.target_revenue)}</span>
-                  <button onClick={() => handleDelete(g.id)} style={{ background: "none", border: "none", color: "#71717a", cursor: "pointer", fontSize: "1rem", lineHeight: 1 }}>✕</button>
+                  <button onClick={() => handleDelete(g.id)} style={{ background: "none", border: "none", color: "#71717a", cursor: "pointer", fontSize: "1rem", lineHeight: 1, minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                 </div>
               </div>
             ))}

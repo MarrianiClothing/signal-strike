@@ -69,7 +69,7 @@ function SidebarInner() {
           padding: "0 16px",
         }}>
           <button onClick={() => setSidebarOpen(o => !o)} style={{
-            width: 36, height: 36, borderRadius: 8, background: "transparent",
+            width: 44, height: 44, borderRadius: 8, background: "transparent",
             border: "none", cursor: "pointer",
             display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center", gap: 4, padding: 0,
@@ -89,7 +89,7 @@ function SidebarInner() {
             textTransform: "uppercase",
           }}>{pageTitle}</span>
           <div style={{
-            width: 36, height: 36, borderRadius: "50%",
+            width: 44, height: 44, borderRadius: "50%",
             background: "rgba(201,168,76,0.15)", border: "1px solid #C9A84C",
             color: "#C9A84C", fontSize: "0.72rem", fontWeight: 700,
             fontFamily: "var(--font-montserrat, sans-serif)",

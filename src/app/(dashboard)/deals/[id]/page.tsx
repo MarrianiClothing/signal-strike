@@ -565,7 +565,7 @@ export default function DealDetailPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ color: "#fafafa", fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>✉ Email Deal Summary</h2>
               <button onClick={() => { setExportModal(false); setExportMsg(null); }}
-                style={{ background: "none", border: "none", color: "#52525b", fontSize: "1.2rem", cursor: "pointer", padding: "2px 6px" }}>✕</button>
+                style={{ background: "none", border: "none", color: "#52525b", fontSize: "1.2rem", cursor: "pointer", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
             <p style={{ color: "#71717a", fontSize: "0.82rem", marginBottom: 20, lineHeight: 1.5 }}>
               Sends a branded PDF deal summary to the specified email.

@@ -167,7 +167,7 @@ export default function TeamPage() {
                 {teamName || "My Team"}
               </h1>
               <button onClick={() => setEditingName(true)}
-                style={{ background:"none", border:"none", color:"#52525b", cursor:"pointer", fontSize:"0.85rem", padding:"2px 6px" }}>✎</button>
+                style={{ background:"none", border:"none", color:"#52525b", cursor:"pointer", fontSize:"0.85rem", minWidth:44, minHeight:44, display:"flex", alignItems:"center", justifyContent:"center" }}>✎</button>
             </>
           )}
         </div>

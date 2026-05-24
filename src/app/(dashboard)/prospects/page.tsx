@@ -685,7 +685,7 @@ export default function ProspectsPage() {
                 <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Select which jobs to add to your Signal Strike pipeline</p>
               </div>
               <button onClick={() => { setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashError(""); }}
-                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer", minWidth:44, minHeight:44, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
             </div>
 
             {/* Loading */}
@@ -804,7 +804,7 @@ export default function ProspectsPage() {
                 <h2 style={{ color:"#fafafa", fontWeight:700, fontSize:"1.1rem", margin:"0 0 4px" }}>Buy Enrichment Credits</h2>
                 <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Reveal direct email & phone for any prospect</p>
               </div>
-              <button onClick={() => setBuyModal(false)} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+              <button onClick={() => setBuyModal(false)} style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer", minWidth:44, minHeight:44, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
             </div>
 
             {[

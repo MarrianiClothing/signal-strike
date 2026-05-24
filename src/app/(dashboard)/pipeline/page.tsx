@@ -457,7 +457,7 @@ export default function PipelinePage() {
                 <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Select which jobs to add to your Signal Strike pipeline</p>
               </div>
               <button onClick={() => { setDashModal(false); setDashJobs([]); setDashSelected(new Set()); setDashError(""); }}
-                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer", minWidth:44, minHeight:44, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
             </div>
             {dashLoading && <div style={{ textAlign:"center", padding:"40px 0", color:"#71717a" }}><p>Parsing DASH export...</p></div>}
             {dashError && !dashLoading && (
@@ -544,7 +544,7 @@ export default function PipelinePage() {
                 <p style={{ color:"#52525b", fontSize:"0.78rem", margin:0 }}>Excel or CSV — columns detected automatically</p>
               </div>
               <button onClick={() => { setImportModal(false); setImportDeals([]); setImportSelected(new Set()); setImportError(""); }}
-                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer" }}>✕</button>
+                style={{ background:"none", border:"none", color:"#52525b", fontSize:"1.2rem", cursor:"pointer", minWidth:44, minHeight:44, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
             </div>
 
             {importLoading && <div style={{ textAlign:"center", padding:"40px 0", color:"#71717a" }}><p>Parsing file...</p></div>}
