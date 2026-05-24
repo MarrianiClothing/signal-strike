@@ -2,6 +2,12 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+function useIsMobile() {
+  const [m, setM] = useState(false);
+  useEffect(() => { const c = () => setM(window.innerWidth < 768); c(); window.addEventListener("resize", c); return () => window.removeEventListener("resize", c); }, []);
+  return m;
+}
+
 function getSecondsUntilNext(sendTimeStr: string): number {
   const [hh, mm] = sendTimeStr.split(":").map(Number);
   const now  = new Date();
@@ -43,6 +49,7 @@ function fmtScheduledTime(t: string): string {
 
 export default function DailySignalCountdown({ userId }: { userId: string }) {
   const supabase = createClient();
+  const isMobile = useIsMobile();
   const [seconds,      setSeconds]      = useState<number | null>(null);
   const [sendTime,     setSendTime]     = useState<string | null>(null);
   const [lastSentAt,   setLastSentAt]   = useState<string | null>(null);
@@ -101,7 +108,8 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
       display: "flex",
       flexDirection: "column",
       gap: 8,
-      width: "100%",
+      width: isMobile ? "100%" : undefined,
+      minWidth: isMobile ? undefined : 240,
     }}>
       {/* Top row — label + schedule/last sent meta */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 6 }}>
