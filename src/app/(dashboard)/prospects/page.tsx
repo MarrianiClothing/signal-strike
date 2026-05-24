@@ -429,7 +429,7 @@ export default function ProspectsPage() {
           Scout
         </h1>
         <p style={{ color:"#fafafa", fontSize:"0.85rem", fontWeight:600, margin:0 }}>
-          Powered by Apollo & Claude · Search contacts, enrich with email/phone, add to pipeline
+          Powered by HillTop Ave · Search contacts, enrich with email/phone, add to pipeline
         </p>
       </div>
 
