@@ -426,10 +426,10 @@ export default function ProspectsPage() {
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize:"1.5rem", fontWeight:800, color:"#fafafa", margin:"0 0 4px", fontFamily:"var(--font-cinzel,serif)", letterSpacing:"0.06em", textTransform:"uppercase" }}>
-          Prospect Finder
+          Scout
         </h1>
-        <p style={{ color:"#52525b", fontSize:"0.82rem", margin:0 }}>
-          Powered by Hilltop Ave · Search contacts, enrich with email/phone, add to pipeline
+        <p style={{ color:"#fafafa", fontSize:"0.85rem", fontWeight:600, margin:0 }}>
+          Powered by Apollo & Claude · Search contacts, enrich with email/phone, add to pipeline
         </p>
       </div>
 
