@@ -131,7 +131,7 @@ export default function ProjectsPage() {
       {/* Header */}
       <div style={{ display:"flex", flexDirection:isMobile?"column":"row", justifyContent:"space-between", alignItems:isMobile?"flex-start":"center", marginBottom:24, gap:12 }}>
         <div>
-          <h1 style={{ fontSize:"1.5rem", fontWeight:800, color:"#fafafa", margin:"0 0 3px", fontFamily:"var(--font-cinzel,serif)", letterSpacing:"0.06em", textTransform:"uppercase" }}>Work Orders</h1>
+          <h1 style={{ fontSize:"1.5rem", fontWeight:800, color:"#fafafa", margin:"0 0 3px", fontFamily:"var(--font-cinzel,serif)", letterSpacing:"0.06em", textTransform:"uppercase" }}>Jobs</h1>
           <p style={{ color:"#52525b", fontSize:"0.82rem", margin:0 }}>{projects.length} total</p>
         </div>
         <button onClick={openCreate}

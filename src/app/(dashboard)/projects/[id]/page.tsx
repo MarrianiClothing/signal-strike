@@ -132,7 +132,7 @@ export default function WorkOrderDetailPage() {
       {/* Back */}
       <button onClick={()=>router.push("/projects")}
         style={{background:"none",border:"none",color:"#71717a",cursor:"pointer",fontSize:"0.85rem",marginBottom:20,padding:0,display:"flex",alignItems:"center",gap:6}}>
-        ← Work Orders
+        ← Jobs
       </button>
 
       {/* ── WO Header ────────────────────────────────────────────────────────── */}
