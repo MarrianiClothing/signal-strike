@@ -48,6 +48,7 @@ export default function DealDetailPage() {
   const supabase = createClient();
 
   const [deal,    setDeal]    = useState<any>(null);
+  const [rollbackConfirm, setRollbackConfirm] = useState(false);
   const [userId,  setUserId]  = useState("");
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
@@ -239,6 +240,35 @@ export default function DealDetailPage() {
     setExportSending(false);
   }
 
+  async function handleRollback() {
+    const currentIdx = STAGES.indexOf(edit.stage);
+    if (currentIdx <= 0) return; // already at first stage
+    const prevStage = STAGES[currentIdx - 1];
+    const updates: any = {
+      stage:      prevStage,
+      updated_at: new Date().toISOString(),
+    };
+    // Clear terminal-state fields when rolling back from Won/Lost
+    if (edit.stage === "closed_won" || edit.stage === "closed_lost") {
+      updates.won_at  = null;
+      updates.lost_at = null;
+    }
+    const { error } = await supabase.from("deals").update(updates).eq("id", id);
+    if (!error) {
+      setEdit((p: any) => ({ ...p, stage: prevStage }));
+      setDeal((p: any) => ({ ...p, stage: prevStage }));
+      await supabase.from("activities").insert({
+        user_id:     userId,
+        deal_id:     id,
+        type:        "stage_change",
+        title:       `Stage rolled back: ${STAGE_LABELS[edit.stage]} → ${STAGE_LABELS[prevStage]}`,
+        body:        null,
+        occurred_at: new Date().toISOString(),
+      });
+    }
+    setRollbackConfirm(false);
+  }
+
   async function handleLaunchProject() {
     const { data, error } = await supabase
       .from("projects")
@@ -282,10 +312,21 @@ export default function DealDetailPage() {
               Job #{deal.job_number}
             </div>
           )}
-          <span style={{ fontSize: "0.8rem", color: stageColor, background: stageColor + "22",
-            padding: "3px 10px", borderRadius: 6, fontWeight: 600 }}>
-            {STAGE_LABELS[deal.stage]}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.8rem", color: stageColor, background: stageColor + "22",
+              padding: "3px 10px", borderRadius: 6, fontWeight: 600 }}>
+              {STAGE_LABELS[deal.stage]}
+            </span>
+            {STAGES.indexOf(edit?.stage) > 0 && (
+              <button
+                onClick={() => setRollbackConfirm(true)}
+                style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.25)",
+                  color: "#C9A84C", borderRadius: 6, padding: "3px 10px", fontSize: "0.75rem",
+                  fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                ↶ Roll back
+              </button>
+            )}
+          </div>
 
           {/* Contact action strip */}
           {(deal.contact_email || deal.contact_phone || deal.contact_name) && (
@@ -565,6 +606,40 @@ export default function DealDetailPage() {
               <button onClick={handleEmailPDF} disabled={exportSending || !exportEmail.trim()}
                 style={{ background: "#C9A84C", color: "#000", border: "none", borderRadius: 8, padding: "8px 20px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", opacity: exportEmail.trim() && !exportSending ? 1 : 0.5 }}>
                 {exportSending ? "Sending..." : "Send PDF"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Rollback Confirm Modal ───────────────────────────────────────────── */}
+      {rollbackConfirm && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:800,
+          display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12,
+            padding:24, width:"100%", maxWidth:360, textAlign:"center" }}>
+            <div style={{ fontSize:"2rem", marginBottom:10 }}>↶</div>
+            <h3 style={{ color:"#fafafa", fontWeight:700, fontSize:"1rem", margin:"0 0 8px" }}>
+              Roll back stage?
+            </h3>
+            <p style={{ color:"#71717a", fontSize:"0.85rem", margin:"0 0 20px", lineHeight:1.5 }}>
+              This will move <strong style={{ color:"#fafafa" }}>{deal?.title}</strong> from{" "}
+              <strong style={{ color: STAGE_COLORS[edit?.stage] }}>{STAGE_LABELS[edit?.stage]}</strong>{" "}
+              back to{" "}
+              <strong style={{ color: STAGE_COLORS[STAGES[STAGES.indexOf(edit?.stage)-1]] }}>
+                {STAGE_LABELS[STAGES[STAGES.indexOf(edit?.stage)-1]]}
+              </strong>.
+            </p>
+            <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
+              <button onClick={() => setRollbackConfirm(false)}
+                style={{ background:"none", border:"1px solid #27272a", color:"#71717a",
+                  borderRadius:8, padding:"8px 20px", cursor:"pointer", fontSize:"0.85rem" }}>
+                Cancel
+              </button>
+              <button onClick={handleRollback}
+                style={{ background:"rgba(201,168,76,0.15)", border:"1px solid rgba(201,168,76,0.4)",
+                  color:"#C9A84C", borderRadius:8, padding:"8px 20px", fontWeight:700,
+                  fontSize:"0.85rem", cursor:"pointer" }}>
+                ↶ Roll back
               </button>
             </div>
           </div>
