@@ -89,6 +89,7 @@ export default function DealsPage() {
   const [detailMsg,        setDetailMsg]        = useState<{ok:boolean;text:string}|null>(null);
   const [rollbackConfirm,  setRollbackConfirm]  = useState(false);
   const [advanceConfirm,   setAdvanceConfirm]   = useState(false);
+  const [notesWarning,     setNotesWarning]     = useState(false);
   const [deleteConfirm,    setDeleteConfirm]    = useState(false);
   const [actLoading,       setActLoading]       = useState(false);
 
@@ -151,6 +152,7 @@ export default function DealsPage() {
     setDetailEdit(null);
     setActivities([]);
     setDetailMsg(null);
+    setNotesWarning(false);
   }
 
   async function handleDetailSave() {
@@ -574,7 +576,7 @@ export default function DealsPage() {
                 <label style={lbl}>Scope Notes</label>
                 <textarea style={{ ...inp, resize:"vertical", minHeight:80 }}
                   placeholder="Describe the project scope, materials, timeline considerations..."
-                  value={detailEdit?.notes??""} onChange={e=>setDetailEdit((p:any)=>({...p,notes:e.target.value}))} />
+                  value={detailEdit?.notes??""} onChange={e=>{ setDetailEdit((p:any)=>({...p,notes:e.target.value})); if (e.target.value.trim()) setNotesWarning(false); }} />
               </div>
 
               {/* Save button */}
@@ -635,12 +637,26 @@ export default function DealsPage() {
 
             {/* Modal footer */}
             <div style={{ padding:"14px 24px", borderTop:"1px solid #1c1c1f", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, gap:10 }}>
+              {notesWarning && STAGES[currentIdx+1]==="closed_won" && (
+                <div style={{ flex:1, display:"flex", alignItems:"center", gap:8, background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.25)", borderRadius:8, padding:"8px 12px" }}>
+                  <span style={{ fontSize:"0.85rem" }}>⚠️</span>
+                  <span style={{ color:"#fbbf24", fontSize:"0.78rem", fontWeight:600 }}>Scope notes required before marking Won</span>
+                </div>
+              )}
               <button onClick={closeDetail}
                 style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 16px", fontSize:"0.85rem", cursor:"pointer" }}>
                 Close
               </button>
               {canAdvance && (
-                <button onClick={()=>setAdvanceConfirm(true)}
+                <button onClick={()=>{
+                  const nextStage = STAGES[currentIdx+1];
+                  if (nextStage==="closed_won" && !(detailEdit?.notes?.trim())) {
+                    setNotesWarning(true);
+                    return;
+                  }
+                  setNotesWarning(false);
+                  setAdvanceConfirm(true);
+                }}
                   style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 20px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer" }}>
                   Advance Stage →
                 </button>
