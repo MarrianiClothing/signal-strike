@@ -112,7 +112,7 @@ function LoginPageContent() {
   const isRecovery = mode === "recovery";
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: isMobile ? "column" : "row", fontFamily: "inherit", background: "#0a0a0b" }}>
+    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: isMobile ? "column" : "row", fontFamily: "inherit", background: "#0a0a0b" }}>
 
       {/* ── Left panel — desktop only ── */}
       {!isMobile && (
