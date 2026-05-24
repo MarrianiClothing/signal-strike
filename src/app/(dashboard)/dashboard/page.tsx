@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCache, setCache } from "@/lib/cache";
 import DailySignalCountdown from "@/components/DailySignalCountdown";
-import DailyQuote from "@/components/DailyQuote";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -261,7 +260,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-        <DailyQuote />
         {userId && <DailySignalCountdown userId={userId} />}
       </div>
 
