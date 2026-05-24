@@ -22,22 +22,43 @@ function formatCountdown(secs: number) {
   };
 }
 
+function fmtLastSent(ts: string | null): string {
+  if (!ts) return "Never";
+  const d = new Date(ts);
+  const today = new Date();
+  const isToday = d.toDateString() === today.toDateString();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  if (isToday)     return `Today, ${time}`;
+  if (isYesterday) return `Yesterday, ${time}`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + `, ${time}`;
+}
+
+function fmtScheduledTime(t: string): string {
+  const [hh, mm] = t.split(":").map(Number);
+  const d = new Date(); d.setHours(hh, mm, 0, 0);
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
 export default function DailySignalCountdown({ userId }: { userId: string }) {
   const supabase = createClient();
-  const [seconds,  setSeconds]  = useState<number | null>(null);
-  const [sendTime, setSendTime] = useState<string | null>(null);
-  const [sending,  setSending]  = useState(false);
-  const [flash,    setFlash]    = useState<"sent" | "error" | null>(null);
+  const [seconds,      setSeconds]      = useState<number | null>(null);
+  const [sendTime,     setSendTime]     = useState<string | null>(null);
+  const [lastSentAt,   setLastSentAt]   = useState<string | null>(null);
+  const [sending,      setSending]      = useState(false);
+  const [flash,        setFlash]        = useState<"sent" | "error" | null>(null);
 
   useEffect(() => {
     supabase.from("profiles")
-      .select("daily_signal_enabled, daily_signal_time")
+      .select("daily_signal_enabled, daily_signal_time, last_signal_sent_at")
       .eq("id", userId).single()
       .then(({ data }) => {
         if (data?.daily_signal_enabled && data?.daily_signal_time) {
           setSendTime(data.daily_signal_time);
           setSeconds(getSecondsUntilNext(data.daily_signal_time));
         }
+        setLastSentAt(data?.last_signal_sent_at ?? null);
       });
   }, [userId]);
 
@@ -57,7 +78,10 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
     setSending(true); setFlash(null);
     try {
       const res = await fetch("/api/daily-signal/send?preview=true");
-      setFlash(res.ok ? "sent" : "error");
+      if (res.ok) {
+        setFlash("sent");
+        setLastSentAt(new Date().toISOString());
+      } else { setFlash("error"); }
     } catch { setFlash("error"); }
     setSending(false);
     setTimeout(() => setFlash(null), 3000);
@@ -76,47 +100,43 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
       padding: "16px 20px",
       display: "flex",
       flexDirection: "column",
-      gap: 12,
+      gap: 10,
       height: "100%",
       boxSizing: "border-box",
     }}>
-      {/* Label */}
-      <p style={{
-        color: "#71717a",
-        fontSize: "0.72rem",
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
-        margin: 0,
-      }}>
-        Next Daily Signal
-      </p>
+      {/* Top row — label + schedule/last sent meta */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 6 }}>
+        <p style={{
+          color: "#71717a", fontSize: "0.72rem", fontWeight: 700,
+          textTransform: "uppercase", letterSpacing: "0.08em", margin: 0,
+        }}>
+          Next Daily Signal
+        </p>
+        <div style={{ textAlign: "right" }}>
+          {sendTime && (
+            <p style={{ color: "#52525b", fontSize: "0.72rem", margin: "0 0 2px" }}>
+              Scheduled daily at <strong style={{ color: "#71717a" }}>{fmtScheduledTime(sendTime)}</strong>
+            </p>
+          )}
+          <p style={{ color: "#52525b", fontSize: "0.72rem", margin: 0 }}>
+            Last sent: <strong style={{ color: "#71717a" }}>{fmtLastSent(lastSentAt)}</strong>
+          </p>
+        </div>
+      </div>
 
       {/* Countdown */}
       <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
         {[h, m, s].map((unit, i) => (
           <span key={i} style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <span style={{
-              fontFamily: "monospace",
-              fontSize: "1.9rem",
-              fontWeight: 800,
+              fontFamily: "monospace", fontSize: "1.9rem", fontWeight: 800,
               color: isImminent ? "#C9A84C" : "#fafafa",
-              minWidth: 36,
-              textAlign: "center",
-              lineHeight: 1,
-              transition: "color 0.3s",
+              minWidth: 36, textAlign: "center", lineHeight: 1, transition: "color 0.3s",
             }}>
               {unit}
             </span>
             {i < 2 && (
-              <span style={{
-                color: "#52525b",
-                fontSize: "1.5rem",
-                fontWeight: 700,
-                marginBottom: 2,
-                marginLeft: 1,
-                marginRight: 1,
-              }}>:</span>
+              <span style={{ color: "#52525b", fontSize: "1.5rem", fontWeight: 700, marginBottom: 2 }}>:</span>
             )}
           </span>
         ))}
@@ -127,28 +147,21 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
         onClick={handleEarlySend}
         disabled={sending}
         style={{
+          marginTop: "auto",
           padding: "8px 0",
-          fontSize: "0.75rem",
-          fontWeight: 700,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          border: "1px solid #27272a",
-          borderRadius: 8,
+          fontSize: "0.75rem", fontWeight: 700,
+          letterSpacing: "0.06em", textTransform: "uppercase",
+          border: "1px solid #27272a", borderRadius: 8,
           cursor: sending ? "not-allowed" : "pointer",
           transition: "all 0.2s",
           background: flash === "sent"  ? "rgba(74,222,128,0.08)"
                     : flash === "error" ? "rgba(248,113,113,0.08)"
-                    : sending           ? "#18181b"
-                    : "#1c1c1f",
+                    : sending           ? "#18181b" : "#1c1c1f",
           color: flash === "sent"  ? "#4ade80"
-               : flash === "error" ? "#f87171"
-               :                     "#a1a1aa",
+               : flash === "error" ? "#f87171" : "#a1a1aa",
         }}
       >
-        {sending          ? "Sending..."
-         : flash === "sent"  ? "✓ Sent!"
-         : flash === "error" ? "Failed — retry"
-         :                     "Send Early Signal"}
+        {sending ? "Sending..." : flash === "sent" ? "✓ Sent!" : flash === "error" ? "Failed — retry" : "Send Early Signal"}
       </button>
     </div>
   );
