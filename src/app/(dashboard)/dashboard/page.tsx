@@ -209,22 +209,42 @@ export default function DashboardPage() {
     <div style={{ padding: isMobile ? "0 16px 24px" : "20px 20px 32px", boxSizing: "border-box", width: "100%", minWidth: 0 }}>
 
       {/* Header */}
-      <div style={{ marginBottom: isMobile ? 16 : 20 }}>
+      <div style={{ marginBottom: isMobile ? 16 : 20, background: "#111113", border: "1px solid #27272a", borderRadius: 14, padding: isMobile ? "16px" : "20px 24px", marginBottom: 16 }}>
 
         {/* Top row — welcome + countdown */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 16, flexDirection: isMobile ? "column" : "row" }}>
-          <div>
-            <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.8rem", fontWeight: 800, color: "#fafafa", margin: "0 0 4px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 12, flexDirection: isMobile ? "column" : "row" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1 style={{ fontSize: isMobile ? "1.3rem" : "1.7rem", fontWeight: 800, color: "#fafafa", margin: "0 0 3px", fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
               {userName ? `Welcome back, ${userName}` : "Dashboard"}
             </h1>
-            <p style={{ color: "#71717a", fontSize: "0.85rem", margin: 0 }}>
+            <p style={{ color: "#52525b", fontSize: "0.82rem", margin: 0, letterSpacing: "0.02em" }}>
               {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
           {userId && <DailySignalCountdown userId={userId} />}
         </div>
 
-        {/* Full-width search bar */}
+        {/* Gold divider */}
+        <div style={{ height: 1, background: "linear-gradient(90deg, rgba(201,168,76,0.4) 0%, rgba(201,168,76,0.1) 60%, transparent 100%)", marginBottom: 12 }} />
+
+        {/* Daily quote */}
+        <p style={{
+          color: "rgba(250,250,250,0.6)",
+          fontFamily: "var(--font-cinzel, serif)",
+          fontSize: isMobile ? "0.78rem" : "0.85rem",
+          fontStyle: "italic",
+          fontWeight: 400,
+          margin: "0 0 14px",
+          lineHeight: 1.6,
+          letterSpacing: "0.02em",
+        }}>
+          &ldquo;{dailyQuote.text}&rdquo;{" "}
+          <span style={{ color: "#C9A84C", fontSize: "0.75rem", fontStyle: "normal", fontWeight: 600 }}>
+            — {dailyQuote.author}
+          </span>
+        </p>
+
+        {/* Signal Search */}
         <div style={{ marginBottom: 4 }}>
           <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C", display: "block", marginBottom: 6 }}>⚡ Signal Search</span>
         </div>
