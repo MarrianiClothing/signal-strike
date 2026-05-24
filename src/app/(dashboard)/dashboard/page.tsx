@@ -184,19 +184,26 @@ export default function DashboardPage() {
     <div style={{ padding: isMobile ? "0 16px 24px" : "20px 20px 32px", boxSizing: "border-box", width: "100%", minWidth: 0 }}>
 
       {/* Header */}
-      <div style={{ marginBottom: isMobile ? 16 : 20, display: isMobile ? "flex" : "grid", gridTemplateColumns: "1fr 1fr", flexDirection: isMobile ? "column" : undefined, alignItems: isMobile ? "center" : "stretch", gap: isMobile ? 12 : 12 }}>
-        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-          <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.6rem", fontWeight: 800, color: "#fafafa", textAlign: isMobile ? "center" : "left", margin: 0 }}>
-            {userName ? `Welcome back, ${userName}` : "Dashboard"}
-          </h1>
-          <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: 4, marginBottom: 10, textAlign: isMobile ? "center" : "left" }}>
-            {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-          </p>
-          {/* Signal Search */}
-          <div style={{ marginBottom: 6 }}>
-            <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C" }}>⚡ Signal Search</span>
+      <div style={{ marginBottom: isMobile ? 16 : 20 }}>
+
+        {/* Top row — welcome + countdown */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 16, flexDirection: isMobile ? "column" : "row" }}>
+          <div>
+            <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.8rem", fontWeight: 800, color: "#fafafa", margin: "0 0 4px" }}>
+              {userName ? `Welcome back, ${userName}` : "Dashboard"}
+            </h1>
+            <p style={{ color: "#71717a", fontSize: "0.85rem", margin: 0 }}>
+              {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            </p>
           </div>
-          <div style={{ position: "relative" }}>
+          {userId && <DailySignalCountdown userId={userId} />}
+        </div>
+
+        {/* Full-width search bar */}
+        <div style={{ marginBottom: 4 }}>
+          <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C", display: "block", marginBottom: 6 }}>⚡ Signal Search</span>
+        </div>
+        <div style={{ position: "relative" }}>
             <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#52525b", fontSize: "0.85rem", pointerEvents: "none" }}>🔍</span>
             <input
               type="text"
@@ -260,7 +267,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-        {userId && <DailySignalCountdown userId={userId} />}
       </div>
 
       {/* Stats */}

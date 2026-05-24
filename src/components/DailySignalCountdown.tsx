@@ -100,9 +100,8 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
       padding: "16px 20px",
       display: "flex",
       flexDirection: "column",
-      gap: 10,
-      height: "100%",
-      boxSizing: "border-box",
+      gap: 8,
+      minWidth: 240,
     }}>
       {/* Top row — label + schedule/last sent meta */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 6 }}>
@@ -147,7 +146,7 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
         onClick={handleEarlySend}
         disabled={sending}
         style={{
-          marginTop: "auto",
+  
           padding: "8px 0",
           fontSize: "0.75rem", fontWeight: 700,
           letterSpacing: "0.06em", textTransform: "uppercase",
