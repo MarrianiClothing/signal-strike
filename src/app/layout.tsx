@@ -18,7 +18,26 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   title: "Signal Strike",
-  description: "Revenue CRM",
+  description: "Revenue CRM for sales teams. Track deals, manage your pipeline, and never miss a signal.",
+  manifest: "/manifest.json",
+  themeColor: "#C9A84C",
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Signal Strike",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
