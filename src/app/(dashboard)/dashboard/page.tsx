@@ -184,8 +184,8 @@ export default function DashboardPage() {
     <div style={{ padding: isMobile ? "0 16px 24px" : "20px 20px 32px", boxSizing: "border-box", width: "100%", minWidth: 0 }}>
 
       {/* Header */}
-      <div style={{ marginBottom: isMobile ? 16 : 20, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "center" : "stretch", gap: isMobile ? 12 : 0 }}>
-        <div style={{ flex: 1, minWidth: 0, paddingRight: 20 }}>
+      <div style={{ marginBottom: isMobile ? 16 : 20, display: isMobile ? "flex" : "grid", gridTemplateColumns: "1fr 1fr", flexDirection: isMobile ? "column" : undefined, alignItems: isMobile ? "center" : "stretch", gap: isMobile ? 12 : 12 }}>
+        <div style={{ minWidth: 0 }}>
           <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.6rem", fontWeight: 800, color: "#fafafa", textAlign: isMobile ? "center" : "left", margin: 0 }}>
             {userName ? `Welcome back, ${userName}` : "Dashboard"}
           </h1>
@@ -260,7 +260,7 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-        {userId && <div style={{ flexShrink: 0, width: 220 }}><DailySignalCountdown userId={userId} /></div>}
+        {userId && <DailySignalCountdown userId={userId} />}
       </div>
 
       {/* Stats */}

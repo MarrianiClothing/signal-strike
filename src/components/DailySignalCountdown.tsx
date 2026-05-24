@@ -77,7 +77,8 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
       display: "flex",
       flexDirection: "column",
       gap: 12,
-      minWidth: 200,
+      height: "100%",
+      boxSizing: "border-box",
     }}>
       {/* Label */}
       <p style={{
