@@ -107,6 +107,31 @@ export default function DashboardPage() {
   const tieredDeals = deals.filter((d: any) => d.commission_tiers);
   const totalCommission = tieredDeals.reduce((sum: number, d: any) => sum + (d.value || 0) * (d.commission_tiers.rate / 100), 0);
 
+  const DAILY_QUOTES = [
+    { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+    { text: "Either you run the day or the day runs you.", author: "Jim Rohn" },
+    { text: "Every no gets me closer to a yes.", author: "Mark Cuban" },
+    { text: "Revenue solves all known startup problems.", author: "Naval Ravikant" },
+    { text: "Show me your pipeline and I'll show you your future.", author: "Unknown" },
+    { text: "Action is the foundational key to all success.", author: "Pablo Picasso" },
+    { text: "Opportunities don't happen. You create them.", author: "Chris Grosser" },
+    { text: "Be so good they can't ignore you.", author: "Steve Martin" },
+    { text: "Chase the vision, not the money.", author: "Tony Hsieh" },
+    { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
+    { text: "Done is better than perfect.", author: "Sheryl Sandberg" },
+    { text: "You miss 100% of the shots you don't take.", author: "Wayne Gretzky" },
+    { text: "Hard work beats talent when talent doesn't work hard.", author: "Tim Notke" },
+    { text: "Pipeline is the lifeblood of a sales organization.", author: "Aaron Ross" },
+    { text: "We are what we repeatedly do. Excellence is not an act, but a habit.", author: "Aristotle" },
+    { text: "Hustle in silence and let success make the noise.", author: "Unknown" },
+    { text: "The grind is the glory.", author: "Unknown" },
+    { text: "Every accomplishment starts with the decision to try.", author: "John F. Kennedy" },
+    { text: "Winning isn't everything, but wanting to win is.", author: "Vince Lombardi" },
+    { text: "Be so good they can't ignore you.", author: "Steve Martin" },
+  ];
+  const _day = Math.floor((Date.now() - new Date(new Date().getFullYear(),0,0).getTime()) / 86400000);
+  const dailyQuote = DAILY_QUOTES[_day % DAILY_QUOTES.length];
+
   const card: React.CSSProperties = {
     background: "#111113", border: "1px solid #27272a", borderRadius: 12, padding: 18,
   };
