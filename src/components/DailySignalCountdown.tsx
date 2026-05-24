@@ -1,23 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
-
-function useIsMobile() {
-  const [m, setM] = useState(false);
-  useEffect(() => { const c = () => setM(window.innerWidth < 768); c(); window.addEventListener("resize", c); return () => window.removeEventListener("resize", c); }, []);
-  return m;
-}
 import { createClient } from "@/lib/supabase/client";
 
 function getSecondsUntilNext(sendTimeStr: string): number {
   const [hh, mm] = sendTimeStr.split(":").map(Number);
-  const now = new Date();
+  const now  = new Date();
   const next = new Date();
   next.setHours(hh, mm, 0, 0);
   if (next <= now) next.setDate(next.getDate() + 1);
   return Math.floor((next.getTime() - now.getTime()) / 1000);
 }
 
-function formatCountdown(secs: number): { h: string; m: string; s: string } {
+function formatCountdown(secs: number) {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
@@ -30,88 +24,98 @@ function formatCountdown(secs: number): { h: string; m: string; s: string } {
 
 export default function DailySignalCountdown({ userId }: { userId: string }) {
   const supabase = createClient();
-  const [seconds, setSeconds]   = useState<number | null>(null);
+  const [seconds,  setSeconds]  = useState<number | null>(null);
   const [sendTime, setSendTime] = useState<string | null>(null);
-  const [sending, setSending]   = useState(false);
-  const [flash, setFlash]       = useState<"sent" | "error" | null>(null);
-  const isMobile = useIsMobile();
+  const [sending,  setSending]  = useState(false);
+  const [flash,    setFlash]    = useState<"sent" | "error" | null>(null);
 
   useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from("profiles")
-        .select("daily_signal_enabled, daily_signal_time")
-        .eq("id", userId)
-        .single();
-      if (data?.daily_signal_enabled && data?.daily_signal_time) {
-        setSendTime(data.daily_signal_time);
-        setSeconds(getSecondsUntilNext(data.daily_signal_time));
-      }
-    }
-    load();
+    supabase.from("profiles")
+      .select("daily_signal_enabled, daily_signal_time")
+      .eq("id", userId).single()
+      .then(({ data }) => {
+        if (data?.daily_signal_enabled && data?.daily_signal_time) {
+          setSendTime(data.daily_signal_time);
+          setSeconds(getSecondsUntilNext(data.daily_signal_time));
+        }
+      });
   }, [userId]);
 
   useEffect(() => {
     if (seconds === null || !sendTime) return;
-    const interval = setInterval(() => {
+    const iv = setInterval(() => {
       setSeconds(prev => {
         if (prev === null) return null;
         if (prev <= 1) return getSecondsUntilNext(sendTime);
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(interval);
+    return () => clearInterval(iv);
   }, [seconds !== null, sendTime]);
 
   async function handleEarlySend() {
-    setSending(true);
-    setFlash(null);
+    setSending(true); setFlash(null);
     try {
       const res = await fetch("/api/daily-signal/send?preview=true");
       setFlash(res.ok ? "sent" : "error");
-    } catch {
-      setFlash("error");
-    } finally {
-      setSending(false);
-      setTimeout(() => setFlash(null), 3000);
-    }
+    } catch { setFlash("error"); }
+    setSending(false);
+    setTimeout(() => setFlash(null), 3000);
   }
 
   if (seconds === null) return null;
 
   const { h, m, s } = formatCountdown(seconds);
-  const isImminent = seconds < 300;
+  const isImminent  = seconds < 300;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "center" : "flex-end", gap: "6px", width: isMobile ? "100%" : "auto" }}>
-
+    <div style={{
+      background: "#111113",
+      border: "1px solid #27272a",
+      borderRadius: 12,
+      padding: "16px 20px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      minWidth: 200,
+    }}>
       {/* Label */}
-      <span style={{
-        fontSize: "10px", fontWeight: 700, color: "#e4e4e7",
-        textTransform: "uppercase", letterSpacing: "0.1em",
+      <p style={{
+        color: "#71717a",
+        fontSize: "0.72rem",
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        margin: 0,
       }}>
         Next Daily Signal
-      </span>
+      </p>
 
-      {/* Countdown digits */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: "2px",
-        background: "#111113", border: "1px solid #27272a",
-        borderRadius: "8px", padding: "6px 12px",
-      }}>
+      {/* Countdown */}
+      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
         {[h, m, s].map((unit, i) => (
-          <span key={i} style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+          <span key={i} style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <span style={{
-              fontFamily: "monospace", fontSize: "20px", fontWeight: 800,
-              color: isImminent ? "#C9A84C" : "#ffffff",
-              minWidth: "26px", textAlign: "center", transition: "color 0.3s",
+              fontFamily: "monospace",
+              fontSize: "1.9rem",
+              fontWeight: 800,
+              color: isImminent ? "#C9A84C" : "#fafafa",
+              minWidth: 36,
+              textAlign: "center",
+              lineHeight: 1,
+              transition: "color 0.3s",
             }}>
               {unit}
             </span>
             {i < 2 && (
-              <span style={{ color: "#52525b", fontSize: "18px", fontWeight: 700, marginBottom: "2px" }}>
-                :
-              </span>
+              <span style={{
+                color: "#52525b",
+                fontSize: "1.5rem",
+                fontWeight: 700,
+                marginBottom: 2,
+                marginLeft: 1,
+                marginRight: 1,
+              }}>:</span>
             )}
           </span>
         ))}
@@ -122,39 +126,29 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
         onClick={handleEarlySend}
         disabled={sending}
         style={{
-          width: "100%",
-          padding: "5px 12px",
-          fontSize: "11px",
+          padding: "8px 0",
+          fontSize: "0.75rem",
           fontWeight: 700,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
           border: "1px solid #27272a",
-          borderRadius: "6px",
+          borderRadius: 8,
           cursor: sending ? "not-allowed" : "pointer",
           transition: "all 0.2s",
-          background: flash === "sent"
-            ? "#14532d"
-            : flash === "error"
-            ? "#450a0a"
-            : sending
-            ? "#1a1a1d"
-            : "#18181b",
-          color: flash === "sent"
-            ? "#4ade80"
-            : flash === "error"
-            ? "#f87171"
-            : "#a1a1aa",
+          background: flash === "sent"  ? "rgba(74,222,128,0.08)"
+                    : flash === "error" ? "rgba(248,113,113,0.08)"
+                    : sending           ? "#18181b"
+                    : "#1c1c1f",
+          color: flash === "sent"  ? "#4ade80"
+               : flash === "error" ? "#f87171"
+               :                     "#a1a1aa",
         }}
       >
-        {sending
-          ? "Sending..."
-          : flash === "sent"
-          ? "✓ Sent!"
-          : flash === "error"
-          ? "Failed — retry"
-          : "Send Early Signal"}
+        {sending          ? "Sending..."
+         : flash === "sent"  ? "✓ Sent!"
+         : flash === "error" ? "Failed — retry"
+         :                     "Send Early Signal"}
       </button>
-
     </div>
   );
 }
