@@ -108,7 +108,7 @@ function SidebarInner() {
         width: 220, background: "#000000", borderRight: "1px solid #18181b",
         display: "flex", flexDirection: "column", padding: "24px 0", flexShrink: 0,
         ...(isMobile ? {
-          position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 150,
+          position: "fixed", top: 56, left: 0, height: "calc(100dvh - 56px)", zIndex: 150,
           transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
           transition: "transform 0.25s ease",
           boxShadow: sidebarOpen ? "4px 0 32px rgba(0,0,0,0.8)" : "none",
@@ -116,7 +116,7 @@ function SidebarInner() {
           position: "sticky", top: 0, height: "100vh",
         }),
       }}>
-        <div style={{ padding: "0 20px 28px", textAlign: "center" }}>
+        <div style={{ padding: isMobile ? "20px 20px 28px" : "0 20px 28px", textAlign: "center" }}>
           <img src="/logo-white.png" alt="Signal Strike Logo"
             style={{ width: isMobile ? "100px" : "110px", height: "auto", maxWidth: "100%", display: "block", margin: "0 auto 12px auto", opacity: 0.9 }} />
           <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#ffffff", letterSpacing: "0.12em", textAlign: "center", fontFamily: "var(--font-cinzel, serif)", textTransform: "uppercase" }}>
