@@ -99,54 +99,120 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
   const { h, m, s } = formatCountdown(seconds);
   const isImminent  = seconds < 300;
 
+  const digit = (val: string, label: string, key: number) => (
+    <div key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      <span style={{
+        fontFamily: "monospace",
+        fontSize: isMobile ? "1.6rem" : "2.1rem",
+        fontWeight: 800,
+        color: isImminent ? "#C9A84C" : "#fafafa",
+        minWidth: isMobile ? 36 : 44,
+        textAlign: "center",
+        lineHeight: 1,
+        transition: "color 0.3s",
+      }}>
+        {val}
+      </span>
+      <span style={{
+        color: "#52525b",
+        fontSize: "0.55rem",
+        fontWeight: 700,
+        letterSpacing: "0.14em",
+        textTransform: "uppercase",
+      }}>
+        {label}
+      </span>
+    </div>
+  );
+
+  const colon = (key: string) => (
+    <span key={key} style={{
+      color: "#3f3f46",
+      fontSize: isMobile ? "1.4rem" : "1.7rem",
+      fontWeight: 700,
+      marginBottom: 14,
+      lineHeight: 1,
+    }}>:</span>
+  );
+
   return (
     <div style={{
       background: "#111113",
       border: "1px solid #27272a",
       borderRadius: 12,
-      padding: "16px 20px",
+      padding: isMobile ? "16px 20px" : "18px 22px",
       display: "flex",
       flexDirection: "column",
-      gap: 8,
+      gap: 12,
       width: isMobile ? "100%" : undefined,
-      minWidth: isMobile ? undefined : 240,
+      minWidth: isMobile ? undefined : 280,
     }}>
-      {/* Top row — label + schedule/last sent meta */}
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: isMobile ? "center" : "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-        <p style={{
-          color: "#71717a", fontSize: "0.72rem", fontWeight: 700,
-          textTransform: "uppercase", letterSpacing: "0.08em", margin: 0,
-        }}>
-          Next Daily Signal
-        </p>
-        <div style={{ textAlign: isMobile ? "center" : "right" }}>
-          {sendTime && (
-            <p style={{ color: "#52525b", fontSize: "0.82rem", margin: "0 0 3px" }}>
-              Scheduled daily at <strong style={{ color: "#a1a1aa" }}>{fmtScheduledTime(sendTime)}</strong>
-            </p>
-          )}
-          <p style={{ color: "#52525b", fontSize: "0.82rem", margin: 0 }}>
-            Last sent: <strong style={{ color: "#a1a1aa" }}>{fmtLastSent(lastSentAt)}</strong>
-          </p>
-        </div>
+      {/* Label */}
+      <p style={{
+        color: "#71717a",
+        fontSize: "0.7rem",
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.12em",
+        margin: 0,
+        textAlign: isMobile ? "center" : "left",
+      }}>
+        Next Daily Signal
+      </p>
+
+      {/* Hero countdown */}
+      <div style={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        gap: isMobile ? 4 : 8,
+      }}>
+        {digit(h, "Hrs", 0)}
+        {colon("c1")}
+        {digit(m, "Min", 1)}
+        {colon("c2")}
+        {digit(s, "Sec", 2)}
       </div>
 
-      {/* Countdown */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: isMobile ? "center" : "flex-start", gap: 2 }}>
-        {[h, m, s].map((unit, i) => (
-          <span key={i} style={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <span style={{
-              fontFamily: "monospace", fontSize: isMobile ? "1.6rem" : "1.9rem", fontWeight: 800,
-              color: isImminent ? "#C9A84C" : "#fafafa",
-              minWidth: 36, textAlign: "center", lineHeight: 1, transition: "color 0.3s",
-            }}>
-              {unit}
+      {/* Divider */}
+      <div style={{
+        height: 1,
+        background: "linear-gradient(90deg, transparent 0%, rgba(201,168,76,0.25) 50%, transparent 100%)",
+        margin: "2px 0",
+      }} />
+
+      {/* Footer stat strip */}
+      <div style={{
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        gap: isMobile ? 6 : 12,
+        justifyContent: "space-between",
+        alignItems: isMobile ? "center" : "stretch",
+      }}>
+        {sendTime && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, justifyContent: isMobile ? "center" : "flex-start" }}>
+            <span style={{ fontSize: "0.85rem", lineHeight: 1 }}>⏰</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <span style={{ color: "#52525b", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", lineHeight: 1 }}>
+                Scheduled
+              </span>
+              <span style={{ color: "#a1a1aa", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.2 }}>
+                {fmtScheduledTime(sendTime)} daily
+              </span>
+            </div>
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, justifyContent: isMobile ? "center" : "flex-end" }}>
+          <span style={{ fontSize: "0.85rem", lineHeight: 1 }}>📨</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, alignItems: isMobile ? "center" : "flex-end" }}>
+            <span style={{ color: "#52525b", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", lineHeight: 1 }}>
+              Last Sent
             </span>
-            {i < 2 && (
-              <span style={{ color: "#52525b", fontSize: "1.5rem", fontWeight: 700, marginBottom: 2 }}>:</span>
-            )}
-          </span>
-        ))}
+            <span style={{ color: "#a1a1aa", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.2 }}>
+              {fmtLastSent(lastSentAt)}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Send Early Signal button */}
@@ -154,10 +220,9 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
         onClick={handleEarlySend}
         disabled={sending}
         style={{
-  
-          width: "100%", padding: "8px 0",
-          fontSize: "0.75rem", fontWeight: 700,
-          letterSpacing: "0.06em", textTransform: "uppercase",
+          width: "100%", padding: "9px 0",
+          fontSize: "0.72rem", fontWeight: 700,
+          letterSpacing: "0.08em", textTransform: "uppercase",
           border: "1px solid #27272a", borderRadius: 8,
           cursor: sending ? "not-allowed" : "pointer",
           transition: "all 0.2s",
