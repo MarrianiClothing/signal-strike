@@ -168,9 +168,9 @@ function LoginPageContent() {
 
           {/* Mobile logo */}
           {isMobile && (
-            <div style={{ textAlign: "center", marginBottom: 36 }}>
-              <img src="/logo-white.png" alt="Signal Strike" style={{ width: 72, marginBottom: 16, opacity: 0.95 }} />
-              <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#ffffff", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4, fontFamily: "var(--font-cinzel, serif)" }}>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <img src="/logo-white.png" alt="Signal Strike" style={{ width: 48, marginBottom: 10, opacity: 0.95 }} />
+              <h1 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#ffffff", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4, fontFamily: "var(--font-cinzel, serif)" }}>
                 Signal Strike
               </h1>
               <p style={{ fontSize: "0.65rem", color: "#C9A84C", letterSpacing: "0.18em", textTransform: "uppercase" }}>Revenue CRM</p>
