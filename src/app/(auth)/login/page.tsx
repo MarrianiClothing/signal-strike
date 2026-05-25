@@ -56,9 +56,24 @@ function LoginPageContent() {
         return;
       }
 
-      // Not a recovery flow — check if user is already signed in
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && !cancelled) {
+      // Not a recovery flow — check if user is already signed in.
+      // CRITICAL: use getUser() (which validates against Supabase) rather than
+      // getSession() (which just reads cookies). Stale cookies will pass
+      // getSession() but fail getUser() — causing an infinite redirect loop
+      // because /account uses getUser() and bounces back to /login.
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        // Stale or no session. If cookies were present but invalid, signOut
+        // clears them so the next page load doesn't try to redirect again.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.auth.signOut();
+        }
+        return; // stay on /login
+      }
+
+      if (!cancelled) {
         router.push("/account");
       }
     }
