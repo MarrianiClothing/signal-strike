@@ -253,7 +253,7 @@ export default function DashboardPage() {
         {!isMobile && (<>
         {/* Signal Search */}
         <div style={{ marginBottom: 4 }}>
-          <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C", display: "block", marginBottom: 6, textAlign: "center" }}>⚡ Signal Search</span>
+          <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C", display: "block", marginBottom: 6, textAlign: "left" }}>⚡ Signal Search</span>
         </div>
         <div style={{ position: "relative" }}>
             <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#52525b", fontSize: "0.85rem", pointerEvents: "none" }}>🔍</span>
