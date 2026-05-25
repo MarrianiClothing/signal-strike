@@ -930,10 +930,20 @@ export async function GET(req: NextRequest) {
       });
 
       // Mark this profile as having received its Daily Signal
-      await supabase
+      const lastSentTs = new Date().toISOString();
+      const { data: previewUpdRows, error: previewUpdErr } = await supabase
         .from("profiles")
-        .update({ last_signal_sent_at: new Date().toISOString() })
-        .eq("id", profile.id);
+        .update({ last_signal_sent_at: lastSentTs })
+        .eq("id", profile.id)
+        .select("id, last_signal_sent_at");
+
+      if (previewUpdErr) {
+        console.error("[daily-signal preview] failed to write last_signal_sent_at:", previewUpdErr);
+      } else if (!previewUpdRows || previewUpdRows.length === 0) {
+        console.error("[daily-signal preview] last_signal_sent_at UPDATE matched 0 rows for profile.id =", profile.id);
+      } else {
+        console.log("[daily-signal preview] last_signal_sent_at written:", previewUpdRows[0]);
+      }
 
       return NextResponse.json({ ok: true, sent_to: email });
     }
@@ -1022,10 +1032,20 @@ export async function GET(req: NextRequest) {
       });
 
       // Mark this profile as having received its Daily Signal
-      await supabase
+      const lastSentTsCron = new Date().toISOString();
+      const { data: cronUpdRows, error: cronUpdErr } = await supabase
         .from("profiles")
-        .update({ last_signal_sent_at: new Date().toISOString() })
-        .eq("id", profile.id);
+        .update({ last_signal_sent_at: lastSentTsCron })
+        .eq("id", profile.id)
+        .select("id, last_signal_sent_at");
+
+      if (cronUpdErr) {
+        console.error("[daily-signal cron] failed to write last_signal_sent_at:", cronUpdErr);
+      } else if (!cronUpdRows || cronUpdRows.length === 0) {
+        console.error("[daily-signal cron] last_signal_sent_at UPDATE matched 0 rows for profile.id =", profile.id);
+      } else {
+        console.log("[daily-signal cron] last_signal_sent_at written:", cronUpdRows[0]);
+      }
 
       sent++;
     }
