@@ -90,6 +90,9 @@ function SidebarInner() {
             }
           </button>
           <span style={{
+            position: "absolute", left: "50%", top: "calc(env(safe-area-inset-top) + 28px)",
+            transform: "translate(-50%, -50%)",
+            pointerEvents: "none",
             color: "#C9A84C", fontSize: "1rem", fontWeight: 700,
             fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.08em",
             textTransform: "uppercase",
