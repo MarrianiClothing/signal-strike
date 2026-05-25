@@ -160,7 +160,9 @@ function LoginPageContent() {
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
         padding: isMobile ? "48px 24px" : "60px 48px",
-        minHeight: isMobile ? "100vh" : "auto",
+        minHeight: isMobile ? "100dvh" : "auto",
+        paddingTop: isMobile ? "env(safe-area-inset-top)" : undefined,
+        paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined,
       }}>
         <div style={{ width: "100%", maxWidth: 400 }}>
 

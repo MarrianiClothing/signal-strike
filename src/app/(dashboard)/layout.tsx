@@ -70,9 +70,11 @@ function SidebarInner() {
       {isMobile && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
-          height: 56, background: "#000000", borderBottom: "1px solid #18181b",
+          height: "calc(56px + env(safe-area-inset-top))",
+          paddingTop: "env(safe-area-inset-top)",
+          background: "#000000", borderBottom: "1px solid #18181b",
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 16px",
+          padding: "env(safe-area-inset-top) 16px 0 16px",
         }}>
           <button onClick={() => setSidebarOpen(o => !o)} style={{
             width: 44, height: 44, borderRadius: 8, background: "transparent",
@@ -161,7 +163,7 @@ function SidebarInner() {
         width: 220, background: "#000000", borderRight: "1px solid #18181b",
         display: "flex", flexDirection: "column", padding: "24px 0", flexShrink: 0,
         ...(isMobile ? {
-          position: "fixed", top: 56, left: 0, height: "calc(100dvh - 56px)", zIndex: 150,
+          position: "fixed", top: "calc(56px + env(safe-area-inset-top))", left: 0, height: "calc(100dvh - 56px - env(safe-area-inset-top))", zIndex: 150,
           transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
           transition: "transform 0.25s ease",
           boxShadow: sidebarOpen ? "4px 0 32px rgba(0,0,0,0.8)" : "none",
