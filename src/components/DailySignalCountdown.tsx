@@ -112,14 +112,14 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
       minWidth: isMobile ? undefined : 240,
     }}>
       {/* Top row — label + schedule/last sent meta */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 6 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: isMobile ? "center" : "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
         <p style={{
           color: "#71717a", fontSize: "0.72rem", fontWeight: 700,
           textTransform: "uppercase", letterSpacing: "0.08em", margin: 0,
         }}>
           Next Daily Signal
         </p>
-        <div style={{ textAlign: "right" }}>
+        <div style={{ textAlign: isMobile ? "center" : "right" }}>
           {sendTime && (
             <p style={{ color: "#52525b", fontSize: "0.82rem", margin: "0 0 3px" }}>
               Scheduled daily at <strong style={{ color: "#a1a1aa" }}>{fmtScheduledTime(sendTime)}</strong>
@@ -132,7 +132,7 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
       </div>
 
       {/* Countdown */}
-      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: isMobile ? "center" : "flex-start", gap: 2 }}>
         {[h, m, s].map((unit, i) => (
           <span key={i} style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <span style={{
@@ -155,7 +155,7 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
         disabled={sending}
         style={{
   
-          padding: "8px 0",
+          width: "100%", padding: "8px 0",
           fontSize: "0.75rem", fontWeight: 700,
           letterSpacing: "0.06em", textTransform: "uppercase",
           border: "1px solid #27272a", borderRadius: 8,
