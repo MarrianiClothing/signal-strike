@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 import { LayoutGrid, Users, Radar, FileText, Receipt, UserPlus, LineChart, MessageSquare, LogOut, Settings as SettingsIcon, CreditCard, ChevronUp, Bell, Search, Menu, X } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import SignalSearchModal from "@/components/SignalSearchModal";
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -41,6 +42,7 @@ function SidebarInner() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isMobile    = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,6 +95,16 @@ function SidebarInner() {
             textTransform: "uppercase",
           }}>{pageTitle}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <button
+              onClick={() => setSearchOpen(true)}
+              aria-label="Open Signal Search"
+              style={{
+                width: 44, height: 44, borderRadius: 22,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "transparent", border: "none", cursor: "pointer",
+                color: "#C9A84C", padding: 0,
+              }}
+            ><Search size={22} strokeWidth={2} /></button>
             <NotificationBell size={44} />
             <div ref={mobileMenuRef} style={{ position: "relative" }}>
             <button
@@ -288,6 +300,7 @@ function SidebarInner() {
         {isMobile && <div style={{ height: 56 }} />}
         <SidebarChildren />
       </main>
+      <SignalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
