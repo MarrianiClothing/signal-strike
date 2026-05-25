@@ -213,6 +213,7 @@ export default function DashboardPage() {
 
         {/* Top row — welcome + countdown */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: 16, marginBottom: 12, flexDirection: isMobile ? "column" : "row" }}>
+          {!isMobile && (
           <div style={{ flex: 1, minWidth: 0, textAlign: isMobile ? "center" : "left" }}>
             <h1 style={{ fontSize: isMobile ? "1.3rem" : "2.2rem", fontWeight: 800, color: "#fafafa", margin: "0 0 6px", fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
               {userName ? `Welcome back, ${userName}` : "Dashboard"}
@@ -221,13 +222,17 @@ export default function DashboardPage() {
               {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
+          )}
           {userId && <DailySignalCountdown userId={userId} />}
         </div>
 
         {/* Gold divider */}
+        {!isMobile && (
         <div style={{ height: 1, background: "linear-gradient(90deg, rgba(201,168,76,0.4) 0%, rgba(201,168,76,0.1) 60%, transparent 100%)", marginBottom: 12 }} />
+        )}
 
         {/* Daily quote */}
+        {!isMobile && (
         <p style={{
           color: "rgba(250,250,250,0.6)",
           fontFamily: "var(--font-cinzel, serif)",
@@ -243,7 +248,9 @@ export default function DashboardPage() {
             — {dailyQuote.author}
           </span>
         </p>
+        )}
 
+        {!isMobile && (<>
         {/* Signal Search */}
         <div style={{ marginBottom: 4 }}>
           <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C", display: "block", marginBottom: 6, textAlign: "center" }}>⚡ Signal Search</span>
@@ -311,6 +318,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+        </>)}
       </div>
 
       {/* Stats */}
