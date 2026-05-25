@@ -7,12 +7,14 @@ interface Message { role: "user" | "assistant"; content: string; }
 const SUGGESTIONS = [
   "What's my total pipeline value?",
   "Which deals are closest to closing?",
-  "Show me all deals in negotiation",
+  "Which jobs have overdue milestones?",
+  "Summarize my open work orders",
   "What's my win rate this year?",
   "Which deal has the highest commission?",
   "How much have I spent on Travel expenses?",
-  "What are my pending next tasks?",
   "Summarize my pipeline by stage",
+  "What unread notifications do I have?",
+  "How do I add a prospect with Scout?",
 ];
 
 function MessageBubble({ msg }: { msg: Message }) {
@@ -99,7 +101,7 @@ export default function AskSignalPage() {
           
           <div>
             <h1 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#fafafa", fontFamily: "var(--font-cinzel, serif)" }}>Ask Signal</h1>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#52525b" }}>Your AI revenue assistant — ask anything about your deals, pipeline, or expenses</p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#52525b" }}>Your AI revenue assistant — pipeline, jobs, expenses, team, and how to use Signal Strike</p>
           </div>
           {messages.length > 0 && (
             <button onClick={() => setMessages([])} style={{
@@ -119,7 +121,7 @@ export default function AskSignalPage() {
             <div style={{ textAlign: "center", padding: "32px 0 40px" }}>
               <img src="/logo-white.png" alt="Signal Strike" style={{ width: 64, height: "auto", marginBottom: 12, opacity: 0.9 }} />
               <h2 style={{ color: "#fafafa", fontWeight: 700, margin: "0 0 8px", fontSize: "1.3rem" }}>How can I help you today?</h2>
-              <p style={{ color: "#52525b", fontSize: "0.85rem", margin: 0 }}>Ask me anything about your deals, pipeline, commissions, or expenses.</p>
+              <p style={{ color: "#52525b", fontSize: "0.85rem", margin: 0 }}>Ask about your pipeline, jobs, milestones, expenses, team, or how to use any Signal Strike feature.</p>
             </div>
             {/* Suggestion pills */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
@@ -162,7 +164,7 @@ export default function AskSignalPage() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Ask about your deals, pipeline, expenses..."
+            placeholder="Ask about your pipeline, jobs, expenses, team..."
             rows={1}
             style={{
               flex: 1, background: "#111113", border: "1px solid #27272a", borderRadius: 12,

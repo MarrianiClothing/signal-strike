@@ -111,12 +111,14 @@ function SidebarInner() {
             {!isMobile && <NotificationBell size={44} />}
             <div ref={mobileMenuRef} style={{ position: "relative" }}>
             <button
-              onClick={() => setMobileMenuOpen(p => !p)}
+              onClick={() => router.push("/dashboard")}
+              aria-label="Go to dashboard"
+              title="Dashboard"
               style={{
                 width: 44, height: 44, borderRadius: "50%",
                 background: "rgba(201,168,76,0.15)",
-                border: `1px solid ${mobileMenuOpen ? "#fafafa" : "#C9A84C"}`,
-                color: mobileMenuOpen ? "#fafafa" : "#C9A84C",
+                border: "1px solid #C9A84C",
+                color: "#C9A84C",
                 fontSize: "0.72rem", fontWeight: 700,
                 fontFamily: "var(--font-montserrat, sans-serif)",
                 display: "flex", alignItems: "center", justifyContent: "center",
