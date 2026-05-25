@@ -455,16 +455,6 @@ export default function ProspectsPage() {
         </div>
       )}
 
-      {/* DASH Import button */}
-      <div style={{ marginBottom: 16, display:"flex", justifyContent:"flex-end" }}>
-        <label style={{ background:"#1c1c1f", border:"1px solid #27272a", color:"#a1a1aa", borderRadius:8, padding:"8px 16px", fontWeight:600, fontSize:"0.82rem", cursor:"pointer", display:"flex", alignItems:"center", gap:8 }}
-          onClick={() => setDashModal(true)}>
-          📂 Import DASH Deals
-          <input type="file" accept=".xls,.xlsx,.html,.htm" style={{ display:"none" }}
-            onChange={e => { setDashModal(true); setDashError(""); setDashJobs([]); handleDashFile(e); }} />
-        </label>
-      </div>
-
       {/* ── AI Search Bar ───────────────────────────────────────────────────── */}
       <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:20, marginBottom:16 }}>
         <div style={{ marginBottom:10 }}>
