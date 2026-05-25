@@ -499,66 +499,7 @@ export default function ProspectsPage() {
         )}
       </div>
 
-      {/* ── Filter Panel ─────────────────────────────────────────────────────── */}
-      <div style={{ background:"#111113", border:"1px solid #27272a", borderRadius:12, padding:20, marginBottom:20 }}>
-        <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap:14, marginBottom:16 }}>
-          <div>
-            <label style={lbl}>Keywords</label>
-            <input style={inp} placeholder="e.g. restoration, commercial roofing"
-              value={keywords} onChange={e => setKeywords(e.target.value)}
-              onKeyDown={e => e.key==="Enter" && handleSearch(1)} />
-          </div>
-          <div>
-            <label style={lbl}>Job Titles <span style={{ color:"#3f3f46", fontWeight:400 }}>(comma-separated)</span></label>
-            <input style={inp} placeholder="e.g. VP Operations, Facilities Manager"
-              value={titles} onChange={e => setTitles(e.target.value)}
-              onKeyDown={e => e.key==="Enter" && handleSearch(1)} />
-          </div>
-          <div>
-            <label style={lbl}>Location</label>
-            <input style={inp} placeholder="e.g. Kansas City, MO"
-              value={location} onChange={e => setLocation(e.target.value)}
-              onKeyDown={e => e.key==="Enter" && handleSearch(1)} />
-          </div>
-        </div>
-
-        {/* Seniority pills */}
-        <div style={{ marginBottom:14 }}>
-          <label style={lbl}>Seniority</label>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-            {SENIORITY_OPTS.map(s => (
-              <button key={s} onClick={() => toggleSeniority(s)} style={pill(seniorities.includes(s))}>
-                {s.replace("_"," ").replace(/\w/g,c=>c.toUpperCase())}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Company size pills */}
-        <div style={{ marginBottom:16 }}>
-          <label style={lbl}>Company Size</label>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-            {COMPANY_SIZE_OPTS.map(s => (
-              <button key={s.value} onClick={() => toggleSize(s.value)} style={pill(companySizes.includes(s.value))}>
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
-          <button onClick={() => { setKeywords(""); setTitles(""); setLocation(""); setSeniorities([]); setCompanySizes([]); setProspects([]); setTotal(0); }}
-            style={{ background:"none", border:"1px solid #27272a", color:"#71717a", borderRadius:8, padding:"8px 16px", fontSize:"0.85rem", cursor:"pointer" }}>
-            Clear
-          </button>
-          <button onClick={() => handleSearch(1)} disabled={loading}
-            style={{ background:"#C9A84C", color:"#000", border:"none", borderRadius:8, padding:"8px 24px", fontWeight:700, fontSize:"0.85rem", cursor:"pointer", opacity:loading?0.7:1 }}>
-            {loading ? "Searching..." : "Search Prospects"}
-          </button>
-        </div>
-      </div>
-
-      {/* Error */}
+            {/* Error */}
       {error && (
         <div style={{ background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.2)", borderRadius:10, padding:"12px 16px", marginBottom:16 }}>
           <p style={{ color:"#f87171", fontSize:"0.85rem", margin:0 }}>{error}</p>
@@ -840,10 +781,12 @@ export default function ProspectsPage() {
 
       {/* Empty state */}
       {!loading && prospects.length === 0 && !error && (
-        <div style={{ textAlign:"center", padding:"60px 0", color:"#3f3f46" }}>
-          <div style={{ fontSize:"3rem", marginBottom:12 }}>🔍</div>
-          <p style={{ color:"#52525b", fontSize:"0.95rem", margin:"0 0 6px" }}>Search for prospects</p>
-          <p style={{ fontSize:"0.82rem", margin:0 }}>Use the filters above to find contacts by title, location, seniority, or company size</p>
+        <div style={{ textAlign:"center", padding:"60px 20px", color:"#3f3f46" }}>
+          <div style={{ fontSize:"2.4rem", marginBottom:14, color:"#C9A84C", opacity:0.7 }}>✦</div>
+          <p style={{ color:"#a1a1aa", fontSize:"0.95rem", margin:"0 0 8px", fontWeight:600 }}>Describe your ideal prospect</p>
+          <p style={{ fontSize:"0.82rem", margin:0, maxWidth:420, marginLeft:"auto", marginRight:"auto", lineHeight:1.5 }}>
+            Use the AI search above. Try something like <span style={{ color:"#71717a", fontStyle:"italic" }}>"VP Operations at mid-size commercial property firms in Kansas City"</span>
+          </p>
         </div>
       )}
     </div>
