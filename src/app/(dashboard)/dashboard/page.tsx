@@ -206,7 +206,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <div style={{ padding: isMobile ? "0 16px 24px" : "20px 20px 32px", boxSizing: "border-box", width: "100%", minWidth: 0 }}>
+    <div style={{ padding: isMobile ? "16px 16px 24px" : "20px 20px 32px", boxSizing: "border-box", width: "100%", minWidth: 0 }}>
 
       {/* Header */}
       <div style={{ marginBottom: isMobile ? 16 : 20, background: "#111113", border: "1px solid #27272a", borderRadius: 14, padding: isMobile ? "16px" : "20px 24px", marginBottom: 16 }}>
