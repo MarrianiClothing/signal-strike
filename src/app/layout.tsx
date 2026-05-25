@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cinzel, Montserrat } from "next/font/google";
 import "./globals.css";
 
@@ -20,7 +20,6 @@ export const metadata: Metadata = {
   title: "Signal Strike",
   description: "Revenue CRM for sales teams. Track deals, manage your pipeline, and never miss a signal.",
   manifest: "/manifest.json",
-  themeColor: "#C9A84C",
   icons: {
     icon: [
       { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
@@ -39,6 +38,16 @@ export const metadata: Metadata = {
     telephone: false,
   },
 };
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: "#C9A84C",
+};
+
 
 export default function RootLayout({
   children,

@@ -32,3 +32,15 @@ h1, h2, h3, h4 {
 input, button, select, textarea {
   font-family: var(--font-montserrat), system-ui, sans-serif;
 }
+
+/* iOS-zoom-prevention */
+/* iOS Safari auto-zooms on input focus when font-size < 16px.
+   Force >=16px on mobile breakpoints to prevent the zoom-and-stay-zoomed bug.
+   Desktop is unaffected; component-level sizing still wins above 768px. */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
