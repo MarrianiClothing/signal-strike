@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
+import { LayoutGrid, Users, Radar, FileText, Receipt, UserPlus, LineChart, MessageSquare, LogOut, Settings as SettingsIcon, CreditCard, ChevronUp, Bell, Search, Menu, X } from "lucide-react";
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -16,14 +17,14 @@ function useIsMobile() {
 }
 
 const NAV = [
-  { href: "/dashboard",  label: "Dashboard"  },
-  { href: "/deals",      label: "Deals"      },
-  { href: "/prospects", label: "Scout" },
-  { href: "/projects",  label: "Jobs"  },
-  { href: "/expenses",   label: "Expenses"   },
-  { href: "/team",       label: "Team"       },
-  { href: "/manager",    label: "Manager"    },
-  { href: "/ask-signal", label: "Ask Signal" },
+  { href: "/dashboard",  label: "Dashboard",  Icon: LayoutGrid    },
+  { href: "/deals",      label: "Deals",      Icon: Users         },
+  { href: "/prospects",  label: "Scout",      Icon: Radar         },
+  { href: "/projects",   label: "Jobs",       Icon: FileText      },
+  { href: "/expenses",   label: "Expenses",   Icon: Receipt       },
+  { href: "/team",       label: "Team",       Icon: UserPlus      },
+  { href: "/manager",    label: "Manager",    Icon: LineChart     },
+  { href: "/ask-signal", label: "Ask Signal", Icon: MessageSquare },
 ];
 
 function SidebarInner() {
@@ -79,12 +80,8 @@ function SidebarInner() {
             alignItems: "center", justifyContent: "center", gap: 4, padding: 0,
           }}>
             {sidebarOpen
-              ? <span style={{ fontSize: "1.1rem", color: "#C9A84C" }}>✕</span>
-              : <>
-                  <span style={{ width: 20, height: 2, background: "#C9A84C", borderRadius: 2, display: "block" }} />
-                  <span style={{ width: 20, height: 2, background: "#C9A84C", borderRadius: 2, display: "block" }} />
-                  <span style={{ width: 20, height: 2, background: "#C9A84C", borderRadius: 2, display: "block" }} />
-                </>
+              ? <X size={22} color="#C9A84C" strokeWidth={2} />
+              : <Menu size={22} color="#C9A84C" strokeWidth={2} />
             }
           </button>
           <span style={{
@@ -197,7 +194,7 @@ function SidebarInner() {
               <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#fafafa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hydrated ? (fullName || "User") : "User"}</p>
               <p style={{ fontSize: "0.65rem", color: "#52525b", letterSpacing: "0.08em", textTransform: "uppercase" }}>HillTop Ave</p>
             </div>
-            <span style={{ marginLeft: "auto", color: "#52525b", fontSize: "0.7rem" }}>▾</span>
+            <ChevronUp style={{ marginLeft: "auto", color: "#52525b", width: 14, height: 14, transition: "transform 0.2s", transform: dropdownOpen ? "rotate(0deg)" : "rotate(180deg)" }} />
           </button>
 
           {dropdownOpen && (
@@ -213,7 +210,15 @@ function SidebarInner() {
                 }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#27272a")}
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                  <span>⚙</span> Settings
+                  <SettingsIcon size={15} strokeWidth={2} /> Settings
+                </a>
+                <a href="/account" onClick={() => setDropdownOpen(false)} style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
+                  borderRadius: 7, color: "#a1a1aa", textDecoration: "none", fontSize: "0.85rem", fontWeight: 500,
+                }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#27272a")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                  <CreditCard size={15} strokeWidth={2} /> Account & Billing
                 </a>
                 <div style={{ height: 1, background: "#27272a", margin: "4px 0" }} />
                 <button onClick={handleSignOut} style={{
@@ -224,7 +229,7 @@ function SidebarInner() {
                 }}
                   onMouseEnter={e => (e.currentTarget.style.background = "rgba(248,113,113,0.08)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                  <span>↩</span> Sign Out
+                  <LogOut size={15} strokeWidth={2} /> Sign Out
                 </button>
               </div>
             </div>
@@ -232,21 +237,24 @@ function SidebarInner() {
         </div>
 
         <nav style={{ flex: 1, padding: "0 10px" }}>
-          {NAV.map(item => {
-            const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          {NAV.map(({ href, label, Icon }) => {
+            const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
             return (
-              <a key={item.href} href={item.href} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 14px", borderRadius: 8, marginBottom: 2,
-                background: active ? "rgba(255,255,255,0.06)" : "transparent",
-                color: active ? "#ffffff" : "#71717a",
-                textDecoration: "none", fontSize: "0.78rem",
-                fontWeight: active ? 600 : 400,
+              <a key={href} href={href} style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "10px 14px", borderRadius: 8, marginBottom: 2,
+                background: active ? "rgba(201,168,76,0.12)" : "transparent",
+                color: active ? "#C9A84C" : "#71717a",
+                textDecoration: "none", fontSize: "0.82rem",
+                fontWeight: active ? 600 : 500,
                 fontFamily: "var(--font-montserrat, sans-serif)",
-                letterSpacing: active ? "0.08em" : "0.05em",
-                textTransform: "uppercase", transition: "all 0.15s",
-                borderLeft: active ? "2px solid #ffffff" : "2px solid transparent",
-              }}>{item.label}</a>
+                letterSpacing: "0.04em",
+                transition: "all 0.15s",
+                border: active ? "1px solid rgba(201,168,76,0.25)" : "1px solid transparent",
+              }}>
+                <Icon size={17} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+                {label}
+              </a>
             );
           })}
         </nav>
