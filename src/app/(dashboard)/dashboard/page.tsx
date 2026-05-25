@@ -214,7 +214,7 @@ export default function DashboardPage() {
         {/* Top row — welcome + countdown */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: 16, marginBottom: 12, flexDirection: isMobile ? "column" : "row" }}>
           <div style={{ flex: 1, minWidth: 0, textAlign: isMobile ? "center" : "left" }}>
-            <h1 style={{ fontSize: isMobile ? "1.5rem" : "2.2rem", fontWeight: 800, color: "#fafafa", margin: "0 0 6px", fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
+            <h1 style={{ fontSize: isMobile ? "1.3rem" : "2.2rem", fontWeight: 800, color: "#fafafa", margin: "0 0 6px", fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
               {userName ? `Welcome back, ${userName}` : "Dashboard"}
             </h1>
             <p style={{ color: "#71717a", fontSize: "0.95rem", margin: 0, letterSpacing: "0.03em" }}>
@@ -235,7 +235,7 @@ export default function DashboardPage() {
           fontStyle: "italic",
           fontWeight: 400,
           margin: "0 0 14px",
-          lineHeight: 1.6,
+          lineHeight: 1.6, textAlign: isMobile ? "center" : "left",
           letterSpacing: "0.02em",
         }}>
           &ldquo;{dailyQuote.text}&rdquo;{" "}
@@ -246,7 +246,7 @@ export default function DashboardPage() {
 
         {/* Signal Search */}
         <div style={{ marginBottom: 4 }}>
-          <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C", display: "block", marginBottom: 6 }}>⚡ Signal Search</span>
+          <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A84C", display: "block", marginBottom: 6, textAlign: "center" }}>⚡ Signal Search</span>
         </div>
         <div style={{ position: "relative" }}>
             <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#52525b", fontSize: "0.85rem", pointerEvents: "none" }}>🔍</span>
@@ -261,7 +261,7 @@ export default function DashboardPage() {
                 width: "100%", boxSizing: "border-box",
                 background: "#18181b", border: `1px solid ${searchFocused ? "#C9A84C" : "#27272a"}`,
                 borderRadius: 8, padding: "8px 30px 8px 32px",
-                color: "#fafafa", fontSize: "0.82rem", outline: "none",
+                color: "#fafafa", fontSize: "0.82rem", outline: "none", textAlign: "center",
                 transition: "border-color 0.2s",
               }}
             />

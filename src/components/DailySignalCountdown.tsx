@@ -136,7 +136,7 @@ export default function DailySignalCountdown({ userId }: { userId: string }) {
         {[h, m, s].map((unit, i) => (
           <span key={i} style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <span style={{
-              fontFamily: "monospace", fontSize: "1.9rem", fontWeight: 800,
+              fontFamily: "monospace", fontSize: isMobile ? "1.6rem" : "1.9rem", fontWeight: 800,
               color: isImminent ? "#C9A84C" : "#fafafa",
               minWidth: 36, textAlign: "center", lineHeight: 1, transition: "color 0.3s",
             }}>
