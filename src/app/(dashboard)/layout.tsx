@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 import { LayoutGrid, Users, Radar, FileText, Receipt, UserPlus, LineChart, MessageSquare, LogOut, Settings as SettingsIcon, CreditCard, ChevronUp, Bell, Search, Menu, X } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -89,7 +90,9 @@ function SidebarInner() {
             fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.08em",
             textTransform: "uppercase",
           }}>{pageTitle}</span>
-          <div ref={mobileMenuRef} style={{ position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <NotificationBell size={44} />
+            <div ref={mobileMenuRef} style={{ position: "relative" }}>
             <button
               onClick={() => setMobileMenuOpen(p => !p)}
               style={{
@@ -143,6 +146,7 @@ function SidebarInner() {
                 </div>
               </div>
             )}
+          </div>
           </div>
         </div>
       )}
