@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { Resend } from "resend";
 
 const supabase = createClient(
@@ -884,21 +886,51 @@ export async function GET(req: NextRequest) {
       query = query.limit(1);
     }
 
-    // For preview mode, get any enabled user
+    // For preview mode, identify the signed-in user from request cookies
+    // and process THEIR profile only. Previous version grabbed the first
+    // profile in the table, sending other users' data to random recipients.
     if (preview) {
-      const { data: allProfiles } = await supabase
+      // Build a server-cookie-aware client so getUser() reads the session
+      const cookieStore = await cookies();
+      const authedSupabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll: () => cookieStore.getAll(),
+            setAll: () => {
+              // No-op: route handler, can't set cookies on this response shape
+            },
+          },
+        }
+      );
+
+      const { data: { user: signedInUser }, error: authErr } = await authedSupabase.auth.getUser();
+
+      if (authErr || !signedInUser) {
+        console.error("[daily-signal preview] no signed-in user; rejecting request:", authErr);
+        return NextResponse.json({ ok: false, error: "Not authenticated." }, { status: 401 });
+      }
+
+      console.log("[daily-signal preview] processing for authenticated user:", signedInUser.id, signedInUser.email);
+
+      // Look up THIS user's profile only (still using service-role `supabase` to
+      // bypass RLS, since the row's RLS allows only own-profile reads)
+      const { data: ownProfile, error: ownProfileErr } = await supabase
         .from("profiles")
         .select("id, full_name")
-        .limit(1);
-      const profile = allProfiles?.[0];
-      if (!profile?.id) {
-        return NextResponse.json({ ok: false, error: "No user profile found." });
+        .eq("id", signedInUser.id)
+        .maybeSingle();
+
+      if (ownProfileErr || !ownProfile) {
+        console.error("[daily-signal preview] no profile row for authed user", signedInUser.id, ownProfileErr);
+        return NextResponse.json({ ok: false, error: "No profile row for current user." }, { status: 404 });
       }
-      // Get email from auth.users via admin API
-      const { data: { user: authUser } } = await supabase.auth.admin.getUserById(profile.id);
-      const email = authUser?.email;
+
+      const profile = ownProfile;
+      const email = signedInUser.email;
       if (!email) {
-        return NextResponse.json({ ok: false, error: "No email found for user." });
+        return NextResponse.json({ ok: false, error: "No email on authenticated user." }, { status: 400 });
       }
       // fetch their deals and tiers
       const { data: deals } = await supabase
