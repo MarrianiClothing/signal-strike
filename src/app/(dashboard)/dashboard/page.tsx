@@ -213,7 +213,7 @@ export default function DashboardPage() {
 
         {/* Top row — welcome + countdown */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: 16, marginBottom: 12, flexDirection: isMobile ? "column" : "row" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, textAlign: isMobile ? "center" : "left" }}>
             <h1 style={{ fontSize: isMobile ? "1.5rem" : "2.2rem", fontWeight: 800, color: "#fafafa", margin: "0 0 6px", fontFamily: "var(--font-cinzel, serif)", letterSpacing: "0.04em" }}>
               {userName ? `Welcome back, ${userName}` : "Dashboard"}
             </h1>
@@ -404,7 +404,7 @@ export default function DashboardPage() {
                     const stageColor = STAGE_COLORS[d.stage] || "#71717a";
                     return (
                       <div key={d.id} onClick={() => router.push("/deals/" + d.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#18181b", borderRadius: 8, borderLeft: `3px solid ${stageColor}`, cursor: "pointer" }} onMouseEnter={e => (e.currentTarget.style.background = "#222225")} onMouseLeave={e => (e.currentTarget.style.background = "#18181b")}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ flex: 1, minWidth: 0, textAlign: isMobile ? "center" : "left" }}>
                           <p style={{ color: "#fafafa", fontWeight: 600, fontSize: "0.85rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title}</p>
                           <p style={{ color: "#71717a", fontSize: "0.73rem", marginTop: 2 }}>{d.company || "—"}</p>
                         </div>
