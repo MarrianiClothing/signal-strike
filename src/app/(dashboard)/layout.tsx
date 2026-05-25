@@ -165,16 +165,26 @@ function SidebarInner() {
           position: "sticky", top: 0, height: "100vh",
         }),
       }}>
-        <div style={{ padding: isMobile ? "20px 20px 28px" : "0 20px 28px", textAlign: "center" }}>
-          <img src="/logo-white.png" alt="Signal Strike Logo"
-            style={{ width: isMobile ? "100px" : "110px", height: "auto", maxWidth: "100%", display: "block", margin: "0 auto 12px auto", opacity: 0.9 }} />
-          <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#ffffff", letterSpacing: "0.12em", textAlign: "center", fontFamily: "var(--font-cinzel, serif)", textTransform: "uppercase" }}>
-            Signal Strike
-          </h1>
-          <p style={{ color: "#71717a", fontSize: "0.62rem", marginTop: 4, textAlign: "center", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "var(--font-montserrat, sans-serif)" }}>
-            Revenue CRM
-          </p>
-        </div>
+        {isMobile ? (
+          <div style={{ padding: "8px 16px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+            <img src="/logo-white.png" alt="Signal Strike Logo"
+              style={{ width: 32, height: "auto", flexShrink: 0, opacity: 0.9 }} />
+            <h1 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#ffffff", letterSpacing: "0.1em", margin: 0, fontFamily: "var(--font-cinzel, serif)", textTransform: "uppercase" }}>
+              Signal Strike
+            </h1>
+          </div>
+        ) : (
+          <div style={{ padding: "0 20px 28px", textAlign: "center" }}>
+            <img src="/logo-white.png" alt="Signal Strike Logo"
+              style={{ width: "110px", height: "auto", maxWidth: "100%", display: "block", margin: "0 auto 12px auto", opacity: 0.9 }} />
+            <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#ffffff", letterSpacing: "0.12em", textAlign: "center", fontFamily: "var(--font-cinzel, serif)", textTransform: "uppercase" }}>
+              Signal Strike
+            </h1>
+            <p style={{ color: "#71717a", fontSize: "0.62rem", marginTop: 4, textAlign: "center", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "var(--font-montserrat, sans-serif)" }}>
+              Revenue CRM
+            </p>
+          </div>
+        )}
 
         <div ref={dropdownRef} style={{ padding: "0 10px 16px", position: "relative" }}>
           <button onClick={() => setDropdownOpen(p => !p)} style={{
