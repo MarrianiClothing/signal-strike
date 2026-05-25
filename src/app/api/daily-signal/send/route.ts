@@ -928,6 +928,13 @@ export async function GET(req: NextRequest) {
           },
         ],
       });
+
+      // Mark this profile as having received its Daily Signal
+      await supabase
+        .from("profiles")
+        .update({ last_signal_sent_at: new Date().toISOString() })
+        .eq("id", profile.id);
+
       return NextResponse.json({ ok: true, sent_to: email });
     }
 
@@ -1013,6 +1020,13 @@ export async function GET(req: NextRequest) {
           },
         ],
       });
+
+      // Mark this profile as having received its Daily Signal
+      await supabase
+        .from("profiles")
+        .update({ last_signal_sent_at: new Date().toISOString() })
+        .eq("id", profile.id);
+
       sent++;
     }
 
