@@ -105,7 +105,7 @@ function SidebarInner() {
                 color: "#C9A84C", padding: 0,
               }}
             ><Search size={22} strokeWidth={2} /></button>
-            <NotificationBell size={44} />
+            {!isMobile && <NotificationBell size={44} />}
             <div ref={mobileMenuRef} style={{ position: "relative" }}>
             <button
               onClick={() => setMobileMenuOpen(p => !p)}
