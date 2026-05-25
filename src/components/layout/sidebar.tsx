@@ -8,7 +8,7 @@ import type { Profile } from "@/types/database";
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: "◈" },
   { href: "/pipeline", label: "Pipeline", icon: "◫" },
-  { href: "/deals", label: "Deals", icon: "◉" },
+  { href: "/deals", label: "Pipeline", icon: "◉" },
   { href: "/settings", label: "Settings", icon: "◎" },
 ];
 

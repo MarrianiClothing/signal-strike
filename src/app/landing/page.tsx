@@ -411,7 +411,7 @@ export default function LandingPage() {
             />
             <FeatureCard
               icon="◈"
-              title="Deals"
+              title="Pipeline"
               body="Full lifecycle tracking from first touch to signed contract. Every interaction, every document, every dollar."
             />
             <FeatureCard
