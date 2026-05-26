@@ -266,7 +266,7 @@ export default function DashboardPage() {
               onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
               style={{
                 width: "100%", boxSizing: "border-box",
-                background: "#18181b", border: `1px solid ${searchFocused ? "#C9A84C" : "#27272a"}`,
+                background: "#18181b", border: "1px solid #C9A84C",
                 borderRadius: 8, padding: "8px 30px 8px 32px",
                 color: "#fafafa", fontSize: "0.82rem", outline: "none", textAlign: "center",
                 transition: "border-color 0.2s",
