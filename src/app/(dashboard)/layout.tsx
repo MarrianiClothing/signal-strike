@@ -197,16 +197,27 @@ function SidebarInner() {
             </h1>
           </div>
         ) : (
-          <div style={{ padding: "0 20px 28px", textAlign: "center" }}>
+          <button
+            onClick={() => { if (pathname !== "/dashboard") router.push("/dashboard"); }}
+            aria-label="Go to dashboard"
+            title="Dashboard"
+            style={{
+              display: "block", width: "100%", padding: "0 20px 28px", textAlign: "center",
+              background: "transparent", border: "none", cursor: "pointer",
+              transition: "opacity 0.15s",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = "0.8")}
+            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+          >
             <img src="/logo-white.png" alt="Signal Strike Logo"
               style={{ width: "110px", height: "auto", maxWidth: "100%", display: "block", margin: "0 auto 12px auto", opacity: 0.9 }} />
-            <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#ffffff", letterSpacing: "0.12em", textAlign: "center", fontFamily: "var(--font-cinzel, serif)", textTransform: "uppercase" }}>
+            <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#ffffff", letterSpacing: "0.12em", textAlign: "center", fontFamily: "var(--font-cinzel, serif)", textTransform: "uppercase", margin: 0 }}>
               Signal Strike
             </h1>
-            <p style={{ color: "#71717a", fontSize: "0.62rem", marginTop: 4, textAlign: "center", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "var(--font-montserrat, sans-serif)" }}>
+            <p style={{ color: "#71717a", fontSize: "0.62rem", marginTop: 4, textAlign: "center", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "var(--font-montserrat, sans-serif)", margin: "4px 0 0" }}>
               Revenue CRM
             </p>
-          </div>
+          </button>
         )}
 
         <div ref={dropdownRef} style={{ padding: "0 10px 16px", position: "relative" }}>
