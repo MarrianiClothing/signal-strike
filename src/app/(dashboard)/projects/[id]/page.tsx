@@ -68,6 +68,21 @@ export default function WorkOrderDetailPage() {
     const updatedMs = milestones.map(m => m.id===msId ? {...m,...updates} : m);
     setMilestones(updatedMs);
 
+    // Fire in-app notification (separate from client email — always runs)
+    if (completed) {
+      const ms = updatedMs.find(m => m.id===msId);
+      // Fire and forget; failures shouldn't block the user
+      fetch("/api/notifications/milestone-completed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_id: id,
+          milestone_id: msId,
+          milestone_name: ms?.name ?? "Milestone",
+        }),
+      }).catch(err => console.error("[milestone notify] failed:", err));
+    }
+
     // Fire client email notification when marking complete (not on rollback)
     if (completed && project?.email_client_updates) {
       const doneCount = updatedMs.filter(m => m.completed).length;

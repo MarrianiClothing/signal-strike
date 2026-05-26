@@ -975,6 +975,19 @@ export async function GET(req: NextRequest) {
         console.error("[daily-signal preview] last_signal_sent_at UPDATE matched 0 rows for profile.id =", profile.id);
       } else {
         console.log("[daily-signal preview] last_signal_sent_at written:", previewUpdRows[0]);
+        // Fire in-app notification (best effort — don't block on failure)
+        try {
+          const { createNotification } = await import("@/lib/notifications.server");
+          await createNotification({
+            userId: profile.id,
+            type:   "daily_signal_sent",
+            title:  "Daily Signal delivered",
+            body:   "Your morning briefing has been sent.",
+            link:   null as any,
+          });
+        } catch (notifErr) {
+          console.error("[daily-signal preview] notify failed:", notifErr);
+        }
       }
 
       return NextResponse.json({ ok: true, sent_to: email });
@@ -1077,6 +1090,19 @@ export async function GET(req: NextRequest) {
         console.error("[daily-signal cron] last_signal_sent_at UPDATE matched 0 rows for profile.id =", profile.id);
       } else {
         console.log("[daily-signal cron] last_signal_sent_at written:", cronUpdRows[0]);
+        // Fire in-app notification (best effort — don't block on failure)
+        try {
+          const { createNotification } = await import("@/lib/notifications.server");
+          await createNotification({
+            userId: profile.id,
+            type:   "daily_signal_sent",
+            title:  "Daily Signal delivered",
+            body:   "Your morning briefing has been sent.",
+            link:   null as any,
+          });
+        } catch (notifErr) {
+          console.error("[daily-signal cron] notify failed:", notifErr);
+        }
       }
 
       sent++;

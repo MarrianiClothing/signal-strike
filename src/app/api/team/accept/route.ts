@@ -24,6 +24,34 @@ export async function POST(req: NextRequest) {
     // Mark invite accepted
     await admin.from("team_invites").update({ accepted: true }).eq("id", invite.id);
 
+    // Notify the inviter / team owner that someone joined
+    try {
+      const { createNotification } = await import("@/lib/notifications.server");
+      // Try to find an owner of the team to notify
+      const { data: owners } = await admin
+        .from("team_members")
+        .select("user_id, role")
+        .eq("team_id", invite.team_id)
+        .in("role", ["owner", "manager"]);
+      const recipientIds = (owners || []).map((o: any) => o.user_id).filter(Boolean);
+      // Also include the inviter if available
+      if ((invite as any).invited_by && !recipientIds.includes((invite as any).invited_by)) {
+        recipientIds.push((invite as any).invited_by);
+      }
+      for (const rid of recipientIds) {
+        await createNotification({
+          userId: rid,
+          type:   "team_invite_accepted",
+          title:  "Team invite accepted",
+          body:   `${(invite as any).invited_email ?? "Someone"} joined the team.`,
+          link:   "/team",
+          metadata: { team_id: invite.team_id, invite_id: invite.id },
+        });
+      }
+    } catch (notifErr) {
+      console.error("[team accept] notify failed:", notifErr);
+    }
+
     return NextResponse.json({ ok: true, team_id: invite.team_id });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message }, { status: 500 });
