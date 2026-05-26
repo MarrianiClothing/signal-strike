@@ -738,6 +738,13 @@ function buildEmailHtml(userName: string, deals: any[], tiers: any[], teamReport
   <title>Daily Signal</title>
 </head>
 <body style="margin:0;padding:0;background:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+
+<!-- Preheader (hidden, but shown as inbox preview text by Gmail/Apple Mail/Outlook) -->
+<div style="display:none;overflow:hidden;line-height:1;opacity:0;max-height:0;max-width:0;color:transparent;height:0;width:0;">
+  ${activeDeals.length} active deals &middot; ${fmt(totalValue)} in pipeline &middot; ${fmt(totalCommission)} commission &middot; Today's signal is ready.
+  &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+</div>
+
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;min-height:100vh;">
 <tr><td align="center" style="padding:32px 16px;">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
@@ -774,6 +781,15 @@ function buildEmailHtml(userName: string, deals: any[], tiers: any[], teamReport
           </td>
         </tr>
       </table>
+    </td>
+  </tr>
+
+  <!-- ── PRIMARY CTA ── -->
+  <tr>
+    <td align="center" style="padding-bottom:32px;">
+      <a href="https://strike.hilltopave.com/dashboard" style="display:inline-block;background:#C9A84C;color:#0a0a0b;padding:13px 28px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.03em;">
+        Open Dashboard &rarr;
+      </a>
     </td>
   </tr>
 
@@ -843,8 +859,12 @@ function buildEmailHtml(userName: string, deals: any[], tiers: any[], teamReport
   <!-- ── FOOTER ── -->
   <tr>
     <td align="center" style="padding-top:32px;border-top:1px solid #18181b;margin-top:8px;">
-      <p style="margin:0 0 4px 0;font-size:12px;color:#3f3f46;">Signal Strike &middot; Revenue CRM &middot; Powered by Hilltop Ave</p>
-      <p style="margin:0;font-size:11px;color:#27272a;">Manage Daily Signal settings: Signal Strike &rarr; Settings</p>
+      <p style="margin:0 0 6px 0;font-size:12px;color:#3f3f46;">Signal Strike &middot; Revenue CRM &middot; Powered by Hilltop Ave LLC</p>
+      <p style="margin:0;font-size:11px;color:#52525b;">
+        <a href="https://strike.hilltopave.com/settings" style="color:#52525b;text-decoration:underline;">Manage email preferences</a>
+        &middot;
+        <a href="https://strike.hilltopave.com/dashboard" style="color:#52525b;text-decoration:underline;">Open Signal Strike</a>
+      </p>
     </td>
   </tr>
 
@@ -944,10 +964,15 @@ export async function GET(req: NextRequest) {
       const pdfBuffer = await buildPDF(deals || [], tiers || [], today2, teamReports);
       const dateStr = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
       const xlsxBuffer = await buildExcel(deals || [], tiers || [], today2, teamReports);
+      const activeCountPreview = (deals || []).filter((d: any) => d.stage !== "closed_won" && d.stage !== "closed_lost").length;
+      const totalValuePreview = (deals || []).filter((d: any) => d.stage !== "closed_won" && d.stage !== "closed_lost").reduce((s: number, d: any) => s + (d.value || 0), 0);
+      const subjectStatsPreview = activeCountPreview > 0
+        ? `${activeCountPreview} deal${activeCountPreview === 1 ? "" : "s"} · $${(totalValuePreview / 1000).toFixed(totalValuePreview >= 1_000_000 ? 1 : 0)}${totalValuePreview >= 1_000_000 ? "M" : "K"} pipeline`
+        : "Today's signal is ready";
       await resend.emails.send({
         from:    "Signal Strike <hello@hilltopave.com>",
         to:      email,
-        subject: `Daily Signal · ${dateStr}`,
+        subject: `Daily Signal · ${subjectStatsPreview} · ${dateStr}`,
         html,
         attachments: [
           {
@@ -1059,10 +1084,15 @@ export async function GET(req: NextRequest) {
       const pdfBuf = await buildPDF(deals || [], tiers || [], todayCron, teamReports);
       const dateStrCron = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
       const xlsxBuf = await buildExcel(deals || [], tiers || [], todayCron, teamReports);
+      const activeCountCron = (deals || []).filter((d: any) => d.stage !== "closed_won" && d.stage !== "closed_lost").length;
+      const totalValueCron = (deals || []).filter((d: any) => d.stage !== "closed_won" && d.stage !== "closed_lost").reduce((s: number, d: any) => s + (d.value || 0), 0);
+      const subjectStatsCron = activeCountCron > 0
+        ? `${activeCountCron} deal${activeCountCron === 1 ? "" : "s"} · $${(totalValueCron / 1000).toFixed(totalValueCron >= 1_000_000 ? 1 : 0)}${totalValueCron >= 1_000_000 ? "M" : "K"} pipeline`
+        : "Today's signal is ready";
       await resend.emails.send({
         from:    "Signal Strike <hello@hilltopave.com>",
         to:      userEmail,
-        subject: `Daily Signal · ${dateStrCron}`,
+        subject: `Daily Signal · ${subjectStatsCron} · ${dateStrCron}`,
         html,
         attachments: [
           {
