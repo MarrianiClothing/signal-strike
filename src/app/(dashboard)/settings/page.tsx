@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import RevenueGoalSection from "./components/RevenueGoalSection";
 import DailySignalSection from "@/components/DailySignalSection";
 import CommissionTiersSection from "./components/CommissionTiersSection";
+import JobNumberingSection from "./components/JobNumberingSection";
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -138,6 +139,7 @@ export default function SettingsPage() {
 
       {/* Revenue Goal */}
       {profile.id && <DailySignalSection userId={profile.id} />}
+      {profile.id && <JobNumberingSection userId={profile.id} />}
       <CommissionTiersSection userId={profile.id} />
       <RevenueGoalSection userId={profile.id} />
 
