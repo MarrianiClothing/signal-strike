@@ -88,32 +88,89 @@ export default async function AccountPage() {
   return (
     <main
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: "#0A0A0B",
         color: "#FAFAFA",
         fontFamily:
           "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Montserrat:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Montserrat:wght@400;500;600&display=swap');
+
+        /* Account page responsive */
+        [data-ss="account-nav"] {
+          padding: 20px 32px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        [data-ss="account-nav-email"] {
+          display: inline;
+        }
+        [data-ss="account-body"] {
+          padding: 64px 32px;
+        }
+        [data-ss="account-heading"] {
+          font-size: 32px;
+        }
+        [data-ss="account-card"] {
+          padding: 32px;
+        }
+        [data-ss="account-card-header"] {
+          flex-direction: row;
+          gap: 16px;
+        }
+
+        @media (max-width: 640px) {
+          [data-ss="account-nav"] {
+            padding: 14px 18px;
+          }
+          [data-ss="account-nav-email"] {
+            display: none;
+          }
+          [data-ss="account-body"] {
+            padding: 32px 18px;
+          }
+          [data-ss="account-heading"] {
+            font-size: 26px;
+          }
+          [data-ss="account-card"] {
+            padding: 22px 20px;
+          }
+          [data-ss="account-card-header"] {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 12px;
+          }
+        }
+
+        [data-ss="account-back"] {
+          transition: color 0.15s, border-color 0.15s;
+        }
+        [data-ss="account-back"]:hover {
+          color: #C9A84C;
+          border-color: #C9A84C;
+        }
       `}</style>
 
       <Nav email={user.email ?? ""} />
 
       <div
+        data-ss="account-body"
         style={{
           maxWidth: "880px",
           margin: "0 auto",
-          padding: "64px 32px",
         }}
       >
         <h1
+          data-ss="account-heading"
           style={{
-            fontSize: "32px",
             fontWeight: 600,
             marginBottom: "8px",
             fontFamily: "Cinzel, serif",
+            letterSpacing: "0.01em",
           }}
         >
           Account
@@ -125,7 +182,7 @@ export default async function AccountPage() {
             marginBottom: "40px",
           }}
         >
-          {user.email}
+          Manage your subscription, billing, and preferences.
         </p>
 
         {subscription ? (
@@ -146,34 +203,73 @@ export default async function AccountPage() {
 function Nav({ email }: { email: string }) {
   return (
     <nav
+      data-ss="account-nav"
       style={{
         borderBottom: "1px solid #27272A",
-        padding: "20px 32px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
       }}
     >
-      <div
+      {/* Left: logo + wordmark — links to dashboard */}
+      <a
+        href="/dashboard"
         style={{
-          fontFamily: "Cinzel, serif",
-          fontSize: "20px",
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          textDecoration: "none",
+          color: "inherit",
         }}
       >
-        SIGNAL <span style={{ color: "#C9A84C" }}>STRIKE</span>
-      </div>
+        <img
+          src="/logo-white.png"
+          alt="Signal Strike"
+          style={{ width: 28, height: "auto", opacity: 0.9 }}
+        />
+        <div
+          style={{
+            fontFamily: "Cinzel, serif",
+            fontSize: "18px",
+            fontWeight: 700,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+            color: "#FAFAFA",
+          }}
+        >
+          Signal <span style={{ color: "#C9A84C" }}>Strike</span>
+        </div>
+      </a>
+
+      {/* Right: dashboard back link + email + sign out */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "16px",
+          gap: "12px",
           fontSize: "14px",
           color: "#A1A1AA",
+          flexWrap: "wrap",
+          justifyContent: "flex-end",
         }}
       >
-        <span>{email}</span>
+        <a
+          href="/dashboard"
+          data-ss="account-back"
+          style={{
+            color: "#A1A1AA",
+            textDecoration: "none",
+            border: "1px solid #27272A",
+            borderRadius: "6px",
+            padding: "8px 14px",
+            fontSize: "13px",
+            fontWeight: 500,
+            letterSpacing: "0.02em",
+          }}
+        >
+          ← Dashboard
+        </a>
+        <span data-ss="account-nav-email">{email}</span>
         <form action="/auth/signout" method="POST" style={{ margin: 0 }}>
           <button
             type="submit"
@@ -209,14 +305,15 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
 
   return (
     <div
+      data-ss="account-card"
       style={{
         background: "#111113",
         border: "1px solid #27272A",
         borderRadius: "12px",
-        padding: "32px",
       }}
     >
       <div
+        data-ss="account-card-header"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -279,11 +376,11 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
 function NoSubscriptionCard() {
   return (
     <div
+      data-ss="account-card"
       style={{
         background: "#111113",
         border: "1px solid #27272A",
         borderRadius: "12px",
-        padding: "32px",
         textAlign: "center",
       }}
     >
