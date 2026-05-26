@@ -107,7 +107,7 @@ export default function AskSignalPage() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#0a0a0b", maxWidth: 800, margin: "0 auto", width: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: isMobile ? "calc(100dvh - 56px - env(safe-area-inset-top))" : "100vh", background: "#0a0a0b", maxWidth: 800, margin: "0 auto", width: "100%" }}>
 
       {/* Header — desktop only (mobile gets a floating Clear instead) */}
       {!isMobile && (
@@ -138,7 +138,7 @@ export default function AskSignalPage() {
       )}
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "24px" }}>
         {isEmpty ? (
           <div>
             {/* Welcome */}
