@@ -654,10 +654,11 @@ export default function LandingPage() {
 
         <div className="ss-divider" />
 
-        {/* ═══════════════════════════ CTA BANNER ═══════════════════════════ */}
+        {/* ═══════════════════════════ CTA BANNER / PRICING ANCHOR ═══════════════════════════ */}
         <section
+          id="pricing"
           className="ss-section"
-          style={{ padding: "80px 48px", maxWidth: 1200, margin: "0 auto" }}
+          style={{ padding: "80px 48px", maxWidth: 1200, margin: "0 auto", scrollMarginTop: 80 }}
         >
           <div
             className="ss-cta-banner"
@@ -683,6 +684,18 @@ export default function LandingPage() {
               }}
             />
             <div style={{ position: "relative" }}>
+              <div
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  color: GOLD,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  marginBottom: 14,
+                }}
+              >
+                Plans from $29/user/mo · $1 today to start
+              </div>
               <h2
                 className="ss-heading ss-cta-banner-title"
                 style={{
@@ -704,8 +717,8 @@ export default function LandingPage() {
                   lineHeight: 1.6,
                 }}
               >
-                Start your free trial today. No credit card, no contracts,
-                no noise — just the signal you need to close.
+                Get 14 days of full access for $1. Cancel anytime before
+                day 15 and you only pay the $1 — no contracts, no noise.
               </p>
               <div
                 className="ss-cta-row"
