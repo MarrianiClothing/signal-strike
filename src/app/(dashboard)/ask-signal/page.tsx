@@ -4,6 +4,12 @@ import { createClient } from "@/lib/supabase/client";
 
 interface Message { role: "user" | "assistant"; content: string; }
 
+function useIsMobile() {
+  const [m, setM] = useState(false);
+  useEffect(() => { const c = () => setM(window.innerWidth < 768); c(); window.addEventListener("resize", c); return () => window.removeEventListener("resize", c); }, []);
+  return m;
+}
+
 const SUGGESTIONS = [
   "What's my total pipeline value?",
   "Which deals are closest to closing?",
@@ -45,6 +51,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
 export default function AskSignalPage() {
   const supabase = createClient();
+  const isMobile = useIsMobile();
   const [userId, setUserId] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -95,23 +102,33 @@ export default function AskSignalPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#0a0a0b", maxWidth: 800, margin: "0 auto", width: "100%" }}>
 
-      {/* Header */}
-      <div style={{ padding: "24px 24px 0", borderBottom: "1px solid #18181b", paddingBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          
-          <div>
-            <h1 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#fafafa", fontFamily: "var(--font-cinzel, serif)" }}>Ask Signal</h1>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#52525b" }}>Your AI revenue assistant — pipeline, jobs, expenses, team, and how to use Signal Strike</p>
+      {/* Header — desktop only (mobile gets a floating Clear instead) */}
+      {!isMobile && (
+        <div style={{ padding: "24px 24px 0", borderBottom: "1px solid #18181b", paddingBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#fafafa", fontFamily: "var(--font-cinzel, serif)" }}>Ask Signal</h1>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "#52525b" }}>Your AI revenue assistant — pipeline, jobs, expenses, team, and how to use Signal Strike</p>
+            </div>
+            {messages.length > 0 && (
+              <button onClick={() => setMessages([])} style={{
+                marginLeft: "auto", background: "transparent", border: "1px solid #27272a",
+                color: "#52525b", borderRadius: 8, padding: "6px 12px", cursor: "pointer",
+                fontSize: "0.75rem",
+              }}>Clear</button>
+            )}
           </div>
-          {messages.length > 0 && (
-            <button onClick={() => setMessages([])} style={{
-              marginLeft: "auto", background: "transparent", border: "1px solid #27272a",
-              color: "#52525b", borderRadius: 8, padding: "6px 12px", cursor: "pointer",
-              fontSize: "0.75rem",
-            }}>Clear</button>
-          )}
         </div>
-      </div>
+      )}
+      {isMobile && messages.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 16px 0" }}>
+          <button onClick={() => setMessages([])} style={{
+            background: "transparent", border: "1px solid #27272a",
+            color: "#52525b", borderRadius: 8, padding: "5px 11px", cursor: "pointer",
+            fontSize: "0.72rem",
+          }}>Clear</button>
+        </div>
+      )}
 
       {/* Messages */}
       <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
