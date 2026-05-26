@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
-// TODO(security): This route uses the service-role key with a userId taken
-// from the request body. A signed-in user could pass any userId. Before public
-// launch, swap to the SSR Supabase client and read userId from the session,
-// OR add an explicit auth.getUser() check using the user's access token.
+// The service-role client is used for data fetches only AFTER we've verified
+// the caller's session and derived their user.id from it. We never trust a
+// userId passed in the request body — that allowed cross-tenant data access
+// in the previous implementation (any signed-in user could swap the userId
+// in the request payload and receive another user's deals, projects, etc.).
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -44,8 +47,31 @@ function fmtDate(d: string | null | undefined): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, userId } = await req.json();
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { messages } = await req.json();
+
+    // Identify the caller from their auth cookie. This is the ONLY trusted
+    // source of identity for this route. The request body must never be
+    // permitted to specify which user's data to fetch.
+    const cookieStore = await cookies();
+    const authedSupabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: () => {
+            // No-op: route handler can't set cookies on this response shape
+          },
+        },
+      }
+    );
+
+    const { data: { user: signedInUser }, error: authErr } = await authedSupabase.auth.getUser();
+    if (authErr || !signedInUser) {
+      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    }
+
+    const userId = signedInUser.id;
 
     // Fetch live context in parallel
     const [
