@@ -150,7 +150,7 @@ export default function AskSignalPage() {
 
             {/* Welcome-screen natural language input */}
             <div style={{ maxWidth: 640, margin: "0 auto 28px", padding: "0 4px" }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, alignItems: isMobile ? "stretch" : "flex-end" }}>
                 <textarea
                   ref={welcomeInputRef}
                   value={input}
@@ -169,7 +169,7 @@ export default function AskSignalPage() {
                   onBlur={e => (e.target.style.borderColor = "#27272a")}
                 />
                 <button onClick={() => send()} disabled={!input.trim() || loading} style={{
-                  width: 48, height: 48, borderRadius: 14, border: "none",
+                  width: isMobile ? "100%" : 48, height: 48, borderRadius: 14, border: "none",
                   background: input.trim() && !loading ? "#C9A84C" : "#1c1c1f",
                   color: input.trim() && !loading ? "#000" : "#52525b",
                   cursor: input.trim() && !loading ? "pointer" : "not-allowed",
