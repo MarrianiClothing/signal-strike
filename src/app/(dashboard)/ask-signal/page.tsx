@@ -136,7 +136,7 @@ export default function AskSignalPage() {
           <div>
             {/* Welcome */}
             <div style={{ textAlign: "center", padding: "32px 0 40px" }}>
-              <img src="/logo-white.png" alt="Signal Strike" style={{ width: 64, height: "auto", marginBottom: 12, opacity: 0.9 }} />
+              {!isMobile && <img src="/logo-white.png" alt="Signal Strike" style={{ width: 64, height: "auto", marginBottom: 12, opacity: 0.9 }} />}
               <h2 style={{ color: "#fafafa", fontWeight: 700, margin: "0 0 8px", fontSize: "1.3rem" }}>How can I help you today?</h2>
               <p style={{ color: "#52525b", fontSize: "0.85rem", margin: 0 }}>Ask about your pipeline, jobs, milestones, expenses, team, or how to use any Signal Strike feature.</p>
             </div>
