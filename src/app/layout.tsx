@@ -37,6 +37,29 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  metadataBase: new URL("https://strike.hilltopave.com"),
+  openGraph: {
+    type: "website",
+    url: "https://strike.hilltopave.com",
+    siteName: "Signal Strike",
+    title: "Signal Strike — Turn signal into revenue.",
+    description: "Revenue CRM for sales teams. Track deals, manage your pipeline, and never miss a signal.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Signal Strike — Revenue CRM",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Signal Strike — Turn signal into revenue.",
+    description: "Revenue CRM for sales teams. Track deals, manage your pipeline, and never miss a signal.",
+    images: ["/og-image.png"],
+  },
 };
 
 export const viewport: Viewport = {
