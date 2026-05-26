@@ -86,9 +86,25 @@ export default function ProjectsPage() {
     setSaving(true);
     const deal = wonDeals.find(d => d.id === form.deal_id);
 
-    // Get next WO number
-    const { data: maxRow } = await supabase.from("projects").select("wo_number").order("wo_number",{ascending:false}).limit(1).maybeSingle();
-    const nextNum = (maxRow?.wo_number ?? 999) + 1;
+    // Get next WO number — try the atomic numbering RPC first; fall back
+    // to per-user max+1 if the feature isn't enabled for this user/team.
+    let nextNum: number;
+    let nextDisplay: string | null = null;
+    const { data: rpcData } = await supabase.rpc("next_wo_number", { p_user_id: userId });
+    if (rpcData && (rpcData as any).source && (rpcData as any).source !== "none") {
+      nextNum = (rpcData as any).number;
+      nextDisplay = (rpcData as any).display ?? null;
+    } else {
+      // Fallback: per-user max+1 (scoped by user_id — original code was global)
+      const { data: maxRow } = await supabase
+        .from("projects")
+        .select("wo_number")
+        .eq("user_id", userId)
+        .order("wo_number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      nextNum = (maxRow?.wo_number ?? 999) + 1;
+    }
 
     const { data: proj, error } = await supabase.from("projects").insert({
       user_id:               userId,
@@ -100,6 +116,7 @@ export default function ProjectsPage() {
       value:                 deal?.value ?? 0,
       status:                "pending",
       wo_number:             nextNum,
+      wo_display:            nextDisplay,
       created_at:            new Date().toISOString(),
     }).select("id").single();
 
@@ -177,7 +194,7 @@ export default function ProjectsPage() {
                 {/* Card header */}
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
                   <div style={{ minWidth:0 }}>
-                    {p.wo_number && <span style={{ color:"#52525b", fontSize:"0.72rem", fontFamily:"monospace" }}>{p.wo_number}</span>}
+                    {(p.wo_display || p.wo_number) && <span style={{ color:"#52525b", fontSize:"0.72rem", fontFamily:"monospace" }}>{p.wo_display || p.wo_number}</span>}
                     <p style={{ color:"#fafafa", fontWeight:700, fontSize:"1rem", margin:"2px 0 0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:240 }}>{p.name}</p>
                   </div>
                   <span style={{ fontSize:"0.72rem", fontWeight:700, color:sc, background:sc+"22", padding:"3px 10px", borderRadius:20, flexShrink:0, marginLeft:8 }}>

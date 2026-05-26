@@ -142,7 +142,7 @@ export default function WorkOrderDetailPage() {
         <div style={{padding:"20px 24px 16px",borderBottom:"1px solid #1c1c1f"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
             <div>
-              {project.wo_number && <p style={{color:"#52525b",fontSize:"0.72rem",fontFamily:"monospace",margin:"0 0 4px"}}>WO-{project.wo_number}</p>}
+              {(project.wo_display || project.wo_number) && <p style={{color:"#52525b",fontSize:"0.72rem",fontFamily:"monospace",margin:"0 0 4px"}}>{project.wo_display || ("WO-" + project.wo_number)}</p>}
               <h1 style={{color:"#fafafa",fontWeight:800,fontSize:isMobile?"1.1rem":"1.3rem",margin:0,lineHeight:1.3}}>{project.name}</h1>
               {(project.service_type||project.deals?.company) && (
                 <p style={{color:"#71717a",fontSize:"0.82rem",margin:"4px 0 0"}}>{project.service_type||project.deals?.company}</p>
