@@ -67,7 +67,6 @@ export default function DealsPage() {
   // List state
   const [deals,           setDeals]           = useState<any[]>(() => getCache<any[]>("deals") ?? []);
   const [loading,         setLoading]         = useState(!getCache<any[]>("deals"));
-  const [search,          setSearch]          = useState("");
   const [stageFilter,     setStageFilter]     = useState("all");
   const [userId,          setUserId]          = useState("");
   const [userName,        setUserName]        = useState("");
@@ -294,9 +293,8 @@ export default function DealsPage() {
   }
 
   const filtered = deals.filter(d => {
-    const matchSearch = !search || [d.title,d.company,d.contact_name,d.contact_email].some(v => v?.toLowerCase().includes(search.toLowerCase()));
     const matchStage  = stageFilter==="all" || d.stage===stageFilter;
-    return matchSearch && matchStage;
+    return matchStage;
   });
 
   const stageIdx    = (s: string) => STAGES.indexOf(s);
@@ -329,10 +327,8 @@ export default function DealsPage() {
         </div>
       </div>
 
-      {/* Search + stage filter */}
+      {/* Stage filter */}
       <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
-        <input style={{ ...inp, flex:1, minWidth:200, maxWidth:320 }} placeholder="Search leads, companies, contacts..."
-          value={search} onChange={e=>setSearch(e.target.value)} />
         <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
           {[{id:"all",label:"All"},...STAGES.map(s=>({id:s,label:STAGE_LABELS[s]}))].map(s=>(
             <button key={s.id} onClick={()=>setStageFilter(s.id)}
