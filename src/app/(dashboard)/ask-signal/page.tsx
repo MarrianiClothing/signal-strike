@@ -215,7 +215,8 @@ export default function AskSignalPage() {
         )}
       </div>
 
-      {/* Input */}
+      {/* Input — hidden on welcome screen (welcome has its own input) */}
+      {!isEmpty && (
       <div style={{ padding: "16px 24px 24px", borderTop: "1px solid #18181b" }}>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
           <textarea
@@ -248,6 +249,7 @@ export default function AskSignalPage() {
           Enter to send · Shift+Enter for new line · Signal Search is available on the Dashboard
         </p>
       </div>
+      )}
 
       <style>{`
         @keyframes pulse {
