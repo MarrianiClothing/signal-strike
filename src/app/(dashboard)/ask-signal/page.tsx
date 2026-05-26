@@ -58,6 +58,7 @@ export default function AskSignalPage() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
+  const welcomeInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     async function load() {
@@ -70,6 +71,12 @@ export default function AskSignalPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      setTimeout(() => welcomeInputRef.current?.focus(), 150);
+    }
+  }, [messages.length]);
 
   async function send(text?: string) {
     const content = (text || input).trim();
@@ -140,6 +147,41 @@ export default function AskSignalPage() {
               <h2 style={{ color: "#fafafa", fontWeight: 700, margin: "0 0 8px", fontSize: "1.3rem" }}>How can I help you today?</h2>
               <p style={{ color: "#52525b", fontSize: "0.85rem", margin: 0 }}>Ask about your pipeline, jobs, milestones, expenses, team, or how to use any Signal Strike feature.</p>
             </div>
+
+            {/* Welcome-screen natural language input */}
+            <div style={{ maxWidth: 640, margin: "0 auto 28px", padding: "0 4px" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+                <textarea
+                  ref={welcomeInputRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder="Type your question…"
+                  rows={1}
+                  style={{
+                    flex: 1, background: "#111113", border: "1px solid #27272a", borderRadius: 14,
+                    color: "#fafafa", padding: "14px 18px", fontSize: "1rem", outline: "none",
+                    resize: "none", lineHeight: 1.5, maxHeight: 140, overflowY: "auto",
+                    fontFamily: "var(--font-montserrat, sans-serif)",
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={e => (e.target.style.borderColor = "#C9A84C")}
+                  onBlur={e => (e.target.style.borderColor = "#27272a")}
+                />
+                <button onClick={() => send()} disabled={!input.trim() || loading} style={{
+                  width: 48, height: 48, borderRadius: 14, border: "none",
+                  background: input.trim() && !loading ? "#C9A84C" : "#1c1c1f",
+                  color: input.trim() && !loading ? "#000" : "#52525b",
+                  cursor: input.trim() && !loading ? "pointer" : "not-allowed",
+                  fontSize: "1.2rem", display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0, transition: "all 0.2s",
+                }}>↑</button>
+              </div>
+              <p style={{ margin: "10px 0 0", fontSize: "0.7rem", color: "#52525b", textAlign: "center", letterSpacing: "0.04em" }}>
+                Or pick a starter below
+              </p>
+            </div>
+
             {/* Suggestion pills */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
               {SUGGESTIONS.map(s => (
