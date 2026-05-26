@@ -24,26 +24,29 @@ export async function POST(req: NextRequest) {
     // Mark invite accepted
     await admin.from("team_invites").update({ accepted: true }).eq("id", invite.id);
 
-    // Notify the inviter / team owner that someone joined
+    // Notify all owners/managers of the team that someone joined.
+    // (team_invites schema has no inviter column — we notify everyone who can
+    // act on team membership instead.)
     try {
       const { createNotification } = await import("@/lib/notifications.server");
-      // Try to find an owner of the team to notify
-      const { data: owners } = await admin
+      const { data: leaders } = await admin
         .from("team_members")
         .select("user_id, role")
         .eq("team_id", invite.team_id)
         .in("role", ["owner", "manager"]);
-      const recipientIds = (owners || []).map((o: any) => o.user_id).filter(Boolean);
-      // Also include the inviter if available
-      if ((invite as any).invited_by && !recipientIds.includes((invite as any).invited_by)) {
-        recipientIds.push((invite as any).invited_by);
-      }
+
+      const recipientIds = (leaders || [])
+        .map((m: any) => m.user_id)
+        .filter(Boolean);
+
+      const joinerEmail = (invite as any).email ?? "Someone";
+
       for (const rid of recipientIds) {
         await createNotification({
           userId: rid,
           type:   "team_invite_accepted",
           title:  "Team invite accepted",
-          body:   `${(invite as any).invited_email ?? "Someone"} joined the team.`,
+          body:   `${joinerEmail} joined the team.`,
           link:   "/team",
           metadata: { team_id: invite.team_id, invite_id: invite.id },
         });
